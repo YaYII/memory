@@ -80,7 +80,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="write_memory",
-            description="写入记忆。AI 必须自行判断：\n1. 如果是项目专属细节（默认），请保持默认 scope='project'（系统会自动关联当前项目路径）。\n2. 如果是通用知识/偏好（如用户习惯、编程技巧），请显式设置 scope='global'。",
+            description="写入记忆。AI 必须自行判断：\n1. 如果是项目专属细节（默认），请保持默认 scope='project'（系统会自动关联当前项目路径）。\n2. 如果是通用知识/偏好（如用户习惯、编程技巧），请显式设置 scope='global'。\n3. **强制语言要求**：无论用户使用何种语言，写入记忆的内容**必须使用简体中文**，以确保跨会话检索的准确性和一致性。禁止使用英文或其他语言作为主要内容。",
             inputSchema=WriteMemoryRequest.model_json_schema()
         ),
         types.Tool(

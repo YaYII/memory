@@ -37,7 +37,7 @@ class WriteMemoryRequest(BaseModel):
     写入记忆请求
     """
     user_id: str = Field(..., description="当前用户ID")
-    content: str = Field(..., description="需记忆的内容")
+    content: str = Field(..., description="需记忆的内容（必须使用简体中文，禁止使用英文）")
     project_id: Optional[str] = Field(None, description="通常无需填写。系统会自动根据当前路径生成唯一ID。")
     scope: Literal["project", "global"] = Field("project", description="关键：AI需判断。'project'=当前项目专属(默认)；'global'=通用知识/用户偏好。")
 
