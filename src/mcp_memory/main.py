@@ -60,6 +60,9 @@ async def ensure_server_running():
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(f"{SERVER_URL}/health", timeout=0.5)
                     if resp.status_code == 200:
+                        # Print dashboard URL to stderr (visible in MCP client logs)
+                        print(f"MCP Memory Server started at {SERVER_URL}", file=sys.stderr)
+                        print(f"📊 Dashboard available at: {SERVER_URL}/", file=sys.stderr)
                         return
             except:
                 continue
