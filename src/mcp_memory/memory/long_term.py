@@ -39,11 +39,23 @@ class MemoryStore:
         with self.lock:
             return operation(*args, **kwargs)
 
+    # 用户画像关键词 (User Profile Heuristics)
+    PROFILE_KEYWORDS = ["我喜欢", "我偏好", "我不喜欢", "我的习惯", "总是", "不要", "必须", "要求", "规定", "建议", "My preference", "I like", "I prefer"]
+
+    def _is_profile_content(self, text: str) -> bool:
+        """
+        判断是否为用户画像相关内容
+        """
+        return any(kw in text for kw in self.PROFILE_KEYWORDS)
+
     def save(self, memory: MemoryItem):
         """
         保存记忆：支持去重和强化 (Inspired by MemOS/Mem0)
         如果发现高相似度 (>0.95) 的记忆，则更新该记忆的权重和时间，而非新增。
         """
+        # 0. 用户画像检测
+        is_profile = self._is_profile_content(memory.content)
+        
         # 1. 查重：检索最相似的1条记忆
         try:
             # 只在同项目/同用户范围内查重
@@ -80,6 +92,7 @@ class MemoryStore:
             "scope": memory.scope,
             "project_id": memory.project_id or "", # Chroma metadata cannot be None
             "is_shared": str(memory.is_shared),
+            "is_profile": str(is_profile),
             "timestamp": memory.timestamp.isoformat(),
             "importance": memory.importance,
             "last_accessed": last_accessed_iso,
@@ -145,6 +158,46 @@ class MemoryStore:
                 n_results=recall_limit,
                 where=where_filter
             )
+            
+            # --- User Profile Injection (Context Injection) ---
+            # 总是尝试获取当前用户的画像 (Profile)，无论 query 是什么
+            # 限制 3 条，避免 context 过长
+            try:
+                profile_results = self.collection.get(
+                    where={"$and": [
+                        where_filter,
+                        {"is_profile": "True"}
+                    ]},
+                    limit=3,
+                    # ChromaDB 的 get 默认不排序，我们尽量获取最近的
+                    # 但 get API 不支持 sort，所以这里只是获取任意 3 条
+                    # 理想情况下应该用 query 但那样会受语义距离影响
+                )
+                
+                # 手动将 profile 结果合并到 results 中 (如果它们不在 results 里)
+                if profile_results["ids"]:
+                    # 这里结构不同，get 返回的是 list，query 返回的是 list of list
+                    p_ids = profile_results["ids"]
+                    p_docs = profile_results["documents"]
+                    p_metas = profile_results["metadatas"]
+                    
+                    # 检查是否已存在
+                    existing_ids = set(results["ids"][0]) if results["ids"] else set()
+                    
+                    for i, pid in enumerate(p_ids):
+                        if pid not in existing_ids:
+                            # 模拟添加到 results 的结构中
+                            if not results["ids"]:
+                                results = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
+                            
+                            results["ids"][0].append(pid)
+                            results["documents"][0].append(p_docs[i])
+                            results["metadatas"][0].append(p_metas[i])
+                            # 给 Profile 一个极小的 distance (极大相似度) 确保它被选中
+                            results["distances"][0].append(0.0) 
+            except Exception as e:
+                print(f"Profile injection warning: {e}")
+
         except Exception as e:
             # Handle possible database corruption or ID errors gracefully
             if "Error finding id" in str(e):

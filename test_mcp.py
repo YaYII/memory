@@ -79,10 +79,31 @@ async def run_test():
             print(f"   读取结果:\n{read_res.content[0].text}")
             assert "Python 是一种优秀的编程语言" in read_res.content[0].text
 
+            # 4. 测试用户画像 (User Profile)
+            print("\n👤 测试用户画像 (Profile)...")
+            await session.call_tool(
+                "write_memory",
+                arguments={
+                    "user_id": "test_user_v2",
+                    "content": "我喜欢使用 VS Code 进行开发，不喜欢 PyCharm",
+                    "scope": "global"
+                }
+            )
+            
+            # 查询一个完全无关的问题，看看是否带出了画像
+            profile_res = await session.call_tool(
+                "read_memory",
+                arguments={
+                    "user_id": "test_user_v2",
+                    "query": "今天天气怎么样" # 无关问题
+                }
+            )
+            print(f"   读取结果 (Profile Check):\n{profile_res.content[0].text}")
+            assert "我喜欢使用 VS Code" in profile_res.content[0].text
+            
             # Cleanup
             await session.call_tool("delete_memory", arguments={"user_id": "test_user_v2", "memory_id": id1})
-
-
+  
     print("\n🎉 所有测试完成！")
 
 if __name__ == "__main__":
