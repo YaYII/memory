@@ -55,11 +55,32 @@ cover/
 *.mo
 *.pot
 
-# Django stuff:
+# Logs
 *.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
+mcp_server.log
+
+# Database
+data/
+chroma/
+knowledge_graph.json
+
+# Environment variables
+.env
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Editor
+.vscode/
+.idea/
+.trae/
+
+# Temporary files
+test_mcp.py
+benchmark.py
 
 # Flask stuff:
 instance/
