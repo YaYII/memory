@@ -68,8 +68,8 @@ class CognitiveProcessor:
         entities = await self.llm.extract_entities(content)
         if entities:
             print(f"   Entities: {entities}")
-            # TODO: 将实体存入 Metadata 或独立的 Graph Store
-            # self.memory_manager.store.update_metadata(memory_id, {"entities": entities})
+            # 将实体存入 Graph Store
+            self.memory_manager.store.add_entities_to_graph(memory_id, entities)
 
         # 2. 分类
         category = await self.llm.classify_memory(content)

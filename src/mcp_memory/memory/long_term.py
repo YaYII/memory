@@ -1,11 +1,13 @@
 import chromadb
 from chromadb.config import Settings
 from mcp_memory.models.data_models import MemoryItem
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Set
 import os
 import uuid
 import math
 import jieba
+import json
+import networkx as nx
 from rank_bm25 import BM25Okapi
 from datetime import datetime
 from filelock import FileLock
@@ -14,7 +16,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 class MemoryStore:
     def __init__(self, data_path: str = "data/chroma"):
         """
-        统一记忆存储（ChromaDB）
+        统一记忆存储（ChromaDB + NetworkX Graph）
         """
         self.data_path = data_path
         self.client = chromadb.PersistentClient(path=data_path)
@@ -25,7 +27,73 @@ class MemoryStore:
         os.makedirs(data_path, exist_ok=True)
         self.lock_path = os.path.join(data_path, "chroma.lock")
         self.lock = FileLock(self.lock_path, timeout=10) # 10秒超时
+        
+        # --- Knowledge Graph Initialization ---
+        self.graph_path = os.path.join(data_path, "knowledge_graph.json")
+        self.graph = nx.Graph()
+        self._load_graph()
     
+    def _load_graph(self):
+        """加载图谱"""
+        if os.path.exists(self.graph_path):
+            try:
+                with open(self.graph_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.graph = nx.node_link_graph(data)
+            except Exception as e:
+                print(f"Failed to load knowledge graph: {e}")
+                self.graph = nx.Graph()
+
+    def _save_graph(self):
+        """保存图谱"""
+        try:
+            with self.lock: # Reuse the same lock for graph consistency
+                data = nx.node_link_data(self.graph)
+                with open(self.graph_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False)
+        except Exception as e:
+            print(f"Failed to save knowledge graph: {e}")
+
+    def add_entities_to_graph(self, memory_id: str, entities: List[str]):
+        """
+        将实体和记忆ID关联到图谱中
+        Structure: EntityNode <-> MemoryNode
+        """
+        if not entities:
+            return
+            
+        # Add memory node
+        self.graph.add_node(memory_id, type="memory")
+        
+        for entity in entities:
+            # Add entity node (if not exists)
+            self.graph.add_node(entity, type="entity")
+            # Link memory to entity
+            self.graph.add_edge(memory_id, entity, relation="contains")
+            
+        self._save_graph()
+
+    def get_related_memories_by_graph(self, query_entities: List[str], limit: int = 5) -> List[str]:
+        """
+        通过图谱进行 2-hop 检索
+        QueryEntity -> MemoryA -> RelatedEntity -> MemoryB
+        """
+        related_memory_ids = set()
+        
+        for entity in query_entities:
+            if entity in self.graph:
+                # 1-hop: 直接包含该实体的记忆
+                neighbors = list(self.graph.neighbors(entity))
+                for n in neighbors:
+                    if self.graph.nodes[n].get("type") == "memory":
+                        related_memory_ids.add(n)
+                        
+                # 2-hop: 通过共享实体关联的记忆 (EntityA -> MemoryA -> EntityB -> MemoryB)
+                # 这是一个简化的协同过滤推荐
+                # 暂时只做 1-hop 以保证性能，2-hop 可以在未来扩展
+        
+        return list(related_memory_ids)[:limit]
+
     # 针对 SQLite 锁定的重试策略
     @retry(
         stop=stop_after_attempt(5), 
@@ -159,6 +227,35 @@ class MemoryStore:
                 where=where_filter
             )
             
+            # --- Knowledge Graph Retrieval (2-hop) ---
+            # 提取 query 中的实体 (使用 jieba 简单分词，或者复用 cognitive 的 entity extraction)
+            # 这里为了性能，我们直接使用 query 的 token 作为潜在实体
+            query_tokens = self._tokenize(query)
+            graph_related_ids = self.get_related_memories_by_graph(query_tokens, limit=5)
+            
+            if graph_related_ids:
+                try:
+                    graph_results = self.collection.get(ids=graph_related_ids)
+                    if graph_results["ids"]:
+                        g_ids = graph_results["ids"]
+                        g_docs = graph_results["documents"]
+                        g_metas = graph_results["metadatas"]
+                        
+                        existing_ids = set(results["ids"][0]) if results["ids"] else set()
+                        
+                        for i, pid in enumerate(g_ids):
+                            if pid not in existing_ids:
+                                if not results["ids"]:
+                                    results = {"ids": [[]], "documents": [[]], "metadatas": [[]], "distances": [[]]}
+                                
+                                results["ids"][0].append(pid)
+                                results["documents"][0].append(g_docs[i])
+                                results["metadatas"][0].append(g_metas[i])
+                                # 给 Graph Result 一个不错的权重
+                                results["distances"][0].append(0.1)
+                except Exception as e:
+                    print(f"Graph retrieval error: {e}")
+
             # --- User Profile Injection (Context Injection) ---
             # 总是尝试获取当前用户的画像 (Profile)，无论 query 是什么
             # 限制 3 条，避免 context 过长

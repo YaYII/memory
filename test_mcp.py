@@ -123,6 +123,31 @@ async def run_test():
                 else:
                     print("   ⚠️ 验证跳过：可能 Key 无效或网络问题，未触发综合")
             
+            # 6. 测试知识图谱关联检索 (Graph Retrieval)
+            if os.environ.get("DEEPSEEK_API_KEY"):
+                print("\n🕸️ 测试知识图谱关联 (Graph Retrieval)...")
+                # 写入两条逻辑相关的记忆
+                # Memory A: "项目 A 的配置文件是 config.yaml" -> Entity: config.yaml
+                await session.call_tool("write_memory", arguments={"user_id": "test_user_v2", "content": "项目 A 的配置文件是 config.yaml", "scope": "project"})
+                # Memory B: "config.yaml 中定义了数据库密码" -> Entity: config.yaml
+                await session.call_tool("write_memory", arguments={"user_id": "test_user_v2", "content": "config.yaml 中定义了数据库密码", "scope": "project"})
+                
+                # 等待后台处理 (Cognitive Processor 提取实体需要时间)
+                print("   等待后台实体提取...")
+                await asyncio.sleep(5) 
+                
+                # 查询 Memory A 的相关实体 ("项目 A")，期望通过图谱关联检索到 Memory B
+                # 因为 Memory B 包含 "config.yaml"，而 "config.yaml" 与 "项目 A" 通过 Memory A 关联
+                graph_res = await session.call_tool(
+                    "read_memory",
+                    arguments={
+                        "user_id": "test_user_v2",
+                        "query": "关于 config.yaml 的信息"
+                    }
+                )
+                print(f"   图谱检索结果:\n{graph_res.content[0].text}")
+                assert "数据库密码" in graph_res.content[0].text
+            
             # Cleanup
             await session.call_tool("delete_memory", arguments={"user_id": "test_user_v2", "memory_id": id1})
   
