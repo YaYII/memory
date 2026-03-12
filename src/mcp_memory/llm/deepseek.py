@@ -81,9 +81,107 @@ class DeepSeekClient:
         result = await self.chat_completion(messages)
         return result.strip() if result else None
 
+    async def critique_and_refine(self, query: str, memories: List[str], initial_answer: str) -> str:
+        """
+        [Self-Correction] 批评与修正
+        使用 DeepSeek-Reasoner (R1) 进行深度思考，检查初始回答的准确性。
+        """
+        memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
+        
+        prompt = f"""
+你是一个严格的事实核查员 (Critic)。请检查下方的 [初始回答] 是否忠实于 [参考记忆]。
+
+[参考记忆]
+{memory_block}
+
+[用户查询]
+{query}
+
+[初始回答]
+{initial_answer}
+
+[任务]
+1. 检查是否存在**幻觉** (Hallucination)：回答了记忆中不存在的信息。
+2. 检查是否存在**遗漏** (Omission)：遗漏了记忆中的关键冲突或更新（例如：配置已修改）。
+3. 检查**逻辑一致性**。
+
+如果回答完美，请直接返回 "PASS"。
+如果存在问题，请提供一个**修正后的回答**，必须使用{settings.MCP_MEMORY_LANGUAGE}。
+"""
+        # 使用 deepseek-reasoner (R1) 模型进行深度思考
+        # 注意：DeepSeek R1 的 API 调用方式可能与 Chat 略有不同 (reasoning_content)，但通常兼容 Chat 接口
+        # 这里假设 deepseek-reasoner 是有效的模型名
+        result = await self.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            model="deepseek-reasoner" 
+        )
+        
+        if result and result.strip() != "PASS":
+            print(f"🔧 Critic corrected the answer.\nOriginal: {initial_answer[:50]}...\nCorrected: {result[:50]}...")
+            return result
+        
+        return initial_answer
+
+    async def extract_entities(self, content: str) -> List[str]:
+        """
+        [Knowledge Graph] 实体提取
+        从记忆中提取关键实体（文件名、变量名、技术栈、项目名），用于构建轻量级知识图谱。
+        """
+        prompt = f"""
+请从以下内容中提取关键实体 (Entities)。
+关注：文件名、配置项、变量名、错误码、技术栈名称、项目名称。
+忽略：通用词汇、动词、形容词。
+
+内容：
+{content}
+
+请返回一个 JSON 列表，例如：["config.py", "DEEPSEEK_API_KEY", "FastAPI"]
+只返回 JSON，不要 Markdown 格式。
+"""
+        result = await self.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            model="deepseek-chat", # 实体提取不需要推理模型，Chat 足够
+            temperature=0.1
+        )
+        
+        try:
+            if result:
+                # 清理可能存在的 Markdown 代码块标记
+                cleaned = result.replace("```json", "").replace("```", "").strip()
+                return json.loads(cleaned)
+        except:
+            print(f"Entity extraction failed to parse JSON: {result}")
+        
+        return []
+
+    async def optimize_memory_storage(self, memories: List[str]) -> Optional[str]:
+        """
+        [Memory GC] 记忆库优化 (深度思考模式)
+        分析一批记忆，找出冲突、冗余，并生成优化后的版本。
+        """
+        memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
+        
+        prompt = f"""
+你是一个专业的记忆整理专家。请对以下记忆片段进行深度分析和重构 (Garbage Collection)。
+
+[记忆片段]
+{memory_block}
+
+[任务]
+1. **合并重复**：将意思相同的记忆合并。
+2. **解决冲突**：如果存在矛盾（如配置变更），保留最新的，丢弃旧的。
+3. **提炼精华**：删除无意义的闲聊，保留核心知识、技能和事实。
+
+请输出重构后的记忆列表，每条一行，以 "- " 开头。
+"""
+        return await self.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            model="deepseek-reasoner" # 使用 R1 进行深度思考
+        )
+
     async def synthesize_search_results(self, query: str, memories: List[str]) -> Optional[str]:
         """
-        基于用户查询，综合多条记忆生成一个简洁的答案。
+        基于用户查询，综合多条记忆生成一个简洁但不简单的答案。
         用于 read_memory 时的实时增强，减少 AI 的阅读负担。
         
         Strict Safety Rules:
@@ -134,7 +232,11 @@ class DeepSeekClient:
                 if "NO_CONTEXT" in content:
                     return None
                 
-                return content
+                # [Self-Correction Step]
+                # 使用 R1 (DeepSeek Reasoner) 进行深度反思和修正
+                corrected_content = await self.critique_and_refine(query, memories, content)
+                return corrected_content
+                
         except Exception as e:
             print(f"Error calling DeepSeek API for synthesis: {e}")
             return None

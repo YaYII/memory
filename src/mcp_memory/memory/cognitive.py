@@ -64,14 +64,21 @@ class CognitiveProcessor:
 
         print(f"🧠 Analyzing memory: {memory_id[:8]}...")
         
-        # 1. 分类
+        # 1. 实体提取 (Lightweight Knowledge Graph)
+        entities = await self.llm.extract_entities(content)
+        if entities:
+            print(f"   Entities: {entities}")
+            # TODO: 将实体存入 Metadata 或独立的 Graph Store
+            # self.memory_manager.store.update_metadata(memory_id, {"entities": entities})
+
+        # 2. 分类
         category = await self.llm.classify_memory(content)
         if category:
             print(f"   Category: {category}")
             # TODO: 更新该记忆的 metadata (需要 MemoryStore 支持 update_metadata)
             # self.memory_manager.store.update_metadata(memory_id, {"category": category})
         
-        # 2. 技能提取 (如果是 Coding/Config 类)
+        # 3. 技能提取 (如果是 Coding/Config 类)
         if category in ["Coding", "Config"]:
             summary = await self.llm.summarize_memories([content])
             if summary:
@@ -83,3 +90,31 @@ class CognitiveProcessor:
                     content=f"【认知总结】{summary}",
                     scope="global" if category == "Config" else "project"
                 )
+
+    async def run_reflection(self, user_id: str):
+        """
+        [Memory GC] 运行深度反思与优化
+        """
+        if not settings.DEEPSEEK_API_KEY:
+            return
+
+        print("🧠 Running Deep Reflection (Memory GC)...")
+        # 获取最近 20 条记忆进行分析
+        memories = self.memory_manager.read_memory(
+            user_id=user_id,
+            query="",
+            limit=20
+        )
+        
+        raw_texts = [m["content"] for m in memories]
+        optimized = await self.llm.optimize_memory_storage(raw_texts)
+        
+        if optimized:
+            print(f"   Reflection Result:\n{optimized}")
+            # 在实际生产中，这里应该执行真正的数据库清理操作
+            # 但为了安全，我们目前只将优化后的结果作为一条新的"深度总结"存入
+            self.memory_manager.write_memory(
+                user_id=user_id,
+                content=f"【深度反思】记忆库优化建议：\n{optimized}",
+                scope="project"
+            )

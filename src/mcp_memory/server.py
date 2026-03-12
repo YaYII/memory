@@ -86,6 +86,17 @@ async def read_memory_endpoint(req: ReadMemoryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/memory/reflect")
+async def reflect_memory_endpoint(user_id: str, background_tasks: BackgroundTasks):
+    """
+    Trigger deep reflection (Memory GC) in background
+    """
+    if not settings.DEEPSEEK_API_KEY:
+        raise HTTPException(status_code=400, detail="DeepSeek API Key not configured")
+        
+    background_tasks.add_task(cognitive_processor.run_reflection, user_id=user_id)
+    return {"status": "Reflection started", "message": "Deep thinking process is running in background"}
+
 @app.post("/memory/delete")
 async def delete_memory_endpoint(req: DeleteMemoryRequest):
     """

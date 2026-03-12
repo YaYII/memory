@@ -87,6 +87,17 @@ async def handle_list_tools() -> list[types.Tool]:
             name="delete_memory",
             description="删除记忆。仅允许删除属于当前用户的记忆。",
             inputSchema=DeleteMemoryRequest.model_json_schema()
+        ),
+        types.Tool(
+            name="reflect_memory",
+            description="触发深度反思 (Deep Reflection)。AI 应在认为记忆库混乱、冲突或需要整理时主动调用此工具。系统会在后台使用深度思考模型 (DeepSeek R1) 进行记忆清理和重构。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "当前用户ID"}
+                },
+                "required": ["user_id"]
+            }
         )
     ]
 
@@ -136,6 +147,16 @@ async def handle_call_tool(
                     return [types.TextContent(type="text", text=f"删除失败：记忆不存在或权限不足")]
                 resp.raise_for_status()
                 return [types.TextContent(type="text", text=f"记忆 {arguments['memory_id']} 已删除")]
+
+            elif name == "reflect_memory":
+                # Inject user_id if missing
+                if "user_id" not in arguments:
+                    return [types.TextContent(type="text", text="必须提供 user_id")]
+                    
+                resp = await client.post(f"{SERVER_URL}/memory/reflect", params={"user_id": arguments["user_id"]})
+                resp.raise_for_status()
+                data = resp.json()
+                return [types.TextContent(type="text", text=f"✅ {data['status']}: {data['message']}")]
 
             else:
                 raise ValueError(f"未知工具: {name}")
