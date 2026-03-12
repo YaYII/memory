@@ -104,11 +104,18 @@ class MemoryStore:
 
         # 3. 执行语义检索
         recall_limit = limit * 3
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=recall_limit,
-            where=where_filter
-        )
+        try:
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=recall_limit,
+                where=where_filter
+            )
+        except Exception as e:
+            # Handle possible database corruption or ID errors gracefully
+            if "Error finding id" in str(e):
+                print(f"Warning: Database index inconsistency detected: {e}")
+                return []
+            raise e
         
         # 4. 内存重排序 (Re-ranking)
         candidates = []
