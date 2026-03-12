@@ -42,6 +42,25 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         );
     });
 
+// Force a resize to ensure it fills the container
+window.addEventListener('resize', () => {
+    Graph.width(window.innerWidth);
+    Graph.height(window.innerHeight);
+});
+Graph.width(window.innerWidth);
+Graph.height(window.innerHeight);
+
+// Add initial dummy data to verify rendering immediately
+Graph.graphData({
+    nodes: [
+        { id: 'CORE', group: 'General', label: 'Cognitive Core', type: 'entity' },
+        { id: 'MEM_INIT', group: 'Config', label: 'System Initialized', type: 'memory' }
+    ],
+    links: [
+        { source: 'CORE', target: 'MEM_INIT' }
+    ]
+});
+
 // --- Post-Processing Effects (Bloom) ---
 const bloomPass = new UnrealBloomPass();
 bloomPass.strength = 2.0;
@@ -85,6 +104,11 @@ animateParticles();
 let graphData = { nodes: [], links: [] };
 
 export function updateGraph(newData) {
+    console.log("Graph update received:", newData);
+    
+    // Simple heuristic: if backend returns empty, don't overwrite the dummy data if we haven't loaded real data yet
+    if (newData.nodes.length === 0 && graphData.nodes.length > 0) return;
+
     const existingNodes = new Set(graphData.nodes.map(n => n.id));
     const existingLinks = new Set(graphData.links.map(l => `${l.source.id || l.source}-${l.target.id || l.target}`));
     
@@ -99,6 +123,7 @@ export function updateGraph(newData) {
             // Fallback heuristics for demo if backend data is raw
             else if (n.label && n.label.includes('配置')) group = 'Config';
             else if (n.label && n.label.includes('代码')) group = 'Coding';
+            else if (n.label && n.label.includes('画像')) group = 'Personal';
             
             graphData.nodes.push({ ...n, group });
             hasChanges = true;
@@ -114,6 +139,7 @@ export function updateGraph(newData) {
     });
 
     if (hasChanges) {
+        console.log("Rendering graph updates...", graphData);
         Graph.graphData(graphData);
     }
 }
