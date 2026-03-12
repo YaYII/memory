@@ -13,6 +13,7 @@ import networkx as nx
 
 import asyncio
 import random
+from sse_starlette.sse import EventSourceResponse
 
 # Create FastAPI app
 app = FastAPI(title="MCP Memory Server", version="1.0.0")
@@ -47,17 +48,57 @@ DASHBOARD_HTML_LEGACY = """
 </html>
 """
 
-# Simple in-memory log buffer
+# Log Streaming System
+class LogStream:
+    def __init__(self):
+        self.listeners = []
+
+    async def broadcast(self, message: str):
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        data = json.dumps({"time": timestamp, "message": message}, ensure_ascii=False)
+        print(f"[{timestamp}] {message}")
+        
+        # Keep buffer for history (polling fallback)
+        LOG_BUFFER.append({"time": timestamp, "message": message})
+        if len(LOG_BUFFER) > 50:
+            LOG_BUFFER.pop(0)
+            
+        # Broadcast to SSE listeners
+        for queue in self.listeners:
+            await queue.put(data)
+
+    async def listen(self):
+        queue = asyncio.Queue()
+        self.listeners.append(queue)
+        try:
+            while True:
+                data = await queue.get()
+                yield dict(data=data)
+        except asyncio.CancelledError:
+            self.listeners.remove(queue)
+
+log_stream = LogStream()
 LOG_BUFFER = []
 
-def log_event(message: str):
-    """Log an event to the buffer"""
-    from datetime import datetime
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    print(f"[{timestamp}] {message}")
-    LOG_BUFFER.append({"time": timestamp, "message": message})
-    if len(LOG_BUFFER) > 50:
-        LOG_BUFFER.pop(0)
+async def log_event(message: str):
+    """Log an event to the buffer and broadcast via SSE"""
+    await log_stream.broadcast(message)
+
+# Monkey patch log_event helper to be async if needed, or wrap it
+# But wait, our previous log_event was sync. 
+# To avoid refactoring all calls to `await log_event(...)`, we can use a background task or just run it synchronously if we don't await the queue put?
+# Actually, queue.put is async. Let's make a sync wrapper that schedules it on the loop.
+def log_event_sync(message: str):
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(log_stream.broadcast(message))
+    except RuntimeError:
+        # No loop running (e.g. startup script), just print
+        print(f"[SYNC-LOG] {message}")
+
+# Replace the old log_event with this one
+log_event = log_event_sync
 
 async def system_heartbeat_task():
     """
@@ -76,19 +117,18 @@ async def system_heartbeat_task():
     while True:
         try:
             await asyncio.sleep(random.randint(5, 10))
-            # Only log if no recent activity to keep dashboard alive
-            # But don't clutter console too much
             msg = random.choice(actions)
-            # Use a special internal flag or just log it
-            # We append directly to buffer to avoid console noise if preferred
-            # But user wants to see it "alive", so let's log it.
-            from datetime import datetime
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            LOG_BUFFER.append({"time": timestamp, "message": f"[SYSTEM] {msg}"})
-            if len(LOG_BUFFER) > 50:
-                LOG_BUFFER.pop(0)
+            # Use the sync wrapper which schedules the async broadcast
+            log_event(f"[SYSTEM] {msg}")
         except Exception:
             pass
+
+@app.get("/dashboard/events")
+async def events_endpoint():
+    """
+    SSE Endpoint for real-time logs
+    """
+    return EventSourceResponse(log_stream.listen())
 
 @app.on_event("startup")
 async def startup_event():

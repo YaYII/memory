@@ -19,7 +19,49 @@ function addLog(msg, type = 'info') {
     logContent.scrollTop = logContent.scrollHeight;
 }
 
-// --- 4. Polling Loop ---
+// --- Real-time Log Streaming (SSE) ---
+function initLogStream() {
+    const evtSource = new EventSource("/dashboard/events");
+    
+    evtSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            const msg = data.message;
+            
+            if (msg !== lastLogMsg) {
+                lastLogMsg = msg;
+                addLog(msg);
+                
+                // Visual feedback for activity
+                document.getElementById('activity').innerText = "PROCESSING";
+                document.getElementById('activity').style.color = "#ff00ff";
+                document.getElementById('activity').style.textShadow = "0 0 10px #ff00ff";
+                
+                setTimeout(() => {
+                    document.getElementById('activity').innerText = "IDLE";
+                    document.getElementById('activity').style.color = "#00ff41";
+                    document.getElementById('activity').style.textShadow = "none";
+                }, 1000);
+            }
+        } catch (e) {
+            console.error("Error parsing SSE log:", e);
+        }
+    };
+    
+    evtSource.onerror = (err) => {
+        console.error("SSE Connection Error:", err);
+        document.getElementById('status').innerText = "RECONNECTING";
+        document.getElementById('status').style.color = "#ffff00";
+    };
+    
+    evtSource.onopen = () => {
+        document.getElementById('status').innerText = "ONLINE";
+        document.getElementById('status').style.color = "#00ff41";
+        addLog("神经连接已建立 (SSE Stream Active)", "success");
+    };
+}
+
+// --- 4. Polling Loop (Stats & Graph only) ---
 async function fetchState() {
     try {
         // Stats
@@ -31,43 +73,20 @@ async function fetchState() {
         const graphRes = await fetch('/dashboard/graph');
         const graph = await graphRes.json();
         // Simple adapter to match D3 format expected by updateGraph
-        // Assuming backend returns {nodes: [{id, ...}], links: [{source, target}]}
-        // We add a 'label' property for display if missing
         graph.nodes.forEach(n => {
             if (!n.label) n.label = n.id.substring(0, 10) + '...';
         });
         document.getElementById('entity-count').innerText = graph.nodes.filter(n => n.type === 'entity').length;
         updateGraph(graph);
 
-        // Logs
-        const logsRes = await fetch('/dashboard/logs');
-        const logsData = await logsRes.json();
-        const latestLog = logsData.logs[logsData.logs.length - 1];
-        
-        if (latestLog && latestLog.message !== lastLogMsg) {
-            lastLogMsg = latestLog.message;
-            addLog(latestLog.message);
-            
-            document.getElementById('activity').innerText = "PROCESSING";
-            document.getElementById('activity').style.color = "#ff00ff";
-            document.getElementById('activity').style.textShadow = "0 0 10px #ff00ff";
-            
-            // Simulate random sparks when active
-            setTimeout(() => {
-                document.getElementById('activity').innerText = "IDLE";
-                document.getElementById('activity').style.color = "#00ff41";
-                document.getElementById('activity').style.textShadow = "none";
-            }, 1000);
-        }
-
     } catch (e) {
         console.error("Connection lost:", e);
-        document.getElementById('status').innerText = "OFFLINE";
-        document.getElementById('status').style.color = "#ff0000";
     }
 }
 
-setInterval(fetchState, 2000);
+// Start systems
+initLogStream();
+setInterval(fetchState, 5000); // Poll graph/stats less frequently (5s)
 fetchState();
 
 addLog("正在初始化神经连接...", "info");
