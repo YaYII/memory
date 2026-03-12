@@ -15,9 +15,10 @@ async def run_test():
     print("🚀 开始 MCP 记忆功能集成测试...")
     
     # 定义服务器参数
+    # 现在 main.py 不需要 'stdio' 参数，它默认就是 stdio 桥接模式
     server_params = StdioServerParameters(
         command=sys.executable,
-        args=["-m", "mcp_memory.main", "stdio"],
+        args=["-m", "mcp_memory.main"], 
         env=env
     )
 

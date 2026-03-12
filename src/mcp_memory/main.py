@@ -1,25 +1,77 @@
-from fastapi import FastAPI, Request
-from mcp.server import Server, NotificationOptions
-from mcp.server.sse import SseServerTransport
-import mcp.types as types
-import uvicorn
+import asyncio
 import os
+import sys
+import time
+import subprocess
+import httpx
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+import mcp.types as types
 from typing import Any
-
-from mcp_memory.memory.manager import MemoryManager
-from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest, MCPResponse
+from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest
 from mcp_memory.core.config import settings
 
-app = FastAPI()
-memory_manager = MemoryManager()
+# This file now acts as the MCP Client Bridge
+# It does NOT import MemoryManager directly to avoid DB locking
+# Instead, it proxies requests to the background server
 
-server = Server("mcp-memory-server")
+SERVER_PORT = int(os.environ.get("MCP_MEMORY_PORT", 22888))
+SERVER_URL = f"http://127.0.0.1:{SERVER_PORT}"
+server = Server("mcp-memory-bridge")
+
+async def ensure_server_running():
+    """
+    Check if the MCP Memory Server is running.
+    If not, start it as a detached subprocess.
+    """
+    # 1. Check if running
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{SERVER_URL}/health", timeout=0.5)
+            if resp.status_code == 200:
+                # Server is up
+                return
+    except (httpx.ConnectError, httpx.ReadTimeout):
+        pass
+
+    # 2. Start server if down
+    # Get the python executable
+    python_exe = sys.executable
+    
+    # Calculate the module path
+    # We assume this script is running from the root of the project or src is in PYTHONPATH
+    # Start the server module in a new process group so it persists
+    # Use output redirection to avoid cluttering stdio which is used for MCP transport
+    try:
+        log_file = open(os.path.join(os.getcwd(), "mcp_server.log"), "a")
+        process = subprocess.Popen(
+            [python_exe, "-m", "mcp_memory.server"],
+            stdout=log_file,
+            stderr=log_file,
+            start_new_session=True, # Detach from current terminal session
+            cwd=os.getcwd(),
+            env=os.environ.copy()
+        )
+        
+        # 3. Wait for it to be ready
+        for _ in range(20): # Wait up to 10 seconds (0.5 * 20)
+            try:
+                await asyncio.sleep(0.5)
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get(f"{SERVER_URL}/health", timeout=0.5)
+                    if resp.status_code == 200:
+                        return
+            except:
+                continue
+                
+    except Exception as e:
+        # Fallback: If we can't start the server, we might be in trouble.
+        # But we should log this error somewhere.
+        # Since we are in stdio mode, print to stderr
+        print(f"Failed to start MCP Memory Server: {e}", file=sys.stderr)
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
-    """
-    列出所有可用的MCP工具
-    """
     return [
         types.Tool(
             name="read_memory",
@@ -42,92 +94,65 @@ async def handle_list_tools() -> list[types.Tool]:
 async def handle_call_tool(
     name: str, arguments: dict[str, Any] | None
 ) -> list[types.TextContent | types.ImageContent | types.EmbeddedResource]:
-    """
-    处理MCP工具调用
-    """
     if not arguments:
         raise ValueError("必须提供参数")
 
+    # Ensure server is running before making calls
+    # Note: Ideally this is done once at startup, but checking here is safer for resilience
+    await ensure_server_running()
+
     try:
-        if name == "read_memory":
-            req = ReadMemoryRequest(**arguments)
-            # project_id: 如果AI不传，manager会使用当前自动检测的 CWD ID
-            result = memory_manager.read_memory(req.user_id, req.query, req.project_id, req.limit)
-            
-            # Format as plain text list to reduce cognitive load
-            if not result:
-                return [types.TextContent(type="text", text="没有找到相关记忆。")]
-            
-            formatted_text = "\n".join([f"- {item['content']}" for item in result])
-            return [types.TextContent(type="text", text=formatted_text)]
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if name == "read_memory":
+                # Inject project_id if missing (Client-side auto-detection)
+                if "project_id" not in arguments or not arguments["project_id"]:
+                    arguments["project_id"] = settings.MCP_PROJECT_ID
 
-        elif name == "write_memory":
-            req = WriteMemoryRequest(**arguments)
-            # project_id: 如果AI不传，manager会使用当前自动检测的 CWD ID
-            result = memory_manager.write_memory(
-                req.user_id, 
-                req.content, 
-                project_id=req.project_id, 
-                scope=req.scope
-            )
-            return [types.TextContent(type="text", text=f"记忆已保存，ID: {result}")]
-            
-        elif name == "delete_memory":
-            req = DeleteMemoryRequest(**arguments)
-            success = memory_manager.delete_memory(req.user_id, req.memory_id)
-            if success:
-                return [types.TextContent(type="text", text=f"记忆 {req.memory_id} 已删除")]
+                resp = await client.post(f"{SERVER_URL}/memory/read", json=arguments)
+                resp.raise_for_status()
+                result = resp.json()
+                
+                # Format output (Client-side formatting)
+                if not result:
+                    return [types.TextContent(type="text", text="没有找到相关记忆。")]
+                
+                # Return plain text list
+                formatted_text = "\n".join([f"- {item['content']}" for item in result])
+                return [types.TextContent(type="text", text=formatted_text)]
+
+            elif name == "write_memory":
+                # Inject project_id if missing
+                if "project_id" not in arguments or not arguments["project_id"]:
+                    arguments["project_id"] = settings.MCP_PROJECT_ID
+                    
+                resp = await client.post(f"{SERVER_URL}/memory/write", json=arguments)
+                resp.raise_for_status()
+                data = resp.json()
+                return [types.TextContent(type="text", text=f"记忆已保存，ID: {data['id']}")]
+                
+            elif name == "delete_memory":
+                resp = await client.post(f"{SERVER_URL}/memory/delete", json=arguments)
+                if resp.status_code == 404:
+                    return [types.TextContent(type="text", text=f"删除失败：记忆不存在或权限不足")]
+                resp.raise_for_status()
+                return [types.TextContent(type="text", text=f"记忆 {arguments['memory_id']} 已删除")]
+
             else:
-                return [types.TextContent(type="text", text=f"删除失败：记忆不存在或权限不足")]
+                raise ValueError(f"未知工具: {name}")
 
-        else:
-            raise ValueError(f"未知工具: {name}")
-
+    except httpx.HTTPStatusError as e:
+        return [types.TextContent(type="text", text=f"服务端错误: {e.response.text}")]
     except Exception as e:
-        return [types.TextContent(type="text", text=f"错误: {str(e)}")]
+        return [types.TextContent(type="text", text=f"连接错误: {str(e)}")]
 
-import sys
-from mcp.server.stdio import stdio_server
-
-# MCP SSE Transport
-from mcp.server.sse import SseServerTransport
-from starlette.responses import Response
-
-sse = SseServerTransport("/messages")
-
-@app.post("/mcp/call")
-async def handle_mcp_call(request: Request):
-    """
-    Standard HTTP endpoint for MCP calls if not using SSE.
-    But MCP usually uses SSE for transport or stdio.
-    If we want to expose HTTP API directly, we can wrap tools.
-    For this task, we follow standard MCP over SSE pattern.
-    """
-    # This endpoint is just a placeholder if needed for direct HTTP calls
-    # but actual MCP client connects via SSE usually.
-    return {"status": "Use SSE endpoint /sse"}
-
-@app.get("/sse")
-async def handle_sse(request: Request):
-    async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
-        await server.run(streams[0], streams[1], server.create_initialization_options())
-
-@app.post("/messages")
-async def handle_messages(request: Request):
-    await sse.handle_post_message(request.scope, request.receive, request._send)
-
-def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "stdio":
-        # Stdio 模式：由 MCP 客户端（如 Claude）直接启动进程
-        import asyncio
-        async def run_stdio():
-            async with stdio_server() as (read_stream, write_stream):
-                await server.run(read_stream, write_stream, server.create_initialization_options())
-        
-        asyncio.run(run_stdio())
-    else:
-        # SSE 模式：作为独立 Web 服务运行
-        uvicorn.run(app, host="0.0.0.0", port=22888)
+async def main():
+    # Initial check to start server if needed
+    await ensure_server_running()
+    
+    # Run the Stdio Transport (this blocks and handles stdin/stdout)
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 if __name__ == "__main__":
-    main()
+    # If run directly, assume stdio mode
+    asyncio.run(main())
