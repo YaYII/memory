@@ -61,6 +61,25 @@ Graph.graphData({
     ]
 });
 
+// Force a resize to ensure it fills the container
+window.addEventListener('resize', () => {
+    Graph.width(window.innerWidth);
+    Graph.height(window.innerHeight);
+});
+Graph.width(window.innerWidth);
+Graph.height(window.innerHeight);
+
+// Add initial dummy data to verify rendering immediately
+Graph.graphData({
+    nodes: [
+        { id: 'CORE', group: 'General', label: 'Cognitive Core', type: 'entity' },
+        { id: 'MEM_INIT', group: 'Config', label: 'System Initialized', type: 'memory' }
+    ],
+    links: [
+        { source: 'CORE', target: 'MEM_INIT' }
+    ]
+});
+
 // --- Post-Processing Effects (Bloom) ---
 const bloomPass = new UnrealBloomPass();
 bloomPass.strength = 2.0;
