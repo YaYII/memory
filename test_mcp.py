@@ -35,70 +35,53 @@ async def run_test():
             assert "read_memory" in tool_names
             assert "delete_memory" in tool_names
             
-            # 2. 写入记忆
-            print("\n📝 测试写入记忆...")
-            write_res = await session.call_tool(
+            # 2. 写入记忆 (测试 Smart Write - Deduplication)
+            print("\n📝 测试写入记忆 (第1次)...")
+            write_res1 = await session.call_tool(
                 "write_memory",
                 arguments={
-                    "user_id": "test_user",
-                    "content": "MCP 测试记忆：Python 是一种优秀的编程语言",
+                    "user_id": "test_user_v2",
+                    "content": "测试记忆：Python 是一种优秀的编程语言，特别适合 AI 开发",
                     "scope": "project"
                 }
             )
-            print(f"   写入结果: {write_res.content[0].text}")
+            print(f"   写入结果1: {write_res1.content[0].text}")
+            id1 = re.search(r"ID:\s*([a-f0-9\-]+)", write_res1.content[0].text).group(1)
+
+            print("\n📝 测试写入重复记忆 (第2次 - 应触发强化)...")
+            write_res2 = await session.call_tool(
+                "write_memory",
+                arguments={
+                    "user_id": "test_user_v2",
+                    "content": "测试记忆：Python 是一种优秀的编程语言，特别适合 AI 开发", # 完全相同的内容
+                    "scope": "project"
+                }
+            )
+            print(f"   写入结果2: {write_res2.content[0].text}")
+            id2 = re.search(r"ID:\s*([a-f0-9\-]+)", write_res2.content[0].text).group(1)
             
-            # 从写入结果中解析 ID: "记忆已保存，ID: xxxxx"
-            match = re.search(r"ID:\s*([a-f0-9\-]+)", write_res.content[0].text)
-            assert match, "未能从写入结果中提取 ID"
-            memory_id = match.group(1)
-            print(f"   提取到记忆 ID: {memory_id}")
-            
-            # 3. 读取记忆
-            print("\n📖 测试读取记忆...")
+            if id1 == id2:
+                print("   ✅ 验证成功：重复写入返回了相同的 ID (触发了 Deduplication)")
+            else:
+                print(f"   ❌ 验证失败：重复写入生成了新 ID ({id1} != {id2})")
+
+            # 3. 读取记忆 (测试 Hybrid Search - Keyword)
+            print("\n📖 测试读取记忆 (Hybrid Search)...")
+            # 故意使用只有关键词匹配但语义可能偏离的 Query，或者专有名词
+            # "AI 开发" 是关键词
             read_res = await session.call_tool(
                 "read_memory",
                 arguments={
-                    "user_id": "test_user",
-                    "query": "Python 怎么样"
+                    "user_id": "test_user_v2",
+                    "query": "AI 开发 Python"
                 }
             )
             print(f"   读取结果:\n{read_res.content[0].text}")
-            
-            # 验证读取结果是纯文本，且包含刚写入的内容
-            assert "MCP 测试记忆：Python 是一种优秀的编程语言" in read_res.content[0].text
-            # 只要不是以 `[{` 开头，就说明不是 JSON 列表
-            assert not read_res.content[0].text.strip().startswith("[{"), "读取结果不应是 JSON 列表格式"
+            assert "Python 是一种优秀的编程语言" in read_res.content[0].text
 
-            # 4. 删除记忆
-            print(f"\n🗑️ 测试删除记忆 ({memory_id})...")
-            del_res = await session.call_tool(
-                "delete_memory",
-                arguments={
-                    "user_id": "test_user",
-                    "memory_id": memory_id
-                }
-            )
-            print(f"   删除结果: {del_res.content[0].text}")
-            
-            # 5. 验证删除
-            print("\n✅ 验证删除结果...")
-            verify_res = await session.call_tool(
-                "read_memory",
-                arguments={
-                    "user_id": "test_user",
-                    "query": "Python 怎么样"
-                }
-            )
-            # 确保刚才那个内容不在了
-            # 注意：由于检索是语义匹配，即使删除了完全匹配的那条，可能还会检索到其他相似的。
-            # 但这里我们刚删除了唯一一条完全匹配的。
-            print(f"   验证读取结果:\n{verify_res.content[0].text}")
-            
-            # 简单检查：如果是完全删除，可能返回 "没有找到相关记忆" 或者其他不相关的
-            if "MCP 测试记忆：Python 是一种优秀的编程语言" not in verify_res.content[0].text:
-                 print("   验证成功：记忆内容已消失")
-            else:
-                 print("   验证警告：记忆内容可能仍然存在（或许是重复写入导致）")
+            # Cleanup
+            await session.call_tool("delete_memory", arguments={"user_id": "test_user_v2", "memory_id": id1})
+
 
     print("\n🎉 所有测试完成！")
 

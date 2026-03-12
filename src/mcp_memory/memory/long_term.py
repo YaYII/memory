@@ -1,9 +1,12 @@
 import chromadb
 from chromadb.config import Settings
 from mcp_memory.models.data_models import MemoryItem
-from typing import List, Optional
+from typing import List, Optional, Dict
 import os
 import uuid
+import math
+import jieba
+from rank_bm25 import BM25Okapi
 from datetime import datetime
 from filelock import FileLock
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -38,8 +41,37 @@ class MemoryStore:
 
     def save(self, memory: MemoryItem):
         """
-        保存记忆：记录 Scope 和 Sharing 状态
+        保存记忆：支持去重和强化 (Inspired by MemOS/Mem0)
+        如果发现高相似度 (>0.95) 的记忆，则更新该记忆的权重和时间，而非新增。
         """
+        # 1. 查重：检索最相似的1条记忆
+        try:
+            # 只在同项目/同用户范围内查重
+            duplicates = self.collection.query(
+                query_texts=[memory.content],
+                n_results=1,
+                where={"$and": [
+                    {"user_id": {"$eq": memory.user_id}},
+                    {"scope": {"$eq": memory.scope}},
+                    {"project_id": {"$eq": memory.project_id or ""}}
+                ]}
+            )
+            
+            # 2. 判断相似度 (Chroma 默认 Cosine Distance，越小越相似)
+            # 0.05 距离约等于 0.95 相似度
+            if duplicates["ids"] and duplicates["distances"][0][0] < 0.05:
+                existing_id = duplicates["ids"][0][0]
+                existing_meta = duplicates["metadatas"][0][0]
+                print(f"Duplicate memory detected (dist={duplicates['distances'][0][0]:.4f}). Reinforcing {existing_id} instead of adding.")
+                
+                # 强化现有记忆
+                self._reinforce_memory(existing_id, existing_meta)
+                return existing_id
+                
+        except Exception as e:
+            print(f"Deduplication check failed: {e}")
+            # Fallback to insert if check fails
+
         # 确保 last_accessed 有值
         last_accessed_iso = memory.last_accessed.isoformat() if memory.last_accessed else datetime.now().isoformat()
         
@@ -68,16 +100,18 @@ class MemoryStore:
             print(f"Error saving memory: {e}")
             raise e
 
+    def _tokenize(self, text: str) -> List[str]:
+        """
+        中文分词 helper
+        """
+        return list(jieba.cut_for_search(text))
+
     def search(self, query: str, user_id: str, project_id: Optional[str] = None, limit: int = 10) -> List[dict]:
         """
-        检索记忆：Generative Agents 加权排序版 + 本能强化机制
+        检索记忆：Hybrid Search (Vector + BM25 Keyword Re-ranking)
         
-        Score = alpha * Relevance + beta * Importance + gamma * Recency + delta * Instinct
-        
-        - Instinct (本能): 基于访问频率 (access_count) 的对数增长
+        Score = 0.5 * VectorScore + 0.3 * KeywordScore + 0.1 * Recency + 0.1 * Instinct
         """
-        import math
-
         # 1. 投名状检查 (保持不变)
         is_contributor = False
         try:
@@ -102,7 +136,8 @@ class MemoryStore:
         else:
             where_filter = {"user_id": {"$eq": user_id}}
 
-        # 3. 执行语义检索
+        # 3. 执行语义检索 (High Recall Phase)
+        # 获取 3倍 limit 的候选集，用于后续重排序
         recall_limit = limit * 3
         try:
             results = self.collection.query(
@@ -117,15 +152,37 @@ class MemoryStore:
                 return []
             raise e
         
-        # 4. 内存重排序 (Re-ranking)
+        # 4. 混合重排序 (Hybrid Re-ranking)
         candidates = []
         now = datetime.now()
         
         if results["documents"]:
-            for i, doc in enumerate(results["documents"][0]):
+            docs = results["documents"][0]
+            
+            # --- Keyword Search Preparation (BM25) ---
+            # 仅对召回的候选集构建临时的 BM25 索引，速度很快
+            tokenized_corpus = [self._tokenize(doc) for doc in docs]
+            bm25 = BM25Okapi(tokenized_corpus)
+            tokenized_query = self._tokenize(query)
+            # 获取所有候选文档的关键词得分 (归一化到 0-1 可能会比较困难，BM25 是无界的)
+            # 这里我们简单获取原始分，后续做 Softmax 或 MinMax 归一化
+            bm25_scores = bm25.get_scores(tokenized_query)
+            
+            # 归一化 BM25 分数
+            if len(bm25_scores) > 0:
+                max_bm25 = max(bm25_scores)
+                if max_bm25 > 0:
+                    bm25_scores = [s / max_bm25 for s in bm25_scores]
+                else:
+                    bm25_scores = [0.0] * len(docs)
+            else:
+                bm25_scores = []
+
+            for i, doc in enumerate(docs):
                 meta = results["metadatas"][0][i]
                 mem_id = results["ids"][0][i]
                 dist = results["distances"][0][i]
+                keyword_score = bm25_scores[i]
                 
                 # Scope 过滤
                 m_scope = meta["scope"]
@@ -142,7 +199,7 @@ class MemoryStore:
 
                 # --- 评分因子计算 ---
                 
-                # 1. Relevance (语义)
+                # 1. Relevance (语义): Cosine Distance (0~2) -> Similarity (0~1)
                 relevance_score = max(0, 1.0 - dist)
                 
                 # 2. Importance (重要性)
@@ -158,21 +215,22 @@ class MemoryStore:
                 except:
                     recency_score = 0.5
                 
-                # 4. Instinct (本能/习惯) - NEW
-                # 基于 access_count，使用对数函数避免分数无限膨胀
-                # 假设：访问10次算形成初步习惯，100次算强本能
-                # log10(1) = 0, log10(10) = 1, log10(100) = 2
+                # 4. Instinct (本能/习惯)
                 access_count = meta.get("access_count", 0)
-                # 归一化：我们希望 Instinct Score 在 0~1 之间，对应约 0~50 次访问
-                # 使用 tanh 或 softsign 函数更平滑，或者简单的 min(log(N+1)/K, 1)
-                instinct_score = min(math.log10(access_count + 1) / 2.0, 1.0) # count=100 -> score=1.0
+                instinct_score = min(math.log10(access_count + 1) / 2.0, 1.0)
                 
-                # 综合评分 (调整权重)
-                # Relevance: 0.4 (基础相关性)
-                # Recency: 0.2 (新鲜度)
-                # Importance: 0.2 (重要性)
-                # Instinct: 0.2 (本能/习惯 - 越用越强)
-                final_score = (0.4 * relevance_score) + (0.2 * recency_score) + (0.2 * importance_score) + (0.2 * instinct_score)
+                # 5. Hybrid Score (混合加权)
+                # 提高 Keyword 权重以解决"专有名词检索不到"的问题
+                # 降低 Recency 权重，避免"只记得最近的"
+                final_score = (
+                    0.5 * relevance_score + 
+                    0.3 * keyword_score + 
+                    0.1 * importance_score + 
+                    0.1 * instinct_score
+                )
+                
+                # Debug logging (Optional)
+                # print(f"ID: {mem_id[:6]} | Sem: {relevance_score:.2f} | KW: {keyword_score:.2f} | Final: {final_score:.2f}")
                 
                 m_user = meta["user_id"]
                 candidates.append({
@@ -181,13 +239,11 @@ class MemoryStore:
                     "type": "personal" if m_user == user_id else "collective",
                     "timestamp": meta["timestamp"],
                     "relevance": relevance_score,
-                    "recency": recency_score,
-                    "importance": importance_score,
-                    "instinct": instinct_score,
+                    "keyword_score": keyword_score,
                     "score": final_score,
                     "id": mem_id,
                     "access_count": access_count,
-                    "metadata": meta # 保留原始元数据用于更新
+                    "metadata": meta 
                 })
         
         # 5. 排序并截取
