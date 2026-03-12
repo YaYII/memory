@@ -67,9 +67,26 @@ AI 将获得以下工具，并根据上下文智能调用：
 2.  **`read_memory(query)`**
     *   *系统行为*：自动检索 **当前项目记忆** + **所有全局记忆**。
 
+## 认知操作系统 (Cognitive OS)
+
+自 v2.0 起，系统已升级为 **Cognitive OS**，具备深度思考与自我修正能力。
+
+### 1. Critic & Self-Correction (自我修正)
+当您启用 `DEEPSEEK_API_KEY` 后，`read_memory` 不再只是简单的检索。
+*   **Synthesis (综合)**: DeepSeek 会阅读所有检索到的记忆片段，并为您撰写一个简洁、准确的答案。
+*   **Critic (批评家)**: 第二轮深度思考 (DeepSeek R1) 会检查生成的答案是否存在幻觉或逻辑漏洞，并自动修正。
+
+### 2. Knowledge Graph (知识图谱)
+*   **实体提取**: 写入记忆时，系统会自动提取关键实体（如 `config.py`, `API_KEY`）并存入图谱。
+*   **关联检索**: 检索时，系统会进行 **2-hop Graph Traversal**，找到逻辑相关但语义不直接相似的内容。
+
+### 3. Active Reflection (主动反思)
+*   **工具**: `reflect_memory(user_id)`
+*   **作用**: 主动触发后台的 **Memory GC (垃圾回收)**。DeepSeek R1 会深度分析您的记忆库，合并重复项、解决冲突、提炼精华，让记忆库越用越好用。
+
 ## 核心算法
 
-$$ \text{Score} = 0.4 \cdot \text{Relevance} + 0.2 \cdot \text{Recency} + 0.2 \cdot \text{Importance} + 0.2 \cdot \text{Instinct} $$
+$$ \text{Score} = 0.5 \cdot \text{Vector} + 0.3 \cdot \text{Keyword} + 0.1 \cdot \text{Recency} + 0.1 \cdot \text{Instinct} $$
 
-*   **Instinct (本能)**：记忆被使用的次数越多，权重越高。
-*   **Reinforcement (强化)**：每次成功检索，都会强化该记忆。
+*   **Hybrid Search**: 结合了向量检索 (ChromaDB) 和关键词检索 (BM25)，解决了专有名词匹配不准的问题。
+*   **Smart Deduplication**: 写入前自动查重，如果相似度 > 95%，则只强化旧记忆，不新增。
