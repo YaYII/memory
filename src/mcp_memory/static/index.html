@@ -4,14 +4,30 @@
     <meta charset="UTF-8">
     <title>MCP 认知中枢 (Cognitive Brain)</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Import Maps for Three.js and Dependencies via esm.sh (Auto-resolves dependencies) -->
+    <!-- Import Maps for Three.js and Dependencies via JSPM (Robust Dependency Management) -->
     <script type="importmap">
     {
         "imports": {
-            "three": "https://esm.sh/three@0.160.0",
-            "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/",
-            "3d-force-graph": "https://esm.sh/3d-force-graph@1.73.1?deps=three@0.160.0",
-            "three-spritetext": "https://esm.sh/three-spritetext@1.8.2?deps=three@0.160.0"
+            "three": "https://ga.jspm.io/npm:three@0.160.0/build/three.module.js",
+            "three/addons/": "https://ga.jspm.io/npm:three@0.160.0/examples/jsm/",
+            "3d-force-graph": "https://ga.jspm.io/npm:3d-force-graph@1.73.1/dist/3d-force-graph.mjs",
+            "three-spritetext": "https://ga.jspm.io/npm:three-spritetext@1.8.2/dist/three-spritetext.mjs"
+        },
+        "scopes": {
+            "https://ga.jspm.io/": {
+                "three-forcegraph": "https://ga.jspm.io/npm:three-forcegraph@1.41.6/dist/three-forcegraph.mjs",
+                "force-graph": "https://ga.jspm.io/npm:force-graph@1.43.5/dist/force-graph.mjs",
+                "three-render-objects": "https://ga.jspm.io/npm:three-render-objects@1.29.2/dist/three-render-objects.mjs",
+                "accessor-fn": "https://ga.jspm.io/npm:accessor-fn@1.5.1/dist/accessor-fn.mjs",
+                "kapsule": "https://ga.jspm.io/npm:kapsule@1.14.5/dist/kapsule.mjs",
+                "d3-array": "https://ga.jspm.io/npm:d3-array@3.2.4/src/index.js",
+                "d3-binarytree": "https://ga.jspm.io/npm:d3-binarytree@1.0.2/src/index.js",
+                "d3-dispatch": "https://ga.jspm.io/npm:d3-dispatch@3.0.1/src/index.js",
+                "d3-force-3d": "https://ga.jspm.io/npm:d3-force-3d@3.0.5/src/index.js",
+                "d3-octree": "https://ga.jspm.io/npm:d3-octree@1.0.2/src/index.js",
+                "d3-quadtree": "https://ga.jspm.io/npm:d3-quadtree@3.0.1/src/index.js",
+                "d3-timer": "https://ga.jspm.io/npm:d3-timer@3.0.1/src/index.js"
+            }
         }
     }
     </script>
