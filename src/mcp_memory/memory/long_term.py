@@ -41,7 +41,7 @@ class MemoryStore:
                     data = json.load(f)
                     self.graph = nx.node_link_graph(data)
             except Exception as e:
-                print(f"Failed to load knowledge graph: {e}")
+                print(f"加载知识图谱失败: {e}")
                 self.graph = nx.Graph()
 
     def _save_graph(self):

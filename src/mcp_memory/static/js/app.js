@@ -1,7 +1,7 @@
 import { updateGraph, triggerSpark } from './graph.js';
 
 // Ensure system logs are initialized
-console.log("App.js initialized");
+console.log("主程序 App.js 已初始化");
 
 // --- 3. Log Stream Logic ---
 const logContent = document.getElementById('log-content');
@@ -22,6 +22,13 @@ function addLog(msg, type = 'info') {
     logContent.scrollTop = logContent.scrollHeight;
 }
 
+// --- Dispatch Event for Node Click (to be caught by React/Vue if needed, or just logging here) ---
+window.addEventListener('node-selected', (e) => {
+    const node = e.detail;
+    addLog(`选定节点: ${node.label || node.id} (${node.group})`, 'info');
+    // Here we could open a side panel or modal
+});
+
 // --- Real-time Log Streaming (SSE) ---
 function initLogStream() {
     const evtSource = new EventSource("/dashboard/events");
@@ -36,31 +43,31 @@ function initLogStream() {
                 addLog(msg);
                 
                 // Visual feedback for activity
-                document.getElementById('activity').innerText = "PROCESSING";
+                document.getElementById('activity').innerText = "处理中";
                 document.getElementById('activity').style.color = "#ff00ff";
                 document.getElementById('activity').style.textShadow = "0 0 10px #ff00ff";
                 
                 setTimeout(() => {
-                    document.getElementById('activity').innerText = "IDLE";
+                    document.getElementById('activity').innerText = "待机";
                     document.getElementById('activity').style.color = "#00ff41";
                     document.getElementById('activity').style.textShadow = "none";
                 }, 1000);
             }
         } catch (e) {
-            console.error("Error parsing SSE log:", e);
+            console.error("解析 SSE 日志出错:", e);
         }
     };
     
     evtSource.onerror = (err) => {
-        console.error("SSE Connection Error:", err);
-        document.getElementById('status').innerText = "RECONNECTING";
+        console.error("SSE 连接错误:", err);
+        document.getElementById('status').innerText = "重连中";
         document.getElementById('status').style.color = "#ffff00";
     };
     
     evtSource.onopen = () => {
-        document.getElementById('status').innerText = "ONLINE";
+        document.getElementById('status').innerText = "在线";
         document.getElementById('status').style.color = "#00ff41";
-        addLog("神经连接已建立 (SSE Stream Active)", "success");
+        addLog("神经连接已建立 (SSE 流已激活)", "success");
     };
 }
 
@@ -92,7 +99,7 @@ async function fetchState() {
         updateGraph(graph);
 
     } catch (e) {
-        console.error("Connection lost:", e);
+        console.error("连接断开:", e);
     }
 }
 

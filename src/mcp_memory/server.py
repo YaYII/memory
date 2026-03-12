@@ -28,9 +28,9 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 try:
     memory_manager = MemoryManager()
     cognitive_processor = CognitiveProcessor(memory_manager)
-    print("✅ Memory Manager & Cognitive Processor initialized successfully.")
+    print("✅ 记忆管理器与认知处理器初始化成功。")
 except Exception as e:
-    print(f"❌ Failed to initialize Memory Manager: {e}")
+    print(f"❌ 无法初始化记忆管理器: {e}")
     sys.exit(1)
 
 # Dashboard HTML Template - Now served from static/index.html
@@ -40,10 +40,10 @@ DASHBOARD_HTML_LEGACY = """
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>MCP Memory Dashboard</title>
+    <title>MCP 记忆看板</title>
 </head>
 <body>
-    <h1>Dashboard is loading...</h1>
+    <h1>看板加载中...</h1>
 </body>
 </html>
 """
@@ -158,19 +158,19 @@ async def get_stats():
 @app.get("/dashboard/graph")
 async def get_graph_data():
     """
-    Get Knowledge Graph data for visualization (D3/ForceGraph format)
+    获取知识图谱数据用于可视化 (D3/ForceGraph 格式)
     """
     try:
-        # 1. Load Graph from NetworkX
-        # Note: Accessing store.graph directly. It's thread-safe enough for reading here.
-        # Ideally should use a read-lock but for viz it's okay.
+        # 1. 从 NetworkX 加载图谱
+        # 注意：直接访问 store.graph。这里读取是线程安全的。
+        # 理想情况下应该使用读锁，但对于可视化来说是可以的。
         G = memory_manager.store.graph
         
-        # 2. Convert to D3 format {nodes: [], links: []}
+        # 2. 转换为 D3 格式 {nodes: [], links: []}
         data = nx.node_link_data(G)
         return data
     except Exception as e:
-        print(f"Error serving graph data: {e}")
+        print(f"提供图谱数据时出错: {e}")
         return {"nodes": [], "links": []}
 
 @app.get("/dashboard/logs")
@@ -190,16 +190,16 @@ async def health_check():
 @app.post("/memory/write")
 async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: BackgroundTasks):
     """
-    Write memory endpoint
+    写入记忆接口
     """
     try:
-        # project_id: 如果AI不传，manager会使用当前自动检测的 CWD ID
-        # Note: In client-server mode, the project_id might come from the client request
-        # If client didn't set it, it will be None here.
-        # But MemoryManager uses `settings.MCP_PROJECT_ID` as fallback.
-        # However, `settings` here reflects the SERVER's environment.
-        # We should rely on the client passing the project_id if they want context isolation.
-        log_event(f"Writing memory for user {req.user_id} (scope: {req.scope})")
+        # project_id: 如果 AI 不传，manager 会使用当前自动检测的 CWD ID
+        # 注意：在客户端-服务器模式下，project_id 可能来自客户端请求
+        # 如果客户端未设置，此处将为 None。
+        # 但 MemoryManager 会使用 settings.MCP_PROJECT_ID 作为备选。
+        # 然而，此处的 settings 反映的是服务器的环境。
+        # 如果客户端希望上下文隔离，我们应该依赖其传递 project_id。
+        log_event(f"正在为用户 {req.user_id} 写入记忆 (范围: {req.scope})")
         result = memory_manager.write_memory(
             req.user_id, 
             req.content, 
@@ -207,9 +207,9 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
             scope=req.scope
         )
         
-        # Trigger cognitive processing in background
+        # 在后台触发认知处理
         if settings.DEEPSEEK_API_KEY:
-            log_event(f"Triggering cognitive processing for memory {result[:8]}")
+            log_event(f"正在为记忆 {result[:8]} 触发认知处理")
             background_tasks.add_task(
                 cognitive_processor.process_memory_event, 
                 memory_id=result, 
@@ -224,27 +224,27 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
 @app.post("/memory/read")
 async def read_memory_endpoint(req: ReadMemoryRequest):
     """
-    Read memory endpoint with optional DeepSeek synthesis
+    读取记忆接口，可选 DeepSeek 综合
     """
     try:
-        # 1. Retrieve raw memories
-        log_event(f"Reading memory for user {req.user_id} (query: {req.query})")
+        # 1. 检索原始记忆
+        log_event(f"正在为用户 {req.user_id} 读取记忆 (查询: {req.query})")
         result = memory_manager.read_memory(req.user_id, req.query, req.project_id, req.limit)
         
-        # 2. Try synthesis if enabled and we have results
+        # 2. 如果已启用且有结果，尝试进行综合
         if settings.DEEPSEEK_API_KEY and result:
-            log_event("Synthesizing search results with DeepSeek...")
+            log_event("正在使用 DeepSeek 综合搜索结果...")
             memories = [item["content"] for item in result]
-            # Call LLM to synthesize
+            # 调用 LLM 进行综合
             synthesis = await cognitive_processor.llm.synthesize_search_results(req.query, memories)
             
             if synthesis:
-                # Replace the list with a single synthesized memory item
-                # But we keep the structure compatible with the client
+                # 将列表替换为单个综合记忆项
+                # 但我们保持结构与客户端兼容
                 return [{
                     "content": f"【系统整合回答】\n{synthesis}\n\n(基于 {len(result)} 条相关记忆整合)",
-                    "timestamp": result[0]["timestamp"], # Use top result's timestamp
-                    "id": "synthesis" # Virtual ID
+                    "timestamp": result[0]["timestamp"], # 使用排名第一结果的时间戳
+                    "id": "synthesis" # 虚拟 ID
                 }]
         
         return result
@@ -254,37 +254,37 @@ async def read_memory_endpoint(req: ReadMemoryRequest):
 @app.post("/memory/reflect")
 async def reflect_memory_endpoint(user_id: str, background_tasks: BackgroundTasks):
     """
-    Trigger deep reflection (Memory GC) in background
+    在后台触发深度反思 (记忆垃圾回收)
     """
     if not settings.DEEPSEEK_API_KEY:
-        raise HTTPException(status_code=400, detail="DeepSeek API Key not configured")
+        raise HTTPException(status_code=400, detail="未配置 DeepSeek API Key")
         
-    log_event(f"Triggering memory reflection for user {user_id}")
+    log_event(f"正在为用户 {user_id} 触发记忆反思")
     background_tasks.add_task(cognitive_processor.run_reflection, user_id=user_id)
-    return {"status": "Reflection started", "message": "Deep thinking process is running in background"}
+    return {"status": "反思已启动", "message": "深度思考进程正在后台运行"}
 
 @app.post("/memory/delete")
 async def delete_memory_endpoint(req: DeleteMemoryRequest):
     """
-    Delete memory endpoint
+    删除记忆接口
     """
     try:
-        log_event(f"Deleting memory {req.memory_id} for user {req.user_id}")
+        log_event(f"正在为用户 {req.user_id} 删除记忆 {req.memory_id}")
         success = memory_manager.delete_memory(req.user_id, req.memory_id)
         if success:
-            return {"status": "deleted", "id": req.memory_id}
+            return {"status": "已删除", "id": req.memory_id}
         else:
-            raise HTTPException(status_code=404, detail="Memory not found or permission denied")
+            raise HTTPException(status_code=404, detail="未找到记忆或权限不足")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 def main():
     """
-    Start the server
+    启动服务器
     """
     port = int(os.environ.get("MCP_MEMORY_PORT", 22888))
-    print(f"🚀 Starting MCP Memory Server on port {port}...")
-    print(f"📊 Dashboard available at: http://localhost:{port}/")
+    print(f"🚀 正在端口 {port} 上启动 MCP 记忆服务器...")
+    print(f"📊 看板地址: http://localhost:{port}/")
     uvicorn.run(app, host="0.0.0.0", port=port)
 
 if __name__ == "__main__":

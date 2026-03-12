@@ -6,7 +6,7 @@
 
 // Ensure Globals are available
 if (typeof ForceGraph3D === 'undefined' || typeof THREE === 'undefined') {
-    console.error("Critical Error: Three.js or ForceGraph3D globals not loaded.");
+    console.error("严重错误: Three.js 或 ForceGraph3D 全局变量未加载。");
 }
 
 // --- Configuration ---
@@ -39,14 +39,60 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         return sprite;
     })
     .onNodeClick(node => {
-        // Aim at node from outside it
+        // --- Highlighting Logic ---
         const distance = 40;
         const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+        
+        // 1. Move Camera
         Graph.cameraPosition(
             { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new position
             node, // lookAt ({ x, y, z })
             3000  // ms transition duration
         );
+        
+        // 2. Highlight Neighbors
+        const neighbors = new Set();
+        const links = new Set();
+        
+        // Iterate all links to find connections
+        // Note: graphData.links contains link objects with source/target as Objects (after D3 init)
+        graphData.links.forEach(link => {
+            if (link.source.id === node.id || link.target.id === node.id) {
+                neighbors.add(link.source.id);
+                neighbors.add(link.target.id);
+                links.add(link);
+            }
+        });
+        
+        neighbors.add(node.id); // Add self
+        
+        // Update Graph visual properties
+        Graph.nodeColor(n => {
+            if (neighbors.has(n.id)) {
+                return COLORS[n.group] || COLORS['Default']; // Keep original color
+            } else {
+                return 'rgba(200,200,200,0.1)'; // Dimmed
+            }
+        });
+        
+        Graph.linkColor(link => {
+            if (links.has(link)) {
+                return 'rgba(0,255,65,0.8)'; // Highlighted link color
+            } else {
+                return 'rgba(255,255,255,0.02)'; // Dimmed
+            }
+        });
+        
+        Graph.linkWidth(link => links.has(link) ? 2 : 0.5);
+        
+        // 3. Dispatch Event for UI updates
+        window.dispatchEvent(new CustomEvent('node-selected', { detail: node }));
+    })
+    .onBackgroundClick(() => {
+        // Reset Highlight
+        Graph.nodeColor(node => COLORS[node.group] || COLORS['Default']);
+        Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
+        Graph.linkWidth(0.5);
     });
 
 // Force a resize to ensure it fills the container
@@ -60,8 +106,8 @@ Graph.height(window.innerHeight);
 // Add initial dummy data to verify rendering immediately
 Graph.graphData({
     nodes: [
-        { id: 'CORE', group: 'General', label: 'Cognitive Core', type: 'entity' },
-        { id: 'MEM_INIT', group: 'Config', label: 'System Initialized', type: 'memory' }
+        { id: 'CORE', group: 'General', label: '认知核心', type: 'entity' },
+        { id: 'MEM_INIT', group: 'Config', label: '系统已初始化', type: 'memory' }
     ],
     links: [
         { source: 'CORE', target: 'MEM_INIT' }
@@ -83,7 +129,7 @@ if (BloomPass) {
     bloomPass.threshold = 0.1;
     Graph.postProcessingComposer().addPass(bloomPass);
 } else {
-    console.warn("UnrealBloomPass not found in globals.");
+    console.warn("在全局变量中未找到 UnrealBloomPass。");
 }
 
 // --- Custom Particle System (Data Dust) ---
@@ -122,11 +168,11 @@ animateParticles();
 let graphData = { nodes: [], links: [] };
 
 export function updateGraph(newData) {
-    console.log("Graph update received:", newData);
+    console.log("收到图谱更新:", newData);
     
     // Safety check: ensure newData is valid
     if (!newData || !newData.nodes || !Array.isArray(newData.nodes)) {
-        console.warn("Invalid graph data received:", newData);
+        console.warn("收到无效的图谱数据:", newData);
         return;
     }
     
@@ -145,9 +191,9 @@ export function updateGraph(newData) {
             if (n.type === 'entity') group = 'Entity';
             else if (n.category) group = n.category; // If backend provides category
             // Fallback heuristics for demo if backend data is raw
-            else if (n.label && n.label.includes('配置')) group = 'Config';
-            else if (n.label && n.label.includes('代码')) group = 'Coding';
-            else if (n.label && n.label.includes('画像')) group = 'Personal';
+            else if (n.label && (n.label.includes('配置') || n.label.includes('Config'))) group = 'Config';
+            else if (n.label && (n.label.includes('代码') || n.label.includes('Coding'))) group = 'Coding';
+            else if (n.label && (n.label.includes('画像') || n.label.includes('Personal'))) group = 'Personal';
             
             graphData.nodes.push({ ...n, group });
             hasChanges = true;
@@ -163,17 +209,62 @@ export function updateGraph(newData) {
     });
 
     if (hasChanges) {
-        console.log("Rendering graph updates...", graphData);
+        console.log("正在渲染图谱更新...", graphData);
         Graph.graphData(graphData);
+    }
+    
+    // Trigger random spark for aliveness
+    if (graphData.nodes.length > 0) {
+        const randomNode = graphData.nodes[Math.floor(Math.random() * graphData.nodes.length)];
+        triggerSpark(randomNode.id);
     }
 }
 
 export function triggerSpark(nodeId) {
-    // 3D Spark: Emit particles or flash
-    // Since we can't easily emit particles in this wrapper, we pulse the node
+    // 3D Spark: Pulse the node
     const node = graphData.nodes.find(n => n.id === nodeId);
     if (!node) return;
 
-    // Flash effect logic would go here if extending ThreeJS materials
-    // For now, we rely on the log stream for activity feedback
+    // Visual effect: temporary increase size or emission
+    // Since we don't have easy access to the Three object directly here unless we stored it,
+    // we can use the graph accessor to temporarily change the color/size.
+    // But `nodeVal` is an accessor.
+    
+    // Let's emit a particle burst from the node position?
+    // We have `scene` accessible in this module scope.
+    // Let's create a temporary light or sprite.
+    
+    // Simple implementation: Pulse effect via a temporary state
+    // (Requires graph re-render which is expensive, so let's skip re-render for spark)
+    // Better: Add a temporary sprite to the scene at node position
+    
+    // Get node position (ForceGraph updates x,y,z on nodes)
+    if (node.x && node.y && node.z) {
+        // Create a glow sprite
+        const spriteMaterial = new THREE.SpriteMaterial({ 
+            color: 0xffffff,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending
+        });
+        const sprite = new THREE.Sprite(spriteMaterial);
+        sprite.scale.set(10, 10, 10);
+        sprite.position.set(node.x, node.y, node.z);
+        scene.add(sprite);
+        
+        // Animate fade out
+        let opacity = 1.0;
+        function animateSpark() {
+            opacity -= 0.05;
+            sprite.material.opacity = opacity;
+            sprite.scale.multiplyScalar(1.05); // Expand
+            if (opacity > 0) {
+                requestAnimationFrame(animateSpark);
+            } else {
+                scene.remove(sprite);
+                spriteMaterial.dispose();
+            }
+        }
+        animateSpark();
+    }
 }

@@ -17,7 +17,7 @@ class DeepSeekClient:
         调用 DeepSeek API 进行对话
         """
         if not self.api_key:
-            print("Warning: DEEPSEEK_API_KEY is not set. Skipping LLM call.")
+            print("警告: 未设置 DEEPSEEK_API_KEY。跳过 LLM 调用。")
             return None
 
         url = f"{self.base_url}/chat/completions"
@@ -34,7 +34,7 @@ class DeepSeekClient:
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
         except Exception as e:
-            print(f"Error calling DeepSeek API: {e}")
+            print(f"调用 DeepSeek API 时出错: {e}")
             return None
 
     async def summarize_memories(self, memories: List[str]) -> Optional[str]:
@@ -232,11 +232,11 @@ class DeepSeekClient:
                 if "NO_CONTEXT" in content:
                     return None
                 
-                # [Self-Correction Step]
+                # [自我修正步骤]
                 # 使用 R1 (DeepSeek Reasoner) 进行深度反思和修正
                 corrected_content = await self.critique_and_refine(query, memories, content)
                 return corrected_content
                 
         except Exception as e:
-            print(f"Error calling DeepSeek API for synthesis: {e}")
+            print(f"DeepSeek API 综合检索结果时出错: {e}")
             return None

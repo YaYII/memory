@@ -19,7 +19,7 @@ class CognitiveProcessor:
         启动后台处理循环
         """
         self.is_running = True
-        print("🧠 Cognitive Processor started...")
+        print("🧠 认知处理器已启动...")
         while self.is_running:
             try:
                 # 简单的批处理逻辑：每隔一段时间检查是否有新记忆需要处理
@@ -29,7 +29,7 @@ class CognitiveProcessor:
                 if settings.DEEPSEEK_API_KEY:
                     await self._process_recent_memories()
             except Exception as e:
-                print(f"Error in cognitive loop: {e}")
+                print(f"认知循环出错: {e}")
                 await asyncio.sleep(60)
 
     async def _process_recent_memories(self):
@@ -62,28 +62,28 @@ class CognitiveProcessor:
         if not settings.DEEPSEEK_API_KEY:
             return
 
-        print(f"🧠 Analyzing memory: {memory_id[:8]}...")
+        print(f"🧠 正在分析记忆: {memory_id[:8]}...")
         
-        # 1. 实体提取 (Lightweight Knowledge Graph)
+        # 1. 实体提取 (轻量级知识图谱)
         entities = await self.llm.extract_entities(content)
         if entities:
-            print(f"   Entities: {entities}")
-            # 将实体存入 Graph Store
+            print(f"   提取到的实体: {entities}")
+            # 将实体存入图谱库
             self.memory_manager.store.add_entities_to_graph(memory_id, entities)
 
         # 2. 分类
         category = await self.llm.classify_memory(content)
         if category:
-            print(f"   Category: {category}")
-            # TODO: 更新该记忆的 metadata (需要 MemoryStore 支持 update_metadata)
+            print(f"   记忆分类: {category}")
+            # TODO: 更新该记忆的元数据 (需要 MemoryStore 支持 update_metadata)
             # self.memory_manager.store.update_metadata(memory_id, {"category": category})
         
-        # 3. 技能提取 (如果是 Coding/Config 类)
+        # 3. 技能提取 (如果是编程/配置类)
         if category in ["Coding", "Config"]:
             summary = await self.llm.summarize_memories([content])
             if summary:
-                print(f"   Generated Insight: {summary[:50]}...")
-                # 将 Insight 存回，标记为 type="insight"
+                print(f"   生成认知洞察: {summary[:50]}...")
+                # 将洞察存回，标记为 type="insight"
                 # 这样下次检索时，可以优先检索 insight
                 self.memory_manager.write_memory(
                     user_id=user_id,
@@ -93,12 +93,12 @@ class CognitiveProcessor:
 
     async def run_reflection(self, user_id: str):
         """
-        [Memory GC] 运行深度反思与优化
+        [记忆垃圾回收] 运行深度反思与优化
         """
         if not settings.DEEPSEEK_API_KEY:
             return
 
-        print("🧠 Running Deep Reflection (Memory GC)...")
+        print("🧠 正在运行深度反思 (记忆垃圾回收)...")
         # 获取最近 20 条记忆进行分析
         memories = self.memory_manager.read_memory(
             user_id=user_id,
@@ -110,7 +110,7 @@ class CognitiveProcessor:
         optimized = await self.llm.optimize_memory_storage(raw_texts)
         
         if optimized:
-            print(f"   Reflection Result:\n{optimized}")
+            print(f"   反思结果:\n{optimized}")
             # 在实际生产中，这里应该执行真正的数据库清理操作
             # 但为了安全，我们目前只将优化后的结果作为一条新的"深度总结"存入
             self.memory_manager.write_memory(
