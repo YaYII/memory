@@ -65,8 +65,16 @@
             pointer-events: none; z-index: 10;
         }
     </style>
-    <!-- Force Graph 3D Library -->
-    <script src="//unpkg.com/3d-force-graph"></script>
+    <!-- Import Maps for Three.js and Dependencies -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "//unpkg.com/three/build/three.module.js",
+            "three/addons/": "//unpkg.com/three/examples/jsm/",
+            "3d-force-graph": "//unpkg.com/3d-force-graph/dist/3d-force-graph.mjs"
+        }
+    }
+    </script>
 </head>
 <body>
     <div class="scanline"></div>
@@ -96,7 +104,11 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import ForceGraph3D from '3d-force-graph';
+        import * as THREE from 'three';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
         // --- Configuration ---
         const COLORS = {
             'Coding': '#00ffff',
@@ -128,8 +140,49 @@
                 );
             });
 
-        // Add visual bloom effect
-        // (3d-force-graph uses ThreeJS, we could add post-processing here if needed)
+        // --- Post-Processing Effects (Bloom) ---
+        const bloomPass = new UnrealBloomPass();
+        bloomPass.strength = 2.0;
+        bloomPass.radius = 1;
+        bloomPass.threshold = 0.1;
+        Graph.postProcessingComposer().addPass(bloomPass);
+
+        // --- Custom Particle System (Data Dust) ---
+        // We inject a Three.js PointCloud into the scene
+        const scene = Graph.scene();
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesCount = 1000;
+        const posArray = new Float32Array(particlesCount * 3);
+        
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 2000; // Spread across space
+        }
+        
+        particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        const particlesMaterial = new THREE.PointsMaterial({
+            size: 2,
+            color: 0x00ff41,
+            transparent: true,
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particlesMesh);
+        
+        // Animate particles
+        // Note: force-graph has its own render loop, we can hook into it via custom tick?
+        // Actually, we can just modify the mesh in a separate loop or rely on the graph's tick if exposed.
+        // ForceGraph doesn't expose a clean "onTick" for custom objects easily without accessing internal requestAnimationFrame.
+        // A simple workaround is using setInterval to update positions, or just let them be static stars.
+        // Let's make them slowly drift.
+        function animateParticles() {
+            particlesMesh.rotation.y += 0.0005;
+            particlesMesh.rotation.x += 0.0002;
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
 
         // --- 2. Data Management ---
         let graphData = { nodes: [], links: [] };
