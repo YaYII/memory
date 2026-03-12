@@ -1,7 +1,13 @@
-import ForceGraph3D from '3d-force-graph';
-import * as THREE from 'three';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import SpriteText from 'three-spritetext';
+// Remove imports since we are using UMD Globals
+// import ForceGraph3D from '3d-force-graph';
+// import * as THREE from 'three';
+// import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+// import SpriteText from 'three-spritetext';
+
+// Ensure Globals are available
+if (typeof ForceGraph3D === 'undefined' || typeof THREE === 'undefined') {
+    console.error("Critical Error: Three.js or ForceGraph3D globals not loaded.");
+}
 
 // --- Configuration ---
 const COLORS = {
@@ -14,6 +20,7 @@ const COLORS = {
 };
 
 // --- 1. 3D Graph Initialization ---
+// Access globals directly
 const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('canvas-container'))
     .backgroundColor('#000510')
     .nodeColor(node => COLORS[node.group] || COLORS['Default'])
@@ -24,7 +31,7 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
     .linkColor(() => 'rgba(0, 255, 65, 0.15)')
     .linkOpacity(0.3)
     .nodeThreeObject(node => {
-        // Use SpriteText for labels to avoid "DragControls" issues and improve visibility
+        // Use global SpriteText
         const sprite = new SpriteText(node.label || node.id);
         sprite.material.depthWrite = false; // Transparent sprite
         sprite.color = COLORS[node.group] || COLORS['Default'];
@@ -61,31 +68,23 @@ Graph.graphData({
     ]
 });
 
-// Force a resize to ensure it fills the container
-window.addEventListener('resize', () => {
-    Graph.width(window.innerWidth);
-    Graph.height(window.innerHeight);
-});
-Graph.width(window.innerWidth);
-Graph.height(window.innerHeight);
-
-// Add initial dummy data to verify rendering immediately
-Graph.graphData({
-    nodes: [
-        { id: 'CORE', group: 'General', label: 'Cognitive Core', type: 'entity' },
-        { id: 'MEM_INIT', group: 'Config', label: 'System Initialized', type: 'memory' }
-    ],
-    links: [
-        { source: 'CORE', target: 'MEM_INIT' }
-    ]
-});
-
 // --- Post-Processing Effects (Bloom) ---
-const bloomPass = new UnrealBloomPass();
-bloomPass.strength = 2.0;
-bloomPass.radius = 1;
-bloomPass.threshold = 0.1;
-Graph.postProcessingComposer().addPass(bloomPass);
+// Access THREE global for UnrealBloomPass if loaded via script tag
+// Note: In UMD, UnrealBloomPass might be attached to THREE or global depending on the build.
+// Standard Three.js examples usually attach to THREE if loaded after.
+// But unpkg raw files might assume modules. 
+// We loaded examples/js/... files which are for UMD. They usually modify THREE namespace.
+// Let's check THREE.UnrealBloomPass
+const BloomPass = THREE.UnrealBloomPass || window.UnrealBloomPass;
+if (BloomPass) {
+    const bloomPass = new BloomPass();
+    bloomPass.strength = 2.0;
+    bloomPass.radius = 1;
+    bloomPass.threshold = 0.1;
+    Graph.postProcessingComposer().addPass(bloomPass);
+} else {
+    console.warn("UnrealBloomPass not found in globals.");
+}
 
 // --- Custom Particle System (Data Dust) ---
 // We inject a Three.js PointCloud into the scene
@@ -124,6 +123,12 @@ let graphData = { nodes: [], links: [] };
 
 export function updateGraph(newData) {
     console.log("Graph update received:", newData);
+    
+    // Safety check: ensure newData is valid
+    if (!newData || !newData.nodes || !Array.isArray(newData.nodes)) {
+        console.warn("Invalid graph data received:", newData);
+        return;
+    }
     
     // Simple heuristic: if backend returns empty, don't overwrite the dummy data if we haven't loaded real data yet
     if (newData.nodes.length === 0 && graphData.nodes.length > 0) return;

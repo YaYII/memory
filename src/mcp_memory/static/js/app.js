@@ -1,5 +1,8 @@
 import { updateGraph, triggerSpark } from './graph.js';
 
+// Ensure system logs are initialized
+console.log("App.js initialized");
+
 // --- 3. Log Stream Logic ---
 const logContent = document.getElementById('log-content');
 let lastLogMsg = "";
@@ -71,7 +74,16 @@ async function fetchState() {
         
         // Graph
         const graphRes = await fetch('/dashboard/graph');
+        if (!graphRes.ok) {
+            throw new Error(`Graph API returned ${graphRes.status}`);
+        }
+        
         const graph = await graphRes.json();
+        
+        // Safety check: ensure graph has nodes/links
+        if (!graph.nodes) graph.nodes = [];
+        if (!graph.links) graph.links = [];
+        
         // Simple adapter to match D3 format expected by updateGraph
         graph.nodes.forEach(n => {
             if (!n.label) n.label = n.id.substring(0, 10) + '...';
