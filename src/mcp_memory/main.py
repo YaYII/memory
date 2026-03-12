@@ -53,7 +53,13 @@ async def handle_call_tool(
             req = ReadMemoryRequest(**arguments)
             # project_id: 如果AI不传，manager会使用当前自动检测的 CWD ID
             result = memory_manager.read_memory(req.user_id, req.query, req.project_id, req.limit)
-            return [types.TextContent(type="text", text=str(result))]
+            
+            # Format as plain text list to reduce cognitive load
+            if not result:
+                return [types.TextContent(type="text", text="没有找到相关记忆。")]
+            
+            formatted_text = "\n".join([f"- {item['content']}" for item in result])
+            return [types.TextContent(type="text", text=formatted_text)]
 
         elif name == "write_memory":
             req = WriteMemoryRequest(**arguments)

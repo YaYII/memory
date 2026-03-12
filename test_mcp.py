@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import re
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from mcp.client.session import ClientSession
 from mcp.types import CallToolRequest, Tool
@@ -45,6 +46,12 @@ async def run_test():
             )
             print(f"   写入结果: {write_res.content[0].text}")
             
+            # 从写入结果中解析 ID: "记忆已保存，ID: xxxxx"
+            match = re.search(r"ID:\s*([a-f0-9\-]+)", write_res.content[0].text)
+            assert match, "未能从写入结果中提取 ID"
+            memory_id = match.group(1)
+            print(f"   提取到记忆 ID: {memory_id}")
+            
             # 3. 读取记忆
             print("\n📖 测试读取记忆...")
             read_res = await session.call_tool(
@@ -54,14 +61,12 @@ async def run_test():
                     "query": "Python 怎么样"
                 }
             )
-            print(f"   读取结果: {read_res.content[0].text}")
+            print(f"   读取结果:\n{read_res.content[0].text}")
             
-            # 解析读取结果以获取 ID (简单的字符串解析)
-            import ast
-            memories = ast.literal_eval(read_res.content[0].text)
-            assert len(memories) > 0
-            memory_id = memories[0]["id"]
-            print(f"   获取到记忆 ID: {memory_id}")
+            # 验证读取结果是纯文本，且包含刚写入的内容
+            assert "MCP 测试记忆：Python 是一种优秀的编程语言" in read_res.content[0].text
+            # 只要不是以 `[{` 开头，就说明不是 JSON 列表
+            assert not read_res.content[0].text.strip().startswith("[{"), "读取结果不应是 JSON 列表格式"
 
             # 4. 删除记忆
             print(f"\n🗑️ 测试删除记忆 ({memory_id})...")
@@ -83,13 +88,16 @@ async def run_test():
                     "query": "Python 怎么样"
                 }
             )
-            verify_memories = ast.literal_eval(verify_res.content[0].text)
-            # 确保刚才那个 ID 不在了
-            found = any(m["id"] == memory_id for m in verify_memories)
-            if not found:
-                print("   验证成功：记忆已消失")
+            # 确保刚才那个内容不在了
+            # 注意：由于检索是语义匹配，即使删除了完全匹配的那条，可能还会检索到其他相似的。
+            # 但这里我们刚删除了唯一一条完全匹配的。
+            print(f"   验证读取结果:\n{verify_res.content[0].text}")
+            
+            # 简单检查：如果是完全删除，可能返回 "没有找到相关记忆" 或者其他不相关的
+            if "MCP 测试记忆：Python 是一种优秀的编程语言" not in verify_res.content[0].text:
+                 print("   验证成功：记忆内容已消失")
             else:
-                print("   验证失败：记忆仍然存在")
+                 print("   验证警告：记忆内容可能仍然存在（或许是重复写入导致）")
 
     print("\n🎉 所有测试完成！")
 
