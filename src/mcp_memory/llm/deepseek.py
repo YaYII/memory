@@ -80,3 +80,61 @@ class DeepSeekClient:
         messages = [{"role": "user", "content": prompt}]
         result = await self.chat_completion(messages)
         return result.strip() if result else None
+
+    async def synthesize_search_results(self, query: str, memories: List[str]) -> Optional[str]:
+        """
+        基于用户查询，综合多条记忆生成一个简洁的答案。
+        用于 read_memory 时的实时增强，减少 AI 的阅读负担。
+        
+        Strict Safety Rules:
+        1. 必须基于提供的记忆回答，禁止编造 (Hallucination Control)
+        2. 如果记忆中没有相关内容，直接返回 "NO_CONTEXT"
+        3. 保持极简 (Conciseness)
+        """
+        if not memories:
+            return None
+            
+        memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
+        
+        prompt = f"""
+你是一个严格的记忆检索助手。请根据以下[参考记忆]回答用户的[查询]。
+
+[参考记忆]
+{memory_block}
+
+[查询]
+{query}
+
+[要求]
+1. **只使用参考记忆中的信息**。如果参考记忆无法回答查询，请直接返回 "NO_CONTEXT"。
+2. **极度简洁**。提取核心事实，不要废话，不要自我介绍。
+3. **整合冲突**。如果记忆有冲突，以较新的为准。
+4. **语言**。必须使用{settings.MCP_MEMORY_LANGUAGE}。
+
+[回答格式]
+- 核心结论...
+- 补充细节...
+"""
+        # 使用 temperature=0.0 以最大程度降低幻觉
+        url = f"{self.base_url}/chat/completions"
+        payload = {
+            "model": "deepseek-chat",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0, 
+            "max_tokens": 500
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(url, headers=self.headers, json=payload)
+                response.raise_for_status()
+                data = response.json()
+                content = data["choices"][0]["message"]["content"].strip()
+                
+                if "NO_CONTEXT" in content:
+                    return None
+                
+                return content
+        except Exception as e:
+            print(f"Error calling DeepSeek API for synthesis: {e}")
+            return None

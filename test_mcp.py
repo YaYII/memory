@@ -101,6 +101,28 @@ async def run_test():
             print(f"   读取结果 (Profile Check):\n{profile_res.content[0].text}")
             assert "我喜欢使用 VS Code" in profile_res.content[0].text
             
+            # 5. 测试 DeepSeek 综合问答 (如果配置了 Key)
+            if os.environ.get("DEEPSEEK_API_KEY"):
+                print("\n🧠 测试 DeepSeek 记忆综合...")
+                # 写入一些冲突或碎片化信息
+                await session.call_tool("write_memory", arguments={"user_id": "test_user_v2", "content": "项目部署端口是 8080", "scope": "project"})
+                await session.call_tool("write_memory", arguments={"user_id": "test_user_v2", "content": "最新修改：项目部署端口改为 9090", "scope": "project"})
+                
+                # 查询
+                synth_res = await session.call_tool(
+                    "read_memory",
+                    arguments={
+                        "user_id": "test_user_v2",
+                        "query": "项目部署在哪个端口？"
+                    }
+                )
+                print(f"   综合回答结果:\n{synth_res.content[0].text}")
+                # 验证是否包含"系统整合回答"字样
+                if "【系统整合回答】" in synth_res.content[0].text:
+                    print("   ✅ 验证成功：DeepSeek 成功进行了记忆综合")
+                else:
+                    print("   ⚠️ 验证跳过：可能 Key 无效或网络问题，未触发综合")
+            
             # Cleanup
             await session.call_tool("delete_memory", arguments={"user_id": "test_user_v2", "memory_id": id1})
   

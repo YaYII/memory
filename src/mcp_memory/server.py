@@ -61,10 +61,27 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
 @app.post("/memory/read")
 async def read_memory_endpoint(req: ReadMemoryRequest):
     """
-    Read memory endpoint
+    Read memory endpoint with optional DeepSeek synthesis
     """
     try:
+        # 1. Retrieve raw memories
         result = memory_manager.read_memory(req.user_id, req.query, req.project_id, req.limit)
+        
+        # 2. Try synthesis if enabled and we have results
+        if settings.DEEPSEEK_API_KEY and result:
+            memories = [item["content"] for item in result]
+            # Call LLM to synthesize
+            synthesis = await cognitive_processor.llm.synthesize_search_results(req.query, memories)
+            
+            if synthesis:
+                # Replace the list with a single synthesized memory item
+                # But we keep the structure compatible with the client
+                return [{
+                    "content": f"【系统整合回答】\n{synthesis}\n\n(基于 {len(result)} 条相关记忆整合)",
+                    "timestamp": result[0]["timestamp"], # Use top result's timestamp
+                    "id": "synthesis" # Virtual ID
+                }]
+        
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
