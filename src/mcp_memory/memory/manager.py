@@ -42,16 +42,13 @@ class MemoryManager:
             limit=limit
         )
         
-        # 格式化输出，隐藏内部评分细节，只保留最终 score
+        # 格式化输出，极度简化，只保留内容和必要的时间/ID
         formatted = []
         for r in results:
             formatted.append({
-                "id": r["id"],
                 "content": r["content"],
-                "user_id": r["user_id"],
-                "type": r["type"],
                 "timestamp": r["timestamp"],
-                "score": round(r["score"], 4)
+                "id": r["id"]
             })
         return formatted
 
