@@ -1,6 +1,7 @@
 import ForceGraph3D from '3d-force-graph';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import SpriteText from 'three-spritetext';
 
 // --- Configuration ---
 const COLORS = {
@@ -13,7 +14,7 @@ const COLORS = {
 };
 
 // --- 1. 3D Graph Initialization ---
-const Graph = ForceGraph3D()(document.getElementById('canvas-container'))
+const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('canvas-container'))
     .backgroundColor('#000510')
     .nodeColor(node => COLORS[node.group] || COLORS['Default'])
     .nodeVal(node => node.type === 'memory' ? 4 : 2)
@@ -22,6 +23,14 @@ const Graph = ForceGraph3D()(document.getElementById('canvas-container'))
     .linkWidth(0.5)
     .linkColor(() => 'rgba(0, 255, 65, 0.15)')
     .linkOpacity(0.3)
+    .nodeThreeObject(node => {
+        // Use SpriteText for labels to avoid "DragControls" issues and improve visibility
+        const sprite = new SpriteText(node.label || node.id);
+        sprite.material.depthWrite = false; // Transparent sprite
+        sprite.color = COLORS[node.group] || COLORS['Default'];
+        sprite.textHeight = 2;
+        return sprite;
+    })
     .onNodeClick(node => {
         // Aim at node from outside it
         const distance = 40;
