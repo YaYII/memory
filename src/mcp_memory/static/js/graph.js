@@ -1,6 +1,7 @@
 import ForceGraph3D from '3d-force-graph';
 import * as THREE from 'three';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+// Remove the .js extension to let import map / module resolution handle it (especially for esm.sh)
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass';
 import SpriteText from 'three-spritetext';
 
 // --- Configuration ---
