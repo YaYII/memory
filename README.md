@@ -30,6 +30,7 @@
       "env": {
         "MCP_MEMORY_SHARED": "true",
         "MCP_MEMORY_LANGUAGE": "简体中文", // 可选，默认为简体中文
+        "DEEPSEEK_API_KEY": "sk-...", // 选填，开启后支持自动记忆总结与技能提取
         "PYTHONPATH": "<path_to_project>/src"
       }
     }
@@ -42,6 +43,16 @@
 > 2. `args`: 使用 `["-m", "mcp_memory.main", "stdio"]` 确保模块被正确加载。
 > 3. `PYTHONPATH`: 必须包含 `src` 目录的绝对路径，否则会报错 `ModuleNotFoundError`。
 > 4. `MCP_MEMORY_LANGUAGE`: 用于强制规定 AI 写入记忆的语言（如 "English", "日本語"），默认为 "简体中文"。
+> 5. `DEEPSEEK_API_KEY`: 配置后，系统会在后台自动分析写入的记忆，提取“技能”和“知识总结”，实现自我进化。
+
+## 认知增强 (Cognitive Enhancement)
+
+如果你配置了 `DEEPSEEK_API_KEY`，记忆系统将获得**自我思考**的能力：
+1.  **自动分类**：自动识别记忆类型（如 Coding, Config, Personal）。
+2.  **技能提取**：当检测到代码或配置相关的记忆时，会自动总结出可复用的“技能”或“知识点”，并存回记忆库。
+    *   *输入*: "Create a new file using `touch filename`"
+    *   *AI 后台总结*: "【认知总结】Linux 文件创建技能：使用 `touch` 命令..."
+3.  **自我进化**: 这些总结后的高价值记忆将在未来的检索中被优先召回。
 
 ## 交互接口 (Tools)
 

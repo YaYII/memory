@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from mcp_memory.memory.manager import MemoryManager
 from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest
 from mcp_memory.core.config import settings
+from mcp_memory.memory.cognitive import CognitiveProcessor
 import uvicorn
 import os
 import sys
@@ -12,7 +13,8 @@ app = FastAPI(title="MCP Memory Server", version="1.0.0")
 # Initialize Memory Manager (The Singleton that holds the DB lock)
 try:
     memory_manager = MemoryManager()
-    print("✅ Memory Manager initialized successfully.")
+    cognitive_processor = CognitiveProcessor(memory_manager)
+    print("✅ Memory Manager & Cognitive Processor initialized successfully.")
 except Exception as e:
     print(f"❌ Failed to initialize Memory Manager: {e}")
     sys.exit(1)
@@ -25,7 +27,7 @@ async def health_check():
     return {"status": "ok", "pid": os.getpid()}
 
 @app.post("/memory/write")
-async def write_memory_endpoint(req: WriteMemoryRequest):
+async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: BackgroundTasks):
     """
     Write memory endpoint
     """
@@ -42,6 +44,16 @@ async def write_memory_endpoint(req: WriteMemoryRequest):
             project_id=req.project_id, 
             scope=req.scope
         )
+        
+        # Trigger cognitive processing in background
+        if settings.DEEPSEEK_API_KEY:
+            background_tasks.add_task(
+                cognitive_processor.process_memory_event, 
+                memory_id=result, 
+                content=req.content,
+                user_id=req.user_id
+            )
+            
         return {"id": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

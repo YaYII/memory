@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # 记忆语言设置 (默认: 简体中文)
     MCP_MEMORY_LANGUAGE: str = "简体中文"
 
+    # DeepSeek 配置 (用于认知增强：总结、分类)
+    DEEPSEEK_API_KEY: Optional[str] = None
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'
