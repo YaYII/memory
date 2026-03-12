@@ -29,6 +29,7 @@
       "args": ["-m", "mcp_memory.main", "stdio"],
       "env": {
         "MCP_MEMORY_SHARED": "true",
+        "MCP_MEMORY_LANGUAGE": "简体中文", // 可选，默认为简体中文
         "PYTHONPATH": "<path_to_project>/src"
       }
     }
@@ -40,6 +41,7 @@
 > 1. `command`: 必须指向项目 `.venv/bin/python` 的绝对路径。
 > 2. `args`: 使用 `["-m", "mcp_memory.main", "stdio"]` 确保模块被正确加载。
 > 3. `PYTHONPATH`: 必须包含 `src` 目录的绝对路径，否则会报错 `ModuleNotFoundError`。
+> 4. `MCP_MEMORY_LANGUAGE`: 用于强制规定 AI 写入记忆的语言（如 "English", "日本語"），默认为 "简体中文"。
 
 ## 交互接口 (Tools)
 

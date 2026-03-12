@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     
     # 存储路径
     CHROMA_DATA_PATH: str = os.path.join(os.path.expanduser("~"), ".mcp_memory", "chroma")
+    
+    # 记忆语言设置 (默认: 简体中文)
+    MCP_MEMORY_LANGUAGE: str = "简体中文"
 
     class Config:
         env_file = ".env"
