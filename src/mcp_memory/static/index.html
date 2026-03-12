@@ -1,70 +1,140 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>MCP Cognitive Brain</title>
+    <title>MCP 认知中枢 (Cognitive Brain)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; color: #fff; font-family: 'Courier New', Courier, monospace; }
+        body { margin: 0; overflow: hidden; background-color: #000; color: #00ff41; font-family: 'Consolas', 'Monaco', monospace; }
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 2; pointer-events: none; }
-        .log-panel { 
-            position: absolute; bottom: 20px; left: 20px; width: 400px; height: 200px; 
-            background: rgba(0, 20, 40, 0.8); border: 1px solid #00ffff; 
-            border-radius: 5px; padding: 10px; overflow-y: auto; 
-            font-size: 12px; color: #00ffff; box-shadow: 0 0 10px #00ffff;
+        #ui-layer { position: absolute; top: 20px; left: 20px; z-index: 2; pointer-events: none; width: 100%; height: 100%; }
+        
+        /* 赛博朋克风格面板 */
+        .panel { 
+            background: rgba(0, 10, 20, 0.85); 
+            border: 1px solid #00ff41; 
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
+            backdrop-filter: blur(5px);
             pointer-events: auto;
+            position: absolute;
         }
+        
         .stat-card {
-            background: rgba(0, 20, 40, 0.8); border: 1px solid #00ffff;
-            padding: 15px; border-radius: 5px; margin-bottom: 10px;
-            box-shadow: 0 0 10px #00ffff;
+            top: 20px; left: 20px; width: 280px; padding: 20px;
+            border-top: 3px solid #00ff41;
         }
-        h1 { margin: 0 0 10px 0; font-size: 24px; text-shadow: 0 0 10px #00ffff; }
-        .spark { color: #ff00ff; font-weight: bold; }
-        ::-webkit-scrollbar { width: 5px; }
-        ::-webkit-scrollbar-track { background: #001428; }
-        ::-webkit-scrollbar-thumb { background: #00ffff; }
+        
+        .log-panel { 
+            bottom: 20px; left: 20px; width: 500px; height: 250px; 
+            display: flex; flex-direction: column;
+            border-left: 3px solid #00ff41;
+        }
+        
+        .legend-panel {
+            top: 20px; right: 20px; width: 200px; padding: 15px;
+            border-right: 3px solid #00ff41;
+        }
+
+        h1 { margin: 0 0 15px 0; font-size: 20px; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 5px #00ff41; border-bottom: 1px solid rgba(0,255,65,0.3); padding-bottom: 5px; }
+        h2 { font-size: 14px; color: #008f11; margin-top: 0; }
+        
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+        .stat-val { font-weight: bold; color: #fff; text-shadow: 0 0 5px #fff; }
+        
+        /* 日志流特效 */
+        #log-content { 
+            flex: 1; overflow-y: hidden; padding: 10px; font-size: 12px; line-height: 1.4;
+            mask-image: linear-gradient(to bottom, transparent, black 10%);
+        }
+        .log-line { margin-bottom: 4px; opacity: 0; animation: fadeIn 0.3s forwards; }
+        .log-time { color: #008f11; margin-right: 8px; }
+        .log-info { color: #00ff41; }
+        .log-warn { color: #ffff00; }
+        .log-error { color: #ff0000; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* 分类图例颜色 */
+        .legend-item { display: flex; align-items: center; margin-bottom: 5px; font-size: 12px; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; box-shadow: 0 0 5px currentColor; }
+        
+        /* 扫描线特效 */
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, transparent 50%, rgba(0, 255, 65, 0.02) 51%);
+            background-size: 100% 4px;
+            pointer-events: none; z-index: 10;
+        }
     </style>
-    <!-- Force Graph Library -->
-    <script src="//unpkg.com/force-graph"></script>
+    <!-- Force Graph 3D Library -->
+    <script src="//unpkg.com/3d-force-graph"></script>
 </head>
 <body>
+    <div class="scanline"></div>
     <div id="canvas-container"></div>
     
     <div id="ui-layer">
-        <div class="stat-card">
-            <h1>🧠 MCP Cognitive Brain</h1>
-            <div>Memories: <span id="mem-count">0</span></div>
-            <div>Status: <span id="status" style="color: #00ff00;">ONLINE</span></div>
-            <div>Brain Activity: <span id="activity">Idle</span></div>
+        <div class="panel stat-card">
+            <h1>SYSTEM STATUS</h1>
+            <div class="stat-row"><span>MEMORIES</span><span class="stat-val" id="mem-count">0</span></div>
+            <div class="stat-row"><span>ENTITIES</span><span class="stat-val" id="entity-count">0</span></div>
+            <div class="stat-row"><span>STATUS</span><span class="stat-val" id="status" style="color: #00ff41;">ONLINE</span></div>
+            <div class="stat-row"><span>BRAIN ACTIVITY</span><span class="stat-val" id="activity">IDLE</span></div>
+        </div>
+
+        <div class="panel legend-panel">
+            <h1>MEMORY ZONES</h1>
+            <div class="legend-item"><div class="dot" style="background: #00ffff; color: #00ffff;"></div>Coding (编程)</div>
+            <div class="legend-item"><div class="dot" style="background: #ff00ff; color: #ff00ff;"></div>Config (配置)</div>
+            <div class="legend-item"><div class="dot" style="background: #ffff00; color: #ffff00;"></div>Personal (画像)</div>
+            <div class="legend-item"><div class="dot" style="background: #ffffff; color: #ffffff;"></div>General (通用)</div>
+            <div class="legend-item"><div class="dot" style="background: #ff4500; color: #ff4500;"></div>Entity (实体)</div>
+        </div>
+
+        <div class="panel log-panel">
+            <h1>NEURAL LOG STREAM</h1>
+            <div id="log-content"></div>
         </div>
     </div>
 
-    <div class="log-panel" id="log-panel">
-        <div>> System initialized...</div>
-        <div>> Connecting to neural network...</div>
-    </div>
-
     <script>
-        // --- 1. Data & State ---
-        let graphData = { nodes: [], links: [] };
-        const Graph = ForceGraph()(document.getElementById('canvas-container'))
-            .backgroundColor('#000000')
-            .nodeColor(node => node.type === 'memory' ? '#00ffff' : '#ff00ff')
-            .nodeVal(node => node.type === 'memory' ? 2 : 4)
-            .nodeLabel('id')
-            .linkColor(() => 'rgba(255,255,255,0.2)')
-            .linkWidth(1)
+        // --- Configuration ---
+        const COLORS = {
+            'Coding': '#00ffff',
+            'Config': '#ff00ff',
+            'Personal': '#ffff00',
+            'General': '#ffffff',
+            'Entity': '#ff4500',
+            'Default': '#aaaaaa'
+        };
+
+        // --- 1. 3D Graph Initialization ---
+        const Graph = ForceGraph3D()(document.getElementById('canvas-container'))
+            .backgroundColor('#000510')
+            .nodeColor(node => COLORS[node.group] || COLORS['Default'])
+            .nodeVal(node => node.type === 'memory' ? 4 : 2)
+            .nodeLabel('label')
+            .nodeResolution(16) // Lower resolution for performance
+            .linkWidth(0.5)
+            .linkColor(() => 'rgba(0, 255, 65, 0.15)')
+            .linkOpacity(0.3)
             .onNodeClick(node => {
-                // Focus camera on node
-                Graph.centerAt(node.x, node.y, 1000);
-                Graph.zoom(8, 2000);
+                // Aim at node from outside it
+                const distance = 40;
+                const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+                Graph.cameraPosition(
+                    { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new position
+                    node, // lookAt ({ x, y, z })
+                    3000  // ms transition duration
+                );
             });
 
-        // --- 2. Real-time Visualization Logic ---
+        // Add visual bloom effect
+        // (3d-force-graph uses ThreeJS, we could add post-processing here if needed)
+
+        // --- 2. Data Management ---
+        let graphData = { nodes: [], links: [] };
+        
         function updateGraph(newData) {
-            // Merge new data (simple implementation)
-            // In a real app, we would do smart diffing
             const existingNodes = new Set(graphData.nodes.map(n => n.id));
             const existingLinks = new Set(graphData.links.map(l => `${l.source.id || l.source}-${l.target.id || l.target}`));
             
@@ -72,9 +142,16 @@
             
             newData.nodes.forEach(n => {
                 if (!existingNodes.has(n.id)) {
-                    graphData.nodes.push(n);
+                    // Assign category group based on metadata or type
+                    let group = 'General';
+                    if (n.type === 'entity') group = 'Entity';
+                    else if (n.category) group = n.category; // If backend provides category
+                    // Fallback heuristics for demo if backend data is raw
+                    else if (n.label && n.label.includes('配置')) group = 'Config';
+                    else if (n.label && n.label.includes('代码')) group = 'Coding';
+                    
+                    graphData.nodes.push({ ...n, group });
                     hasChanges = true;
-                    log(`New Neuron: ${n.id} (${n.type})`);
                 }
             });
             
@@ -92,88 +169,87 @@
         }
 
         function triggerSpark(nodeId) {
-            // Simulate a "thought spark" - flash a node and its neighbors
+            // 3D Spark: Emit particles or flash
+            // Since we can't easily emit particles in this wrapper, we pulse the node
             const node = graphData.nodes.find(n => n.id === nodeId);
             if (!node) return;
 
-            // Visual effect: temporary color change or particle emission
-            // ForceGraph doesn't have built-in sparks, so we pulse the size/color
-            const originalColor = node.color;
-            node.color = '#ffffff'; // Flash white
-            node.val = 10; // Expand
-            
-            Graph.graphData(graphData); // Re-render
-            
-            setTimeout(() => {
-                node.color = undefined; // Reset to default function
-                node.val = node.type === 'memory' ? 2 : 4;
-                Graph.graphData(graphData);
-            }, 500);
+            // Flash effect logic would go here if extending ThreeJS materials
+            // For now, we rely on the log stream for activity feedback
         }
 
-        // --- 3. Polling & Event Loop ---
-        function log(msg) {
-            const panel = document.getElementById('log-panel');
+        // --- 3. Log Stream Logic ---
+        const logContent = document.getElementById('log-content');
+        let lastLogMsg = "";
+
+        function addLog(msg, type = 'info') {
             const div = document.createElement('div');
-            div.innerHTML = `> <span style="color: #aaa;">${new Date().toLocaleTimeString()}</span> ${msg}`;
-            panel.appendChild(div);
-            panel.scrollTop = panel.scrollHeight;
+            div.className = 'log-line';
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${type}">${msg}</span>`;
+            
+            logContent.appendChild(div);
+            // Keep only last 20 logs
+            while (logContent.children.length > 20) {
+                logContent.removeChild(logContent.firstChild);
+            }
+            // Auto scroll to bottom
+            logContent.scrollTop = logContent.scrollHeight;
         }
 
+        // --- 4. Polling Loop ---
         async function fetchState() {
             try {
-                // Fetch stats
+                // Stats
                 const statsRes = await fetch('/dashboard/stats');
                 const stats = await statsRes.json();
                 document.getElementById('mem-count').innerText = stats.memory_count;
                 
-                // Fetch Graph Data (Nodes/Links)
+                // Graph
                 const graphRes = await fetch('/dashboard/graph');
                 const graph = await graphRes.json();
+                // Simple adapter to match D3 format expected by updateGraph
+                // Assuming backend returns {nodes: [{id, ...}], links: [{source, target}]}
+                // We add a 'label' property for display if missing
+                graph.nodes.forEach(n => {
+                    if (!n.label) n.label = n.id.substring(0, 10) + '...';
+                });
+                document.getElementById('entity-count').innerText = graph.nodes.filter(n => n.type === 'entity').length;
                 updateGraph(graph);
 
-                // Fetch Logs to trigger sparks
+                // Logs
                 const logsRes = await fetch('/dashboard/logs');
                 const logsData = await logsRes.json();
                 const latestLog = logsData.logs[logsData.logs.length - 1];
                 
                 if (latestLog && latestLog.message !== lastLogMsg) {
                     lastLogMsg = latestLog.message;
-                    log(latestLog.message);
+                    addLog(latestLog.message);
                     
-                    // Simple heuristic: if log mentions a memory ID or entity, spark it
-                    // Assuming log format: "Reading memory..." or "Writing memory..."
-                    document.getElementById('activity').innerText = "Processing...";
+                    document.getElementById('activity').innerText = "PROCESSING";
                     document.getElementById('activity').style.color = "#ff00ff";
+                    document.getElementById('activity').style.textShadow = "0 0 10px #ff00ff";
                     
-                    // Simulate random sparks for "aliveness"
-                    if (graphData.nodes.length > 0) {
-                        const randomNode = graphData.nodes[Math.floor(Math.random() * graphData.nodes.length)];
-                        triggerSpark(randomNode.id);
-                    }
-                } else {
-                    document.getElementById('activity').innerText = "Idle";
-                    document.getElementById('activity').style.color = "#888";
+                    // Simulate random sparks when active
+                    setTimeout(() => {
+                        document.getElementById('activity').innerText = "IDLE";
+                        document.getElementById('activity').style.color = "#00ff41";
+                        document.getElementById('activity').style.textShadow = "none";
+                    }, 1000);
                 }
 
             } catch (e) {
-                console.error(e);
+                console.error("Connection lost:", e);
+                document.getElementById('status').innerText = "OFFLINE";
+                document.getElementById('status').style.color = "#ff0000";
             }
         }
 
-        let lastLogMsg = "";
-        setInterval(fetchState, 2000); // 2s polling
-
-        // Initial load
+        setInterval(fetchState, 2000);
         fetchState();
         
-        // Add some dummy initial data for visualization if empty
-        setTimeout(() => {
-            if (graphData.nodes.length === 0) {
-                log("Initializing empty brain state...");
-            }
-        }, 1000);
-
+        addLog("正在初始化神经连接...", "info");
+        addLog("加载认知图谱模型...", "info");
     </script>
 </body>
 </html>
