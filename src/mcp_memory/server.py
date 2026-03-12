@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from mcp_memory.memory.manager import MemoryManager
 from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest
 from mcp_memory.core.config import settings
@@ -8,9 +9,16 @@ import uvicorn
 import os
 import sys
 import json
+import networkx as nx
 
 # Create FastAPI app
 app = FastAPI(title="MCP Memory Server", version="1.0.0")
+
+# Mount static files
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Initialize Memory Manager (The Singleton that holds the DB lock)
 try:
@@ -21,8 +29,9 @@ except Exception as e:
     print(f"❌ Failed to initialize Memory Manager: {e}")
     sys.exit(1)
 
-# Dashboard HTML Template
-DASHBOARD_HTML = """
+# Dashboard HTML Template - Now served from static/index.html
+# Keeping this var for reference or fallback, but actual serving uses FileResponse
+DASHBOARD_HTML_LEGACY = """
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -117,12 +126,12 @@ def log_event(message: str):
     if len(LOG_BUFFER) > 50:
         LOG_BUFFER.pop(0)
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=FileResponse)
 async def dashboard():
     """
-    Serve the dashboard
+    Serve the Cyber-Brain Dashboard
     """
-    return DASHBOARD_HTML
+    return os.path.join(static_dir, "index.html")
 
 @app.get("/dashboard/stats")
 async def get_stats():
@@ -137,6 +146,24 @@ async def get_stats():
         }
     except Exception as e:
         return {"error": str(e)}
+
+@app.get("/dashboard/graph")
+async def get_graph_data():
+    """
+    Get Knowledge Graph data for visualization (D3/ForceGraph format)
+    """
+    try:
+        # 1. Load Graph from NetworkX
+        # Note: Accessing store.graph directly. It's thread-safe enough for reading here.
+        # Ideally should use a read-lock but for viz it's okay.
+        G = memory_manager.store.graph
+        
+        # 2. Convert to D3 format {nodes: [], links: []}
+        data = nx.node_link_data(G)
+        return data
+    except Exception as e:
+        print(f"Error serving graph data: {e}")
+        return {"nodes": [], "links": []}
 
 @app.get("/dashboard/logs")
 async def get_logs():
