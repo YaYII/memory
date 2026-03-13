@@ -30,7 +30,7 @@ class MemoryStore:
         
         # --- Knowledge Graph Initialization ---
         self.graph_path = os.path.join(data_path, "knowledge_graph.json")
-        self.graph = nx.Graph()
+        self.graph = nx.DiGraph() # Use Directed Graph for Hierarchy
         self._load_graph()
     
     def _load_graph(self):
@@ -40,9 +40,12 @@ class MemoryStore:
                 with open(self.graph_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.graph = nx.node_link_graph(data)
+                    # Ensure it's a DiGraph if loaded as Graph
+                    if not self.graph.is_directed():
+                        self.graph = self.graph.to_directed()
             except Exception as e:
                 print(f"加载知识图谱失败: {e}")
-                self.graph = nx.Graph()
+                self.graph = nx.DiGraph()
 
     def _save_graph(self):
         """保存图谱"""
@@ -54,22 +57,29 @@ class MemoryStore:
         except Exception as e:
             print(f"Failed to save knowledge graph: {e}")
 
-    def add_entities_to_graph(self, memory_id: str, entities: List[str]):
+    def add_entities_to_graph(self, memory_id: str, entities: List[str], category: Optional[str] = None):
         """
-        将实体和记忆ID关联到图谱中
-        Structure: EntityNode <-> MemoryNode
+        将实体和记忆ID关联到图谱中，并建立技能树层级
+        Structure: Category (Root) -> Entity (Branch) -> Memory (Leaf)
         """
         if not entities:
             return
             
-        # Add memory node
+        # 1. 确保分类节点存在 (作为技能树的根)
+        root_id = category or "General"
+        self.graph.add_node(root_id, type="category", label=root_id)
+        
+        # 2. 添加记忆节点
         self.graph.add_node(memory_id, type="memory")
         
         for entity in entities:
-            # Add entity node (if not exists)
-            self.graph.add_node(entity, type="entity")
-            # Link memory to entity
-            self.graph.add_edge(memory_id, entity, relation="contains")
+            # 3. 添加实体节点
+            self.graph.add_node(entity, type="entity", label=entity)
+            
+            # 4. 建立层级关系：Category -> Entity -> Memory
+            # 这样在技能树视图 (DAG TD) 下会呈现树状
+            self.graph.add_edge(root_id, entity, relation="contains")
+            self.graph.add_edge(entity, memory_id, relation="detailed_in")
             
         self._save_graph()
 
@@ -186,6 +196,34 @@ class MemoryStore:
         中文分词 helper
         """
         return list(jieba.cut_for_search(text))
+
+    def _fallback_extract_entities(self, text: str) -> List[str]:
+        """
+        [Fallback] 无 LLM 时的简单实体提取逻辑
+        使用正则匹配代码相关的关键信息：文件名、路径、变量名、技术栈
+        """
+        import re
+        entities = set()
+        
+        # 1. 匹配路径和文件名 (e.g., src/main.py, config.json)
+        paths = re.findall(r'[a-zA-Z0-9_\-\./]+\.[a-zA-Z0-9]+', text)
+        entities.update(paths)
+        
+        # 2. 匹配大驼峰/小驼峰 (可能是类名或变量名)
+        camel_cases = re.findall(r'\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b|\b[a-z]+(?:[A-Z][a-z]+)+\b', text)
+        entities.update(camel_cases)
+        
+        # 3. 匹配全大写 (可能是常量或配置项)
+        uppers = re.findall(r'\b[A-Z][A-Z0-9_]{3,}\b', text)
+        entities.update(uppers)
+        
+        # 4. 常见的技术栈关键词
+        tech_keywords = ["Python", "JavaScript", "FastAPI", "Docker", "NVIDIA", "CUDA", "PyTorch", "React", "Vue", "MCP", "ChromaDB"]
+        for kw in tech_keywords:
+            if kw.lower() in text.lower():
+                entities.add(kw)
+                
+        return list(entities)
 
     def search(self, query: str, user_id: str, project_id: Optional[str] = None, limit: int = 10) -> List[dict]:
         """
@@ -460,3 +498,31 @@ class MemoryStore:
             print(f"Delete failed: {e}")
             raise e
 
+    def update_memory_content(self, memory_id: str, user_id: str, content: str) -> bool:
+        """
+        更新记忆内容：仅允许拥有者修改
+        """
+        try:
+            res = self.collection.get(ids=[memory_id])
+            if not res or not res["ids"]:
+                return False
+
+            meta = res["metadatas"][0]
+            if meta["user_id"] != user_id:
+                raise PermissionError("Access Denied: You can only update your own memories.")
+
+            updated_meta = {**meta, "timestamp": datetime.now().isoformat(), "last_accessed": datetime.now().isoformat()}
+
+            def _do_update():
+                self.collection.update(
+                    ids=[memory_id],
+                    documents=[content],
+                    metadatas=[updated_meta]
+                )
+            self._safe_write(_do_update)
+            return True
+        except PermissionError:
+            raise
+        except Exception as e:
+            print(f"Update failed: {e}")
+            raise e

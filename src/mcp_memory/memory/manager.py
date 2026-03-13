@@ -58,5 +58,11 @@ class MemoryManager:
         """
         return self.store.delete(memory_id, user_id)
 
+    def update_memory(self, user_id: str, memory_id: str, content: str) -> bool:
+        """
+        更新记忆
+        """
+        return self.store.update_memory_content(memory_id, user_id, content)
+
 
 import uuid

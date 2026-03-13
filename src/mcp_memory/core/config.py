@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: Optional[str] = None
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
 
+    # 自我进化调度配置
+    MCP_EVOLUTION_ENABLED: bool = True
+    MCP_EVOLUTION_SCAN_INTERVAL_SECONDS: int = 300
+    MCP_EVOLUTION_REFLECTION_INTERVAL_SECONDS: int = 1800
+    MCP_EVOLUTION_SCAN_BATCH_SIZE: int = 50
+    MCP_EVOLUTION_REFLECTION_USER_ID: str = "system_evolution"
+    MCP_EVOLUTION_PROFILE: str = "standard"
+    MCP_EVOLUTION_ADAPTIVE: bool = True
+
     class Config:
         env_file = ".env"
         env_file_encoding = 'utf-8'

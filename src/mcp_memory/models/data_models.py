@@ -49,6 +49,14 @@ class DeleteMemoryRequest(BaseModel):
     memory_id: str = Field(..., description="要删除的记忆ID")
     user_id: str = Field(..., description="当前用户ID（必须是记忆的所有者才能删除）")
 
+class UpdateMemoryRequest(BaseModel):
+    """
+    更新记忆请求
+    """
+    memory_id: str = Field(..., description="要更新的记忆ID")
+    user_id: str = Field(..., description="当前用户ID（必须是记忆的所有者才能修改）")
+    content: str = Field(..., description=f"更新后的记忆内容（必须使用{settings.MCP_MEMORY_LANGUAGE}）")
+
 
 class MCPResponse(BaseModel):
     """

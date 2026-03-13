@@ -41,13 +41,32 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
     })
     .onNodeClick(node => {
         stopAutoRotate();
+        const safeNode = node || {};
+        const event = new CustomEvent('node-selected', { 
+            detail: {
+                id: safeNode.id,
+                label: safeNode.label,
+                title: safeNode.title || safeNode.label || safeNode.id,
+                group: safeNode.group,
+                type: safeNode.type,
+                detail: safeNode.detail || safeNode.content || '',
+                content: safeNode.content || safeNode.detail || '',
+                timestamp: safeNode.timestamp || '',
+                user_id: safeNode.user_id || '',
+                scope: safeNode.scope || ''
+            }
+        });
+        window.dispatchEvent(event);
         // --- Highlighting Logic ---
         const distance = 40;
-        const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+        const nx = node?.x || 1;
+        const ny = node?.y || 1;
+        const nz = node?.z || 1;
+        const distRatio = 1 + distance / Math.hypot(nx, ny, nz);
         
         // 1. Move Camera
         Graph.cameraPosition(
-            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, // new position
+            { x: nx * distRatio, y: ny * distRatio, z: nz * distRatio }, // new position
             node, // lookAt ({ x, y, z })
             3000  // ms transition duration
         );
@@ -59,9 +78,11 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         // Iterate all links to find connections
         // Note: graphData.links contains link objects with source/target as Objects (after D3 init)
         graphData.links.forEach(link => {
-            if (link.source.id === node.id || link.target.id === node.id) {
-                neighbors.add(link.source.id);
-                neighbors.add(link.target.id);
+            const sourceId = link?.source?.id || link?.source;
+            const targetId = link?.target?.id || link?.target;
+            if (sourceId === node.id || targetId === node.id) {
+                neighbors.add(sourceId);
+                neighbors.add(targetId);
                 links.add(link);
             }
         });
@@ -87,20 +108,6 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         
         Graph.linkWidth(link => links.has(link) ? 2 : 0.5);
         
-        // 3. Dispatch Event for UI updates
-        // Use a CustomEvent and ensure the detail property contains the full node object
-        const event = new CustomEvent('node-selected', { 
-            detail: {
-                id: node.id,
-                label: node.label,
-                title: node.title || node.label || node.id,
-                group: node.group,
-                type: node.type,
-                detail: node.detail || node.content || '', // Handle varied naming
-                timestamp: node.timestamp || ''
-            }
-        });
-        window.dispatchEvent(event);
     })
     .onBackgroundClick(() => {
         // Reset Highlight

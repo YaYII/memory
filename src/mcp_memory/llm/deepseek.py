@@ -11,29 +11,79 @@ class DeepSeekClient:
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+        self.interactions: List[Dict] = []
 
-    async def chat_completion(self, messages: List[Dict[str, str]], model: str = "deepseek-chat") -> Optional[str]:
+    def _push_interaction(self, item: Dict):
+        self.interactions.append(item)
+        if len(self.interactions) > 200:
+            self.interactions.pop(0)
+
+    def get_recent_interactions(self, limit: int = 20) -> List[Dict]:
+        return list(reversed(self.interactions[-max(1, limit):]))
+
+    async def chat_completion(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "deepseek-chat",
+        temperature: float = 0.3,
+        max_tokens: Optional[int] = None
+    ) -> Optional[str]:
         """
         调用 DeepSeek API 进行对话
         """
         if not self.api_key:
             print("警告: 未设置 DEEPSEEK_API_KEY。跳过 LLM 调用。")
+            self._push_interaction({
+                "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
+                "model": model,
+                "status": "skipped",
+                "latency_ms": 0,
+                "request_preview": (messages[-1].get("content", "")[:240] if messages else ""),
+                "response_preview": "未设置 DEEPSEEK_API_KEY",
+                "usage": None
+            })
             return None
 
         url = f"{self.base_url}/chat/completions"
         payload = {
             "model": model,
             "messages": messages,
-            "temperature": 0.3 # 保持较低的随机性以获得更稳定的总结
+            "temperature": temperature
         }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
 
+        start = __import__("time").perf_counter()
+        request_preview = messages[-1].get("content", "")[:240] if messages else ""
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 response = await client.post(url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 data = response.json()
-                return data["choices"][0]["message"]["content"]
+                content = data["choices"][0]["message"]["content"]
+                usage = data.get("usage")
+                latency_ms = int((__import__("time").perf_counter() - start) * 1000)
+                self._push_interaction({
+                    "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
+                    "model": model,
+                    "status": "success",
+                    "latency_ms": latency_ms,
+                    "request_preview": request_preview,
+                    "response_preview": content[:240],
+                    "usage": usage
+                })
+                return content
         except Exception as e:
+            latency_ms = int((__import__("time").perf_counter() - start) * 1000)
+            self._push_interaction({
+                "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
+                "model": model,
+                "status": "error",
+                "latency_ms": latency_ms,
+                "request_preview": request_preview,
+                "response_preview": str(e)[:240],
+                "usage": None
+            })
             print(f"调用 DeepSeek API 时出错: {e}")
             return None
 
@@ -223,11 +273,22 @@ class DeepSeekClient:
         }
 
         try:
+            start = __import__("time").perf_counter()
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(url, headers=self.headers, json=payload)
                 response.raise_for_status()
                 data = response.json()
                 content = data["choices"][0]["message"]["content"].strip()
+                latency_ms = int((__import__("time").perf_counter() - start) * 1000)
+                self._push_interaction({
+                    "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
+                    "model": "deepseek-chat",
+                    "status": "success",
+                    "latency_ms": latency_ms,
+                    "request_preview": prompt[:240],
+                    "response_preview": content[:240],
+                    "usage": data.get("usage")
+                })
                 
                 if "NO_CONTEXT" in content:
                     return None
@@ -238,5 +299,14 @@ class DeepSeekClient:
                 return corrected_content
                 
         except Exception as e:
+            self._push_interaction({
+                "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
+                "model": "deepseek-chat",
+                "status": "error",
+                "latency_ms": 0,
+                "request_preview": prompt[:240],
+                "response_preview": str(e)[:240],
+                "usage": None
+            })
             print(f"DeepSeek API 综合检索结果时出错: {e}")
             return None
