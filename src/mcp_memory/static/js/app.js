@@ -143,7 +143,7 @@ function addThinkingStep(msg) {
     }
 }
 
-function openDetailModal(node) {
+async function openDetailModal(node) {
     const title = node.title || node.label || node.id;
     selectedMemoryNode = node;
     stopAutoRotate();
@@ -152,18 +152,39 @@ function openDetailModal(node) {
     document.getElementById('detail-type').innerText = node.type || '-';
     document.getElementById('detail-group').innerText = node.group || '-';
     document.getElementById('detail-time').innerText = node.timestamp || '-';
-    detailBody.value = node.detail || `节点ID: ${node.id || '-'}`;
+    
+    // If detail is empty or it looks truncated (simple heuristic), fetch full content
+    let content = node.detail || node.content || '';
+    if (node.type === 'memory' && node.id) {
+        detailBody.value = "正在加载详细内容...";
+        detailBody.readOnly = true;
+        try {
+            const res = await fetch(`/dashboard/memory/${encodeURIComponent(node.id)}`);
+            if (res.ok) {
+                const data = await res.json();
+                content = data.content || content;
+                // Update local node reference
+                node.detail = content;
+                node.timestamp = data.timestamp || node.timestamp;
+                node.user_id = data.user_id || node.user_id;
+                document.getElementById('detail-time').innerText = node.timestamp || '-';
+            }
+        } catch (e) {
+            console.error("Failed to fetch memory details:", e);
+            content = content || `无法加载详情 (ID: ${node.id})`;
+        }
+    }
+    
+    detailBody.value = content || `节点ID: ${node.id || '-'}`;
 
-    const canEdit = node.type === 'memory' && !!node.id && !!node.user_id;
+    const canEdit = node.type === 'memory' && !!node.id;
     detailBody.readOnly = !canEdit;
     detailSaveBtn.style.display = canEdit ? 'block' : 'none';
-    if (!canEdit) {
-        detailBody.readOnly = true;
-    }
 }
 
 // --- Dispatch Event for Node Click (to be caught by React/Vue if needed, or just logging here) ---
 window.addEventListener('node-selected', (e) => {
+    console.log("Node Selected Event Received:", e.detail);
     const node = e.detail;
     const title = node.title || node.label || node.id;
     addLog(`选定节点: ${title}（${node.group || 'General'}）`, 'info');

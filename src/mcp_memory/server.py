@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from mcp_memory.memory.manager import MemoryManager
-from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest
+from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest, UpdateMemoryRequest
 from mcp_memory.core.config import settings
 from mcp_memory.memory.cognitive import CognitiveProcessor
 import uvicorn
@@ -80,6 +80,9 @@ class LogStream:
 
 log_stream = LogStream()
 LOG_BUFFER = []
+EVOLUTION_SCAN_TASK = None
+EVOLUTION_REFLECTION_TASK = None
+EVOLUTION_PROFILE_OVERRIDE = None
 
 async def log_event(message: str):
     """Log an event to the buffer and broadcast via SSE"""
@@ -123,6 +126,64 @@ async def system_heartbeat_task():
         except Exception:
             pass
 
+def resolve_evolution_policy() -> dict:
+    profile = (EVOLUTION_PROFILE_OVERRIDE or settings.MCP_EVOLUTION_PROFILE or "standard").lower()
+    if profile not in ["light", "standard", "aggressive"]:
+        profile = "standard"
+
+    policy = {
+        "light": {"scan_interval": 900, "reflection_interval": 3600, "batch_size": 20},
+        "standard": {"scan_interval": 300, "reflection_interval": 1800, "batch_size": 50},
+        "aggressive": {"scan_interval": 120, "reflection_interval": 900, "batch_size": 120}
+    }[profile].copy()
+
+    if not settings.MCP_EVOLUTION_ADAPTIVE:
+        policy["scan_interval"] = settings.MCP_EVOLUTION_SCAN_INTERVAL_SECONDS
+        policy["reflection_interval"] = settings.MCP_EVOLUTION_REFLECTION_INTERVAL_SECONDS
+        policy["batch_size"] = settings.MCP_EVOLUTION_SCAN_BATCH_SIZE
+        policy["profile"] = profile
+        policy["adaptive"] = False
+        return policy
+
+    try:
+        memory_count = memory_manager.store.collection.count()
+    except Exception:
+        memory_count = 0
+
+    if memory_count >= 500:
+        policy["scan_interval"] = max(policy["scan_interval"], 300)
+        policy["reflection_interval"] = max(policy["reflection_interval"], 1800)
+        policy["batch_size"] = min(policy["batch_size"], 80)
+    elif memory_count <= 100:
+        policy["scan_interval"] = min(policy["scan_interval"], 180)
+        policy["reflection_interval"] = min(policy["reflection_interval"], 900)
+        policy["batch_size"] = max(policy["batch_size"], 60)
+
+    policy["profile"] = profile
+    policy["adaptive"] = True
+    policy["memory_count"] = memory_count
+    return policy
+
+async def periodic_evolution_scan_task():
+    while True:
+        try:
+            policy = resolve_evolution_policy()
+            await asyncio.sleep(policy["scan_interval"])
+            processed = await cognitive_processor.periodic_scan_once(batch_size=policy["batch_size"])
+            log_event(f"[EVOLUTION] 周期扫描完成，本轮处理 {processed} 条记忆。策略={policy['profile']} 批量={policy['batch_size']}")
+        except Exception as e:
+            log_event(f"[EVOLUTION] 周期扫描失败: {e}")
+
+async def periodic_evolution_reflection_task():
+    while True:
+        try:
+            policy = resolve_evolution_policy()
+            await asyncio.sleep(policy["reflection_interval"])
+            await cognitive_processor.run_reflection(settings.MCP_EVOLUTION_REFLECTION_USER_ID)
+            log_event(f"[EVOLUTION] 周期反思完成。策略={policy['profile']}")
+        except Exception as e:
+            log_event(f"[EVOLUTION] 周期反思失败: {e}")
+
 @app.get("/dashboard/events")
 async def events_endpoint():
     """
@@ -132,7 +193,14 @@ async def events_endpoint():
 
 @app.on_event("startup")
 async def startup_event():
+    cognitive_processor.is_running = True
+    cognitive_processor.set_logger(log_event)
     asyncio.create_task(system_heartbeat_task())
+    if settings.MCP_EVOLUTION_ENABLED:
+        global EVOLUTION_SCAN_TASK, EVOLUTION_REFLECTION_TASK
+        EVOLUTION_SCAN_TASK = asyncio.create_task(periodic_evolution_scan_task())
+        EVOLUTION_REFLECTION_TASK = asyncio.create_task(periodic_evolution_reflection_task())
+        log_event("[EVOLUTION] 自我进化调度器已启动。")
 
 @app.get("/", response_class=FileResponse)
 async def dashboard():
@@ -155,6 +223,117 @@ async def get_stats():
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/dashboard/evolution/status")
+async def get_evolution_status():
+    policy = resolve_evolution_policy()
+    status = cognitive_processor.get_status()
+    status.update({
+        "enabled": settings.MCP_EVOLUTION_ENABLED,
+        "profile": policy["profile"],
+        "adaptive": policy["adaptive"],
+        "scan_interval_seconds": policy["scan_interval"],
+        "reflection_interval_seconds": policy["reflection_interval"],
+        "scan_batch_size": policy["batch_size"],
+        "scan_task_running": bool(EVOLUTION_SCAN_TASK and not EVOLUTION_SCAN_TASK.done()),
+        "reflection_task_running": bool(EVOLUTION_REFLECTION_TASK and not EVOLUTION_REFLECTION_TASK.done())
+    })
+    return status
+
+@app.get("/dashboard/deepseek/interactions")
+async def get_deepseek_interactions(limit: int = 20):
+    return {
+        "enabled": bool(settings.DEEPSEEK_API_KEY),
+        "items": cognitive_processor.llm.get_recent_interactions(limit=limit)
+    }
+
+@app.get("/dashboard/memory/{memory_id}")
+async def get_memory_detail(memory_id: str):
+    """
+    Get full details for a specific memory
+    """
+    try:
+        # Use get() with specific ID
+        raw = memory_manager.store.collection.get(ids=[memory_id])
+        if not raw["ids"]:
+            raise HTTPException(status_code=404, detail="Memory not found")
+            
+        content = raw["documents"][0]
+        meta = raw["metadatas"][0]
+        
+        return {
+            "id": memory_id,
+            "content": content,
+            "timestamp": meta.get("timestamp", ""),
+            "scope": meta.get("scope", "project"),
+            "user_id": meta.get("user_id", "")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/dashboard/memory/search")
+async def dashboard_search_memories(query: str, limit: int = 20):
+    """
+    看板搜索：按语义查询记忆，返回可展示的标题与详情
+    """
+    try:
+        if not query.strip():
+            return {"items": []}
+        res = memory_manager.store.collection.query(query_texts=[query], n_results=max(1, min(limit, 50)))
+        ids = res.get("ids", [[]])[0] if res.get("ids") else []
+        docs = res.get("documents", [[]])[0] if res.get("documents") else []
+        metas = res.get("metadatas", [[]])[0] if res.get("metadatas") else []
+        items = []
+        for i, mid in enumerate(ids):
+            content = docs[i] if i < len(docs) else ""
+            meta = metas[i] if i < len(metas) else {}
+            first_line = (content or "").splitlines()[0].strip()
+            title = first_line[:28] + "…" if len(first_line) > 28 else (first_line or f"记忆 {str(mid)[:8]}")
+            items.append({
+                "id": mid,
+                "title": title,
+                "content": content,
+                "timestamp": meta.get("timestamp", ""),
+                "scope": meta.get("scope", "project"),
+                "user_id": meta.get("user_id", "")
+            })
+        return {"items": items}
+    except Exception as e:
+        return {"items": [], "error": str(e)}
+
+@app.post("/dashboard/memory/update")
+async def dashboard_update_memory(req: UpdateMemoryRequest, background_tasks: BackgroundTasks):
+    """
+    看板更新记忆内容
+    """
+    try:
+        success = memory_manager.update_memory(req.user_id, req.memory_id, req.content)
+        if not success:
+            raise HTTPException(status_code=404, detail="未找到可更新的记忆")
+        log_event(f"看板更新记忆成功: {req.memory_id[:8]}")
+        background_tasks.add_task(
+            cognitive_processor.process_memory_event,
+            memory_id=req.memory_id,
+            content=req.content,
+            user_id=req.user_id
+        )
+        return {"status": "ok", "id": req.memory_id}
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="无权限更新该记忆")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dashboard/evolution/profile")
+async def set_evolution_profile(profile: str):
+    global EVOLUTION_PROFILE_OVERRIDE
+    profile = (profile or "").lower()
+    if profile not in ["light", "standard", "aggressive"]:
+        raise HTTPException(status_code=400, detail="profile 必须是 light/standard/aggressive")
+    EVOLUTION_PROFILE_OVERRIDE = profile
+    log_event(f"[EVOLUTION] 已切换自我进化策略为: {profile}")
+    return {"status": "ok", "profile": profile}
+
 @app.get("/dashboard/graph")
 async def get_graph_data():
     """
@@ -162,43 +341,76 @@ async def get_graph_data():
     Enriched with Category/Group logic
     """
     try:
-        # 1. 从 NetworkX 加载图谱
         G = memory_manager.store.graph
-        
-        # 2. 增强数据：为节点添加 'group' 属性
-        # NetworkX 的 node_link_data 会保留节点属性
-        # 我们需要在转换前或转换后注入 group
         data = nx.node_link_data(G)
-        
+
+        memory_ids = [str(n.get("id")) for n in data.get("nodes", []) if n.get("type") == "memory"]
+        memory_payload = {}
+        if memory_ids:
+            raw = memory_manager.store.collection.get(ids=memory_ids)
+            ids = raw.get("ids", [])
+            docs = raw.get("documents", [])
+            metas = raw.get("metadatas", [])
+            for i, mid in enumerate(ids):
+                content = docs[i] if i < len(docs) else ""
+                meta = metas[i] if i < len(metas) else {}
+                first_line = (content or "").splitlines()[0].strip()
+                short_title = first_line[:22] + "…" if len(first_line) > 22 else first_line
+                if not short_title:
+                    short_title = f"记忆 {str(mid)[:8]}"
+                memory_payload[str(mid)] = {
+                    "title": short_title,
+                    "detail": content or "",
+                    "timestamp": meta.get("timestamp", ""),
+                    "scope": meta.get("scope", "project"),
+                    "user_id": meta.get("user_id", "")
+                }
+
+        category_name_map = {
+            "Coding": "编程技能",
+            "Config": "环境配置",
+            "Personal": "用户画像",
+            "General": "通用知识",
+            "Knowledge": "知识体系",
+            "Other": "其他"
+        }
+
         enriched_nodes = []
-        for node in data['nodes']:
-            # 默认
+        for node in data.get("nodes", []):
             group = "General"
-            node_id = str(node.get('id', '')).lower()
-            
-            # 如果节点有 metadata，优先使用
-            # 但 NetworkX 存储的节点属性可能只是 ID，需要查 DB 或者看 Graph 属性
-            # 这里假设 store.graph 存储了部分元数据
-            
-            # Heuristic Categorization based on ID/Label keywords
-            if any(k in node_id for k in ['python', 'java', 'code', 'function', 'api', 'class', 'method', 'git', 'docker']):
+            node_id = str(node.get("id", ""))
+            node_id_lower = node_id.lower()
+            node_type = node.get("type", "")
+
+            if any(k in node_id_lower for k in ["python", "java", "code", "function", "api", "class", "method", "git", "docker"]):
                 group = "Coding"
-            elif any(k in node_id for k in ['config', 'env', 'port', 'host', 'setting', 'setup']):
+            elif any(k in node_id_lower for k in ["config", "env", "port", "host", "setting", "setup"]):
                 group = "Config"
-            elif any(k in node_id for k in ['user', 'profile', 'preference', 'like', 'dislike']):
+            elif any(k in node_id_lower for k in ["user", "profile", "preference", "like", "dislike"]):
                 group = "Personal"
-            elif node.get('type') == 'entity':
+            elif node_type == "entity":
                 group = "Entity"
-            
-            # Inject group
-            node['group'] = group
-            
-            # Ensure label exists
-            if 'label' not in node:
-                node['label'] = node.get('id')
-                
+            elif node_type == "category":
+                group = node_id if node_id in category_name_map else "General"
+
+            if node_type == "memory" and node_id in memory_payload:
+                mp = memory_payload[node_id]
+                node["label"] = mp["title"]
+                node["title"] = mp["title"]
+                node["detail"] = mp["detail"]
+                node["timestamp"] = mp["timestamp"]
+                node["scope"] = mp["scope"]
+                node["user_id"] = mp["user_id"]
+            elif node_type == "category":
+                node["label"] = category_name_map.get(node_id, str(node_id))
+                node["title"] = node["label"]
+            elif "label" not in node or not node["label"]:
+                node["label"] = str(node_id)
+                node["title"] = str(node_id)
+
+            node["group"] = group
             enriched_nodes.append(node)
-            
+
         data['nodes'] = enriched_nodes
         return data
     except Exception as e:
@@ -211,6 +423,45 @@ async def get_logs():
     Get recent logs
     """
     return {"logs": list(reversed(LOG_BUFFER))}
+
+@app.post("/dashboard/rebuild_graph")
+async def rebuild_graph(background_tasks: BackgroundTasks):
+    """
+    手动触发全量记忆扫描，重建知识图谱
+    """
+    log_event("正在启动全量记忆扫描以重建知识图谱...")
+    
+    # 获取所有记忆 (由于目前没有 list_all 接口，我们通过 search 空字符串获取)
+    # 实际上应该从 MemoryStore 直接读取
+    background_tasks.add_task(run_full_scan)
+    return {"status": "Rebuild started", "message": "全量扫描已在后台启动"}
+
+async def run_full_scan():
+    """后台全量扫描任务"""
+    try:
+        # 1. 从 Chroma 获取所有文档
+        # 注意：这里直接操作 collection 以获取所有内容
+        all_memories = memory_manager.store.collection.get()
+        ids = all_memories["ids"]
+        docs = all_memories["documents"]
+        metas = all_memories["metadatas"]
+        
+        log_event(f"发现 {len(ids)} 条记忆，正在逐一分析...")
+        
+        for i in range(len(ids)):
+            await cognitive_processor.process_memory_event(
+                memory_id=ids[i],
+                content=docs[i],
+                user_id=metas[i]["user_id"]
+            )
+            # 避免请求过快或占用过多资源
+            if i % 10 == 0:
+                log_event(f"已处理 {i}/{len(ids)} 条记忆...")
+                await asyncio.sleep(0.1)
+                
+        log_event("✅ 全量记忆扫描完成，知识图谱已更新。")
+    except Exception as e:
+        log_event(f"❌ 重建图谱失败: {e}")
 
 @app.get("/health")
 async def health_check():
@@ -239,15 +490,14 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
             scope=req.scope
         )
         
-        # 在后台触发认知处理
-        if settings.DEEPSEEK_API_KEY:
-            log_event(f"正在为记忆 {result[:8]} 触发认知处理")
-            background_tasks.add_task(
-                cognitive_processor.process_memory_event, 
-                memory_id=result, 
-                content=req.content,
-                user_id=req.user_id
-            )
+        # 在后台触发认知处理 (现在支持无 LLM 模式下的基础分析)
+        log_event(f"正在为记忆 {result[:8]} 触发认知处理")
+        background_tasks.add_task(
+            cognitive_processor.process_memory_event, 
+            memory_id=result, 
+            content=req.content,
+            user_id=req.user_id
+        )
             
         return {"id": result}
     except Exception as e:
