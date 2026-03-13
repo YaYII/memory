@@ -87,6 +87,7 @@ document.getElementById('profile-aggressive').addEventListener('click', () => sw
 
 // --- 3. Log Stream Logic ---
 const logContent = document.getElementById('log-content');
+const interactionContent = document.getElementById('interaction-content');
 const detailModal = document.getElementById('detail-modal');
 const detailCloseBtn = document.getElementById('detail-close');
 const detailSaveBtn = document.getElementById('detail-save');
@@ -128,22 +129,30 @@ function addThinkingStep(msg) {
         interactionContent.removeChild(placeholder);
     }
     
+    // Remove "Step X: " prefix if already present in msg to avoid duplication or keep it clean
+    const cleanMsg = msg.replace(/^Step \d+:\s*/, '');
+    
+    // Check if duplicate of last message to prevent flickering loop
+    if (interactionContent.lastElementChild && interactionContent.lastElementChild.textContent.includes(cleanMsg)) {
+        return;
+    }
+    
     const div = document.createElement('div');
     div.className = 'thinking-step';
-    const time = new Date().toLocaleTimeString();
     // Simple parsing for "Step X: ..." format if available, otherwise just text
-    div.innerHTML = `<span style="color: #ff00ff; font-weight: bold;">></span> ${msg}`;
+    div.innerHTML = `<span style="color: #ff00ff; font-weight: bold;">></span> ${cleanMsg}`;
     
     interactionContent.appendChild(div);
     interactionContent.scrollTop = interactionContent.scrollHeight;
     
-    // Keep last 10 steps to avoid overflow
-    while (interactionContent.children.length > 10) {
+    // Keep last 20 steps (increased from 10) to avoid overflow
+    while (interactionContent.children.length > 20) {
         interactionContent.removeChild(interactionContent.firstChild);
     }
 }
 
 async function openDetailModal(node) {
+    if (!node) return;
     const title = node.title || node.label || node.id;
     selectedMemoryNode = node;
     stopAutoRotate();
@@ -177,7 +186,7 @@ async function openDetailModal(node) {
     
     detailBody.value = content || `节点ID: ${node.id || '-'}`;
 
-    const canEdit = node.type === 'memory' && !!node.id;
+    const canEdit = node.type === 'memory' && !!node.id && !!node.user_id;
     detailBody.readOnly = !canEdit;
     detailSaveBtn.style.display = canEdit ? 'block' : 'none';
 }
@@ -186,6 +195,7 @@ async function openDetailModal(node) {
 window.addEventListener('node-selected', (e) => {
     console.log("Node Selected Event Received:", e.detail);
     const node = e.detail;
+    if (!node) return;
     const title = node.title || node.label || node.id;
     addLog(`选定节点: ${title}（${node.group || 'General'}）`, 'info');
     openDetailModal(node);

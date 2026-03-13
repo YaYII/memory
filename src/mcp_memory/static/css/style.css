@@ -1,26 +1,26 @@
 body { margin: 0; overflow: hidden; background-color: #000; color: #00ff41; font-family: 'Consolas', 'Monaco', monospace; }
 #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-#ui-layer { position: absolute; top: 20px; left: 20px; z-index: 2; pointer-events: none; width: 100%; height: 100%; }
+#ui-layer { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; width: 100%; height: 100%; }
 
 /* 交互面板样式 */
 .interaction-panel {
+    position: fixed !important;
     top: auto; 
-    bottom: 20px; /* Move to bottom-right */
-    right: 20px; 
+    bottom: 20px; /* Align bottom with Log Panel */
+    right: 20px;  /* Align right with Legend Panel */
     left: auto;
     transform: none;
     width: 320px; 
-    height: 250px; /* Fixed height to match log panel */
-    min-height: 200px;
-    max-height: 400px;
+    height: 250px; /* Match height of Log Panel */
+    border: 1px solid rgba(255, 0, 255, 0.5);
     border-right: 3px solid #ff00ff; /* Changed to right border for symmetry */
     border-left: 1px solid #ff00ff;
-    border: 1px solid rgba(255, 0, 255, 0.5);
-    background: rgba(10, 0, 20, 0.7); /* More transparent */
-    box-shadow: 0 0 15px rgba(255, 0, 255, 0.1);
+    background: rgba(10, 0, 20, 0.85); /* Slightly less transparent to prevent flickering perception */
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.15);
     display: flex;
     flex-direction: column;
     backdrop-filter: blur(8px); /* Enhance glass effect */
+    z-index: 6;
 }
 
 /* 赛博朋克风格面板 - 通用调整 */
