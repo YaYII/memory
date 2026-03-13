@@ -21,14 +21,14 @@
     <div id="canvas-container"></div>
     <div id="graph-placeholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; text-align: center; display: none;">
         <h2 style="color: #00ff41; font-size: 24px; text-shadow: 0 0 10px #00ff41;">暂无认知数据</h2>
-        <p style="color: #008f11; max-width: 400px;">当前记忆库尚未经过认知分析，图谱与技能树暂时无法显示。<br><br><b>提示：</b>需要配置 DEEPSEEK_API_KEY 以开启后台认知处理，或手动触发记忆扫描。</p>
+        <p style="color: #008f11; max-width: 400px;">当前记忆库尚未经过认知分析，图谱与技能树暂时无法显示。<br><br><b>提示：</b>需要配置 LLM API Key (GLM/DeepSeek) 以开启后台认知处理，或手动触发记忆扫描。</p>
         <button id="rebuild-btn" class="view-btn" style="margin-top: 15px; width: auto; padding: 10px 20px;">手动扫描现有记忆 (Scan Memories)</button>
     </div>
     
     <div id="ui-layer">
-        <!-- DeepSeek Interaction Panel (Moved to Bottom-Right) -->
+        <!-- LLM Interaction Panel (Moved to Bottom-Right) -->
         <div class="panel interaction-panel" id="interaction-panel">
-            <h1>深度思考 (DEEPSEEK THINKING)</h1>
+            <h1 id="thinking-title">深度思考 (LLM THINKING)</h1>
             <div id="interaction-content">
                 <div class="thinking-placeholder">等待思维信号...</div>
             </div>
@@ -41,7 +41,7 @@
             <div class="stat-row"><span>服务状态 (STATUS)</span><span class="stat-val" id="status" style="color: #00ff41;">运行中</span></div>
             <div class="stat-row"><span>大脑活动 (ACTIVITY)</span><span class="stat-val" id="activity">待机</span></div>
             <div class="stat-row"><span>进化策略 (PROFILE)</span><span class="stat-val" id="evolution-profile">标准</span></div>
-            <div class="stat-row"><span>深度思考 (DEEPSEEK)</span><span class="stat-val" id="deepseek-state">未知</span></div>
+            <div class="stat-row"><span>深度思考 (LLM)</span><span class="stat-val" id="llm-state">未知</span></div>
             
             <div class="view-switcher" style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 15px;">
                 <button id="view-neural" class="view-btn active">神经图谱 (Neural)</button>

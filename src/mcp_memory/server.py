@@ -228,9 +228,14 @@ async def get_stats():
     """
     try:
         count = memory_manager.store.collection.count()
+        # 检查是否有任何 LLM 提供商可用
+        providers = settings.providers
+        llm_enabled = len(providers) > 0
         return {
             "memory_count": count,
-            "deepseek_enabled": bool(settings.DEEPSEEK_API_KEY)
+            "llm_enabled": llm_enabled,
+            "providers_count": len(providers),
+            "preferred_provider": settings.MCP_LLM_PROVIDER
         }
     except Exception as e:
         return {"error": str(e)}
@@ -413,25 +418,48 @@ async def set_evolution_profile(profile: str):
     return {"status": "ok", "profile": profile}
 
 @app.get("/dashboard/graph")
-async def get_graph_data():
+async def get_graph_data(days: int = 7, max_nodes: int = 1000):
     """
     获取知识图谱数据用于可视化 (D3/ForceGraph 格式)
     Enriched with Category/Group logic
+    
+    Args:
+        days: 只显示最近几天的记忆 (默认7天)
+        max_nodes: 最大节点数量限制 (默认100个)
     """
     try:
+        from datetime import datetime, timedelta
+        
+        # 计算时间阈值
+        cutoff_date = datetime.now() - timedelta(days=days)
+        
         G = memory_manager.store.graph
         data = nx.node_link_data(G)
 
         memory_ids = [str(n.get("id")) for n in data.get("nodes", []) if n.get("type") == "memory"]
         memory_payload = {}
+        filtered_memory_ids = set()
+        
         if memory_ids:
             raw = memory_manager.store.collection.get(ids=memory_ids)
             ids = raw.get("ids", [])
             docs = raw.get("documents", [])
             metas = raw.get("metadatas", [])
+            
             for i, mid in enumerate(ids):
                 content = docs[i] if i < len(docs) else ""
                 meta = metas[i] if i < len(metas) else {}
+                timestamp_str = meta.get("timestamp", "")
+                
+                # 检查时间是否在范围内
+                try:
+                    if timestamp_str:
+                        memory_date = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                        if memory_date < cutoff_date:
+                            continue  # 跳过过期的记忆
+                except:
+                    pass  # 如果解析失败，保留该记忆
+                
                 first_line = (content or "").splitlines()[0].strip()
                 short_title = first_line[:22] + "…" if len(first_line) > 22 else first_line
                 if not short_title:
@@ -439,10 +467,11 @@ async def get_graph_data():
                 memory_payload[str(mid)] = {
                     "title": short_title,
                     "detail": content or "",
-                    "timestamp": meta.get("timestamp", ""),
+                    "timestamp": timestamp_str,
                     "scope": meta.get("scope", "project"),
                     "user_id": meta.get("user_id", "")
                 }
+                filtered_memory_ids.add(str(mid))
 
         category_name_map = {
             "Coding": "编程技能",
@@ -454,11 +483,24 @@ async def get_graph_data():
         }
 
         enriched_nodes = []
+        filtered_node_ids = set()
+        
         for node in data.get("nodes", []):
-            group = "General"
             node_id = str(node.get("id", ""))
-            node_id_lower = node_id.lower()
             node_type = node.get("type", "")
+            
+            # 如果是记忆节点，检查是否通过时间过滤
+            if node_type == "memory" and node_id not in filtered_memory_ids:
+                continue
+            
+            # 限制节点数量
+            if len(filtered_node_ids) >= max_nodes:
+                break
+                
+            filtered_node_ids.add(node_id)
+            
+            group = "General"
+            node_id_lower = node_id.lower()
 
             if any(k in node_id_lower for k in ["python", "java", "code", "function", "api", "class", "method", "git", "docker"]):
                 group = "Coding"
@@ -488,11 +530,23 @@ async def get_graph_data():
 
             node["group"] = group
             enriched_nodes.append(node)
+        
+        # 过滤链接，只保留两个端点都在过滤后节点集中的链接
+        filtered_links = []
+        for link in data.get("links", []):
+            source_id = str(link.get("source", ""))
+            target_id = str(link.get("target", ""))
+            if source_id in filtered_node_ids and target_id in filtered_node_ids:
+                filtered_links.append(link)
 
-        data['nodes'] = enriched_nodes
-        return data
+        return {
+            "nodes": enriched_nodes,
+            "links": filtered_links
+        }
     except Exception as e:
         print(f"提供图谱数据时出错: {e}")
+        import traceback
+        traceback.print_exc()
         return {"nodes": [], "links": []}
 
 @app.get("/dashboard/logs")

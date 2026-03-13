@@ -98,9 +98,13 @@ const memorySearchResults = document.getElementById('memory-search-results');
 let selectedMemoryNode = null;
 let lastLogMsg = "";
 
+// 当前 LLM 提供商信息
+let currentLLMProvider = '未知';
+let currentLLMModel = '';
+
 function detectLogType(msg = '') {
     if (msg.includes('失败') || msg.includes('错误') || msg.includes('❌')) return 'error';
-    if (msg.includes('[DEEPSEEK]') || msg.includes('成功') || msg.includes('✅')) return 'success';
+    if (msg.includes('[GLM]') || msg.includes('[DEEPSEEK]') || msg.includes('成功') || msg.includes('✅')) return 'success';
     if (msg.includes('警告') || msg.includes('重连') || msg.includes('扫描中')) return 'warn';
     return 'info';
 }
@@ -317,8 +321,8 @@ function initLogStream() {
                 lastLogMsg = msg;
                 addLog(msg, detectLogType(msg));
                 
-                // If it's a DeepSeek/Cognitive log, also add to interaction panel
-                if (msg.includes('DeepSeek') || msg.includes('认知') || msg.includes('思考') || msg.includes('分析')) {
+                // If it's a LLM/Cognitive log, also add to interaction panel
+                if (msg.includes('[GLM]') || msg.includes('[DEEPSEEK]') || msg.includes('认知') || msg.includes('思考') || msg.includes('分析')) {
                     addThinkingStep(msg.replace(/\[.*?\]\s*/, '')); // Remove timestamp prefix if present
                 }
                 
@@ -352,14 +356,44 @@ function initLogStream() {
 }
 
 // --- 4. Polling Loop (Stats & Graph only) ---
+async function fetchLLMStatus() {
+    try {
+        const res = await fetch('/dashboard/llm/status');
+        if (res.ok) {
+            const status = await res.json();
+            currentLLMProvider = status.preferred_provider || '未知';
+            
+            // 更新 LLM 状态显示
+            const llmStateEl = document.getElementById('llm-state');
+            const thinkingTitleEl = document.getElementById('thinking-title');
+            
+            if (status.available_providers && status.available_providers.length > 0) {
+                const providerText = status.available_providers.join(', ').toUpperCase();
+                llmStateEl.innerText = `${currentLLMProvider.toUpperCase()} 已启用`;
+                llmStateEl.style.color = '#00ffff';
+                
+                if (thinkingTitleEl) {
+                    thinkingTitleEl.innerText = `深度思考 (${currentLLMProvider.toUpperCase()} THINKING)`;
+                }
+            } else {
+                llmStateEl.innerText = '未启用';
+                llmStateEl.style.color = '#ffff00';
+            }
+        }
+    } catch (e) {
+        console.error('获取 LLM 状态失败:', e);
+    }
+}
+
 async function fetchState() {
     try {
         // Stats
         const statsRes = await fetch('/dashboard/stats');
         const stats = await statsRes.json();
         document.getElementById('mem-count').innerText = stats.memory_count;
-        document.getElementById('deepseek-state').innerText = stats.deepseek_enabled ? '已启用' : '未启用';
-        document.getElementById('deepseek-state').style.color = stats.deepseek_enabled ? '#00ffff' : '#ffff00';
+        
+        // 获取 LLM 状态
+        await fetchLLMStatus();
 
         // Evolution Status
         const evoRes = await fetch('/dashboard/evolution/status');

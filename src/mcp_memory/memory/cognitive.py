@@ -44,6 +44,9 @@ class CognitiveProcessor:
 
     def get_status(self) -> dict:
         router_status = self.llm.get_status()
+        # 获取首选提供商名称
+        preferred = router_status.get("preferred_provider", "unknown")
+        available = router_status.get("available_providers", [])
         return {
             "running": self.is_running,
             "last_scan_time": self.last_scan_time.isoformat() if self.last_scan_time else None,
@@ -52,7 +55,9 @@ class CognitiveProcessor:
             "last_scan_processed": self.last_scan_processed,
             "last_error": self.last_error,
             "last_reflection_note": self.last_reflection_note,
-            "deepseek_enabled": True,
+            "llm_enabled": len(available) > 0,
+            "preferred_provider": preferred,
+            "available_providers": available,
             "llm_status": router_status
         }
 
