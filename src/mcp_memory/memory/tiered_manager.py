@@ -6,7 +6,7 @@
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from mcp_memory.memory.tiered_memory import TieredMemoryStore
-from mcp_memory.memory.auto_summarizer import AutoSummarizer
+from mcp_memory.memory.auto_summarizer_v2 import AutoSummarizerV2
 from mcp_memory.models.data_models import (
     MemoryItem, MemoryLink,
     StorageMemoryCreate, ThinkingMemoryCreate, SkillMemoryCreate,
@@ -38,7 +38,7 @@ class TieredMemoryManager:
             self._using_external_store = False
             print(f"[TieredManager] 使用内部TieredMemoryStore")
         
-        self.summarizer = AutoSummarizer(self.store)
+        self.summarizer = AutoSummarizerV2(self.store)
         self._initialized = False
     
     async def initialize(self):

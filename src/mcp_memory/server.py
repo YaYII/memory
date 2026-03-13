@@ -5,6 +5,7 @@ from mcp_memory.memory.manager import MemoryManager
 from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest, DeleteMemoryRequest, UpdateMemoryRequest
 from mcp_memory.core.config import settings
 from mcp_memory.memory.cognitive import CognitiveProcessor
+from mcp_memory.memory.agent_processor import MemoryAgentProcessor
 import uvicorn
 import os
 import sys
@@ -29,7 +30,10 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 try:
     memory_manager = MemoryManager()
     cognitive_processor = CognitiveProcessor(memory_manager)
+    # 初始化智能体处理器
+    agent_processor = MemoryAgentProcessor()
     print("✅ 记忆管理器初始化成功。")
+    print("✅ 智能体处理器初始化成功（V2深度思考模式）")
 except Exception as e:
     print(f"❌ 无法初始化记忆管理器: {e}")
     sys.exit(1)
@@ -654,19 +658,27 @@ async def health_check():
 @app.post("/memory/write")
 async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: BackgroundTasks):
     """
-    写入记忆接口
+    写入记忆接口（已集成智能体处理器）
     """
     try:
+        # 使用智能体处理器处理写入内容
+        processed = agent_processor.process_before_write(
+            content=req.content,
+            memory_type="storage",
+            scope=req.scope,
+            tags=[]
+        )
+        
+        # 记录智能体处理信息
+        suggested_type = processed["metadata"].get("suggested_type", "storage")
+        log_event(f"🤖 智能体分析: 建议分类为 {suggested_type}")
+        log_event(f"🤖 智能体核心意图: {processed['metadata']['intent_analysis']['core_intent']}")
+        
         # project_id: 如果 AI 不传，manager 会使用当前自动检测的 CWD ID
-        # 注意：在客户端-服务器模式下，project_id 可能来自客户端请求
-        # 如果客户端未设置，此处将为 None。
-        # 但 MemoryManager 会使用 settings.MCP_PROJECT_ID 作为备选。
-        # 然而，此处的 settings 反映的是服务器的环境。
-        # 如果客户端希望上下文隔离，我们应该依赖其传递 project_id。
         log_event(f"正在为用户 {req.user_id} 写入记忆 (范围: {req.scope})")
         result = memory_manager.write_memory(
             req.user_id, 
-            req.content, 
+            req.content,  # 保留原始内容，不压缩
             project_id=req.project_id, 
             scope=req.scope
         )
@@ -679,22 +691,34 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
             content=req.content,
             user_id=req.user_id
         )
-            
-        return {"id": result}
+        
+        # 返回包含智能体分析的结果
+        return {
+            "id": result,
+            "agent_processed": True,
+            "suggested_type": suggested_type,
+            "intent_analysis": processed["metadata"]["intent_analysis"],
+            "capabilities_applied": agent_processor.get_capabilities()
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/memory/read")
 async def read_memory_endpoint(req: ReadMemoryRequest):
     """
-    读取记忆接口，可选 DeepSeek 综合
+    读取记忆接口，可选 DeepSeek 综合（已集成智能体处理器）
     """
     try:
         # 1. 检索原始记忆
         log_event(f"正在为用户 {req.user_id} 读取记忆 (查询: {req.query})")
         result = memory_manager.read_memory(req.user_id, req.query, req.project_id, req.limit)
         
-        # 2. 如果已启用且有结果，尝试进行综合
+        # 2. 使用智能体处理器处理读取结果
+        if result:
+            result = agent_processor.process_after_read(result)
+            log_event(f"🤖 智能体处理: 已分析 {len(result)} 条记忆")
+        
+        # 3. 如果已启用且有结果，尝试进行综合
         if settings.DEEPSEEK_API_KEY and result:
             log_event("正在使用 DeepSeek 综合搜索结果...")
             memories = [item["content"] for item in result]
@@ -707,8 +731,15 @@ async def read_memory_endpoint(req: ReadMemoryRequest):
                 return [{
                     "content": f"【系统整合回答】\n{synthesis}\n\n(基于 {len(result)} 条相关记忆整合)",
                     "timestamp": result[0]["timestamp"], # 使用排名第一结果的时间戳
-                    "id": "synthesis" # 虚拟 ID
+                    "id": "synthesis", # 虚拟 ID
+                    "agent_processed": True,
+                    "capabilities_applied": agent_processor.get_capabilities()
                 }]
+        
+        # 添加智能体处理标记
+        if result:
+            for item in result:
+                item["agent_processed"] = True
         
         return result
     except Exception as e:
@@ -717,14 +748,31 @@ async def read_memory_endpoint(req: ReadMemoryRequest):
 @app.post("/memory/reflect")
 async def reflect_memory_endpoint(user_id: str, background_tasks: BackgroundTasks):
     """
-    在后台触发深度反思 (记忆垃圾回收)
+    在后台触发深度反思 (记忆垃圾回收) - 已集成智能体处理器
     """
     if not settings.DEEPSEEK_API_KEY:
         raise HTTPException(status_code=400, detail="未配置 DeepSeek API Key")
-        
-    log_event(f"正在为用户 {user_id} 触发记忆反思")
+    
+    # 获取智能体系统提示词
+    system_prompt = agent_processor.get_system_prompt()
+    capabilities = agent_processor.get_capabilities()
+    
+    log_event(f"🤖 智能体模式: 正在为用户 {user_id} 触发深度反思")
+    log_event(f"🤖 智能体能力: {', '.join(capabilities)}")
+    
     background_tasks.add_task(cognitive_processor.run_reflection, user_id=user_id)
-    return {"status": "反思已启动", "message": "深度思考进程正在后台运行"}
+    return {
+        "status": "反思已启动",
+        "message": "深度思考进程正在后台运行（智能体V2模式）",
+        "agent_mode": True,
+        "capabilities": capabilities,
+        "rules": {
+            "no_compression": True,
+            "deep_analysis": True,
+            "fine_grained_classification": True,
+            "merge_instead_of_delete": True
+        }
+    }
 
 @app.post("/memory/delete")
 async def delete_memory_endpoint(req: DeleteMemoryRequest):
