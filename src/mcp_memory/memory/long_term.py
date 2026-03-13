@@ -596,6 +596,30 @@ class MemoryStore:
             print(f"Update failed: {e}")
             raise e
 
+    def update_memory_metadata(self, memory_id: str, metadata: dict) -> bool:
+        """
+        更新记忆元数据（不修改内容）
+        用于标记记忆处理状态等
+        """
+        try:
+            res = self.collection.get(ids=[memory_id])
+            if not res or not res["ids"]:
+                return False
+
+            existing_meta = res["metadatas"][0] if res["metadatas"] else {}
+            updated_meta = {**existing_meta, **metadata}
+
+            def _do_update():
+                self.collection.update(
+                    ids=[memory_id],
+                    metadatas=[updated_meta]
+                )
+            self._safe_write(_do_update)
+            return True
+        except Exception as e:
+            print(f"[MemoryStore] 更新元数据失败: {e}")
+            return False
+
     # ==================== 三层记忆系统扩展 ====================
     
     def save_storage_memory(self, content: str, user_id: str, session_id: str = None,

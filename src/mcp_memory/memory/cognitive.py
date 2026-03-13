@@ -69,13 +69,21 @@ class CognitiveProcessor:
         docs = all_memories.get("documents", [])
         metas = all_memories.get("metadatas", [])
         processed = 0
+        skipped = 0
 
         for i in range(len(ids)):
             try:
+                # 检查记忆是否已经被处理过
+                metadata = metas[i] if i < len(metas) else {}
+                if metadata.get("cognitive_processed", False):
+                    skipped += 1
+                    continue
+                
                 await self.process_memory_event(
                     memory_id=ids[i],
                     content=docs[i],
-                    user_id=metas[i].get("user_id", settings.MCP_EVOLUTION_REFLECTION_USER_ID)
+                    user_id=metadata.get("user_id", settings.MCP_EVOLUTION_REFLECTION_USER_ID),
+                    metadata=metadata
                 )
                 processed += 1
             except Exception as e:
@@ -85,14 +93,20 @@ class CognitiveProcessor:
         self.last_scan_time = datetime.now()
         self.last_scan_processed = processed
         self.total_scanned += processed
-        await self._emit(f"[EVOLUTION] 周期扫描结束，处理={processed}")
+        await self._emit(f"[EVOLUTION] 周期扫描结束，处理={processed}，跳过={skipped}")
         return processed
 
-    async def process_memory_event(self, memory_id: str, content: str, user_id: str):
+    async def process_memory_event(self, memory_id: str, content: str, user_id: str, metadata: dict = None):
         """
         处理单条记忆写入事件 (Hook)
+        添加标记避免重复处理
         """
         await self._emit(f"[COGNITIVE] 开始分析记忆: {memory_id[:8]}")
+        
+        # 检查是否已经被处理过
+        if metadata and metadata.get("cognitive_processed", False):
+            await self._emit(f"[COGNITIVE] 记忆已处理过，跳过: {memory_id[:8]}")
+            return
 
         has_llm = len(settings.providers) > 0
 
@@ -134,7 +148,17 @@ class CognitiveProcessor:
                     scope="global" if category == "Config" else "project"
                 )
                 await self._emit("[COGNITIVE] 认知总结已写回记忆库")
-        await self._emit(f"[COGNITIVE] 记忆分析完成: {memory_id[:8]}")
+        
+        # 标记记忆为已处理
+        self.memory_manager.store.update_memory_metadata(
+            memory_id=memory_id,
+            metadata={
+                "cognitive_processed": True,
+                "cognitive_processed_at": datetime.now().isoformat(),
+                "cognitive_category": category
+            }
+        )
+        await self._emit(f"[COGNITIVE] 记忆分析完成并标记: {memory_id[:8]}")
 
     async def run_reflection(self, user_id: str):
         """
