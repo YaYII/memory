@@ -39,6 +39,19 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         sprite.textHeight = 2;
         return sprite;
     })
+    .onNodeHover(node => {
+        // Pause auto-rotate on hover
+        if (node) {
+            stopAutoRotate();
+            document.body.style.cursor = 'pointer';
+        } else {
+            // Only resume if detail modal is not open
+            if (!document.getElementById('detail-modal') || document.getElementById('detail-modal').style.display === 'none') {
+                startAutoRotate();
+            }
+            document.body.style.cursor = 'default';
+        }
+    })
     .onNodeClick(node => {
         stopAutoRotate();
         const safeNode = node || {};
@@ -331,6 +344,22 @@ export function focusNodeById(nodeId) {
         node,
         900
     );
+}
+
+export function resetFocus() {
+    // Quick zoom out / reset highlight
+    Graph.nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default']);
+    Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
+    Graph.linkWidth(0.5);
+    
+    // Zoom out to global view
+    Graph.cameraPosition(
+        { x: 0, y: 0, z: 400 }, // Back to far position
+        { x: 0, y: 0, z: 0 },   // Look at origin
+        800                     // Fast transition
+    );
+    
+    startAutoRotate();
 }
 
 export function triggerSpark(nodeId) {

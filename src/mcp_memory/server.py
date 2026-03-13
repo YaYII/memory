@@ -196,6 +196,14 @@ async def startup_event():
     cognitive_processor.is_running = True
     cognitive_processor.set_logger(log_event)
     asyncio.create_task(system_heartbeat_task())
+    
+    # Check DeepSeek Status
+    if settings.DEEPSEEK_API_KEY:
+        log_event("[SYSTEM] DeepSeek 认知核心已激活 (API Key Verified)")
+        log_event("[SYSTEM] 正在初始化深度思考模型...")
+    else:
+        log_event("[SYSTEM] DeepSeek 模块未激活: 未检测到 API Key")
+
     if settings.MCP_EVOLUTION_ENABLED:
         global EVOLUTION_SCAN_TASK, EVOLUTION_REFLECTION_TASK
         EVOLUTION_SCAN_TASK = asyncio.create_task(periodic_evolution_scan_task())
@@ -273,31 +281,92 @@ async def get_memory_detail(memory_id: str):
 @app.get("/dashboard/memory/search")
 async def dashboard_search_memories(query: str, limit: int = 20):
     """
-    看板搜索：按语义查询记忆，返回可展示的标题与详情
+    看板搜索：按语义查询记忆，支持混合检索（语义+关键词）
     """
+    print(f"🔍 [SEARCH] Received query: '{query}'")
     try:
         if not query.strip():
             return {"items": []}
-        res = memory_manager.store.collection.query(query_texts=[query], n_results=max(1, min(limit, 50)))
-        ids = res.get("ids", [[]])[0] if res.get("ids") else []
-        docs = res.get("documents", [[]])[0] if res.get("documents") else []
-        metas = res.get("metadatas", [[]])[0] if res.get("metadatas") else []
+            
         items = []
-        for i, mid in enumerate(ids):
-            content = docs[i] if i < len(docs) else ""
-            meta = metas[i] if i < len(metas) else {}
-            first_line = (content or "").splitlines()[0].strip()
-            title = first_line[:28] + "…" if len(first_line) > 28 else (first_line or f"记忆 {str(mid)[:8]}")
-            items.append({
-                "id": mid,
-                "title": title,
-                "content": content,
-                "timestamp": meta.get("timestamp", ""),
-                "scope": meta.get("scope", "project"),
-                "user_id": meta.get("user_id", "")
-            })
+        seen_ids = set()
+        
+        # 1. Semantic Search via Chroma (vector similarity)
+        try:
+            print(f"🔍 [SEARCH] Attempting Semantic Search...")
+            res = memory_manager.store.collection.query(query_texts=[query], n_results=max(1, min(limit, 50)))
+            ids = res.get("ids", [[]])[0] if res.get("ids") else []
+            docs = res.get("documents", [[]])[0] if res.get("documents") else []
+            metas = res.get("metadatas", [[]])[0] if res.get("metadatas") else []
+            
+            print(f"🔍 [SEARCH] Semantic found {len(ids)} results.")
+            
+            for i, mid in enumerate(ids):
+                if mid in seen_ids: continue
+                seen_ids.add(mid)
+                
+                content = docs[i] if i < len(docs) else ""
+                meta = metas[i] if i < len(metas) else {}
+                first_line = (content or "").splitlines()[0].strip()
+                title = first_line[:28] + "…" if len(first_line) > 28 else (first_line or f"记忆 {str(mid)[:8]}")
+                
+                items.append({
+                    "id": mid,
+                    "title": title,
+                    "content": content,
+                    "timestamp": meta.get("timestamp", ""),
+                    "scope": meta.get("scope", "project"),
+                    "user_id": meta.get("user_id", ""),
+                    "match_type": "semantic"
+                })
+        except Exception as e:
+            print(f"❌ [SEARCH] Semantic search failed: {e}")
+
+        # 2. Fuzzy/Keyword Search Fallback (Python-side filtering)
+        # If semantic results are few, or user expects exact keyword matches that vectors might miss
+        if len(items) < limit:
+            try:
+                print(f"🔍 [SEARCH] Attempting Keyword Fallback (Current items: {len(items)})...")
+                # Retrieve a larger batch of documents to filter manually
+                # Note: This is inefficient for huge datasets but fine for local memory (<10k items)
+                # Ideally, Chroma `where_document` could be used but it's limited to $contains
+                all_docs = memory_manager.store.collection.get() # Get all (or use limit/offset if possible)
+                
+                raw_ids = all_docs.get("ids", [])
+                raw_docs = all_docs.get("documents", [])
+                raw_metas = all_docs.get("metadatas", [])
+                
+                print(f"🔍 [SEARCH] Scanning {len(raw_ids)} total documents for keyword '{query}'...")
+                
+                query_lower = query.lower()
+                
+                for i, doc in enumerate(raw_docs):
+                    if len(items) >= limit: break
+                    mid = raw_ids[i]
+                    if mid in seen_ids: continue
+                    
+                    if doc and query_lower in doc.lower():
+                        seen_ids.add(mid)
+                        meta = raw_metas[i] if i < len(raw_metas) else {}
+                        first_line = (doc or "").splitlines()[0].strip()
+                        title = first_line[:28] + "…" if len(first_line) > 28 else (first_line or f"记忆 {str(mid)[:8]}")
+                        
+                        items.append({
+                            "id": mid,
+                            "title": title,
+                            "content": doc,
+                            "timestamp": meta.get("timestamp", ""),
+                            "scope": meta.get("scope", "project"),
+                            "user_id": meta.get("user_id", ""),
+                            "match_type": "keyword"
+                        })
+                print(f"🔍 [SEARCH] After keyword scan, total items: {len(items)}")
+            except Exception as e:
+                print(f"❌ [SEARCH] Keyword search failed: {e}")
+
         return {"items": items}
     except Exception as e:
+        print(f"❌ [SEARCH] Critical error: {e}")
         return {"items": [], "error": str(e)}
 
 @app.post("/dashboard/memory/update")

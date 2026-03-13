@@ -1,4 +1,4 @@
-import { updateGraph, setLayout, startAutoRotate, stopAutoRotate, focusNodeById } from './graph.js';
+import { updateGraph, setLayout, startAutoRotate, stopAutoRotate, focusNodeById, resetFocus } from './graph.js';
 
 // Ensure system logs are initialized
 console.log("主程序 App.js 已初始化");
@@ -204,7 +204,7 @@ window.addEventListener('node-selected', (e) => {
 function closeDetailModal() {
     selectedMemoryNode = null;
     detailModal.style.display = 'none';
-    startAutoRotate();
+    resetFocus();
 }
 
 detailCloseBtn.addEventListener('click', closeDetailModal);

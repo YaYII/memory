@@ -2,9 +2,13 @@ import asyncio
 import os
 import sys
 import re
+from dotenv import load_dotenv
 from mcp.client.stdio import stdio_client, StdioServerParameters
 from mcp.client.session import ClientSession
 from mcp.types import CallToolRequest, Tool
+
+# Load environment variables from .env file
+load_dotenv()
 
 # 设置环境变量，模拟 MCP 客户端环境
 env = os.environ.copy()
