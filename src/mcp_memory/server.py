@@ -1019,7 +1019,7 @@ def main():
     """
     启动服务器
     """
-    port = int(os.environ.get("MCP_MEMORY_PORT", 22888))
+    port = settings.MCP_MEMORY_PORT
     print(f"🚀 正在端口 {port} 上启动 MCP 记忆服务器...")
     print(f"📊 看板地址: http://localhost:{port}/")
     uvicorn.run(app, host="0.0.0.0", port=port)

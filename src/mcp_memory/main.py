@@ -15,7 +15,7 @@ from mcp_memory.core.config import settings
 # It does NOT import MemoryManager directly to avoid DB locking
 # Instead, it proxies requests to the background server
 
-SERVER_PORT = int(os.environ.get("MCP_MEMORY_PORT", 22888))
+SERVER_PORT = settings.MCP_MEMORY_PORT
 SERVER_URL = f"http://127.0.0.1:{SERVER_PORT}"
 server = Server("mcp-memory-bridge")
 

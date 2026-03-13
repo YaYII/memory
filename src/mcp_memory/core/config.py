@@ -85,6 +85,9 @@ def parse_providers_from_env() -> List[Dict[str, Any]]:
 
 class Settings(BaseSettings):
     # MCP服务配置
+    # 服务端口
+    MCP_MEMORY_PORT: int = 22888
+    
     # 核心开关：是否开启共享模式
     MCP_MEMORY_SHARED: bool = False
     
@@ -108,22 +111,21 @@ class Settings(BaseSettings):
             self._providers_cache = parse_providers_from_env()
         return self._providers_cache
 
-    # 向后兼容：直接读取环境变量
-    @property
-    def GLM_API_KEY(self) -> str:
-        return os.environ.get("GLM_API_KEY", "")
+    # API 密钥配置（从 .env 文件加载）
+    GLM_API_KEY: str = ""
+    GLM_BASE_URL: str = "https://open.bigmodel.cn/api/paas/v4"
+    GLM_PRIORITY: int = 50
     
-    @property
-    def DEEPSEEK_API_KEY(self) -> str:
-        return os.environ.get("DEEPSEEK_API_KEY", "")
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+    DEEPSEEK_PRIORITY: int = 100
     
-    @property
-    def OPENAI_API_KEY(self) -> str:
-        return os.environ.get("OPENAI_API_KEY", "")
+    OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_PRIORITY: int = 80
     
-    @property
-    def ANTHROPIC_API_KEY(self) -> str:
-        return os.environ.get("ANTHROPIC_API_KEY", "")
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_PRIORITY: int = 90
 
     # 首选模型（兼容旧配置）
     MCP_LLM_PROVIDER: str = "glm"

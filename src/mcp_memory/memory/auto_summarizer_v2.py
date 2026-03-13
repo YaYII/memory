@@ -42,7 +42,8 @@ class AutoSummarizerV2:
         
     async def initialize(self):
         """初始化服务"""
-        await self.llm.initialize()
+        if self.llm:
+            await self.llm.initialize()
         await self.deep_reflection.initialize()
         print("[AutoSummarizerV2] 初始化完成")
     

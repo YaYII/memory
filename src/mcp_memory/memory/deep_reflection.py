@@ -71,7 +71,8 @@ class DeepReflectionEngine:
         
     async def initialize(self):
         """初始化"""
-        await self.llm.initialize()
+        if self.llm:
+            await self.llm.initialize()
         print("[DeepReflection] 深度思考引擎初始化完成")
     
     async def start(self):
