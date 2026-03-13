@@ -16,6 +16,7 @@ const COLORS = {
     'Personal': '#ffff00',
     'General': '#ffffff',
     'Entity': '#ff4500',
+    'category': '#ffcc00', // Root of skill tree
     'Default': '#aaaaaa'
 };
 
@@ -23,8 +24,8 @@ const COLORS = {
 // Access globals directly
 const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('canvas-container'))
     .backgroundColor('#000510')
-    .nodeColor(node => COLORS[node.group] || COLORS['Default'])
-    .nodeVal(node => node.type === 'memory' ? 4 : 2)
+    .nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default'])
+    .nodeVal(node => node.type === 'category' ? 6 : (node.type === 'memory' ? 4 : 2))
     .nodeLabel('label')
     .nodeResolution(16) // Lower resolution for performance
     .linkWidth(0.5)
@@ -39,6 +40,7 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         return sprite;
     })
     .onNodeClick(node => {
+        stopAutoRotate();
         // --- Highlighting Logic ---
         const distance = 40;
         const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
@@ -94,6 +96,21 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
         Graph.linkWidth(0.5);
     });
+
+const controls = Graph.controls();
+let autoRotateEnabled = true;
+
+function applyAutoRotateState() {
+    controls.autoRotate = autoRotateEnabled;
+    controls.autoRotateSpeed = -1.2;
+}
+
+function rotationTick() {
+    applyAutoRotateState();
+    controls.update();
+    requestAnimationFrame(rotationTick);
+}
+rotationTick();
 
 // Force a resize to ensure it fills the container
 window.addEventListener('resize', () => {
@@ -170,33 +187,66 @@ let graphData = { nodes: [], links: [] };
 export function updateGraph(newData) {
     console.log("收到图谱更新:", newData);
     
+    // Check if graph data is empty
+    const placeholder = document.getElementById('graph-placeholder');
+    if (!newData || !newData.nodes || newData.nodes.length === 0) {
+        if (placeholder) placeholder.style.display = 'block';
+        // If we haven't loaded real data yet, don't overwrite the initial dummy data
+        // but hide the canvas to focus on the message
+        document.getElementById('canvas-container').style.opacity = '0.2';
+        return;
+    } else {
+        if (placeholder) placeholder.style.display = 'none';
+        document.getElementById('canvas-container').style.opacity = '1';
+    }
+    
     // Safety check: ensure newData is valid
-    if (!newData || !newData.nodes || !Array.isArray(newData.nodes)) {
+    if (!newData.nodes || !Array.isArray(newData.nodes)) {
         console.warn("收到无效的图谱数据:", newData);
         return;
     }
     
-    // Simple heuristic: if backend returns empty, don't overwrite the dummy data if we haven't loaded real data yet
-    if (newData.nodes.length === 0 && graphData.nodes.length > 0) return;
-
     const existingNodes = new Set(graphData.nodes.map(n => n.id));
+    const existingNodeMap = new Map(graphData.nodes.map(n => [n.id, n]));
     const existingLinks = new Set(graphData.links.map(l => `${l.source.id || l.source}-${l.target.id || l.target}`));
     
     let hasChanges = false;
     
     newData.nodes.forEach(n => {
+        // Assign category group based on metadata or type
+        let group = 'General';
+        if (n.type === 'entity') group = 'Entity';
+        else if (n.category) group = n.category;
+        else if (n.label && (n.label.includes('配置') || n.label.includes('Config'))) group = 'Config';
+        else if (n.label && (n.label.includes('代码') || n.label.includes('Coding'))) group = 'Coding';
+        else if (n.label && (n.label.includes('画像') || n.label.includes('Personal'))) group = 'Personal';
+
+        const title = n.title || n.label || n.id;
+        const shortLabel = title && title.length > 14 ? `${title.slice(0, 14)}…` : title;
+        const normalized = { ...n, title, label: shortLabel || n.id, group };
+
         if (!existingNodes.has(n.id)) {
-            // Assign category group based on metadata or type
-            let group = 'General';
-            if (n.type === 'entity') group = 'Entity';
-            else if (n.category) group = n.category; // If backend provides category
-            // Fallback heuristics for demo if backend data is raw
-            else if (n.label && (n.label.includes('配置') || n.label.includes('Config'))) group = 'Config';
-            else if (n.label && (n.label.includes('代码') || n.label.includes('Coding'))) group = 'Coding';
-            else if (n.label && (n.label.includes('画像') || n.label.includes('Personal'))) group = 'Personal';
-            
-            graphData.nodes.push({ ...n, group });
+            graphData.nodes.push(normalized);
             hasChanges = true;
+        } else {
+            const oldNode = existingNodeMap.get(n.id);
+            if (!oldNode) return;
+            const before = JSON.stringify({
+                label: oldNode.label,
+                title: oldNode.title,
+                detail: oldNode.detail,
+                timestamp: oldNode.timestamp,
+                group: oldNode.group
+            });
+            Object.assign(oldNode, normalized);
+            const after = JSON.stringify({
+                label: oldNode.label,
+                title: oldNode.title,
+                detail: oldNode.detail,
+                timestamp: oldNode.timestamp,
+                group: oldNode.group
+            });
+            if (before !== after) hasChanges = true;
         }
     });
     
@@ -218,6 +268,50 @@ export function updateGraph(newData) {
         const randomNode = graphData.nodes[Math.floor(Math.random() * graphData.nodes.length)];
         triggerSpark(randomNode.id);
     }
+}
+
+let currentLayout = 'neural';
+
+export function setLayout(layoutType) {
+    if (layoutType === currentLayout) return;
+    currentLayout = layoutType;
+    
+    if (layoutType === 'skill') {
+        // Switch to Skill Tree Layout
+        Graph
+            .dagMode('td') // Top-down DAG
+            .dagLevelDistance(100)
+            .onDagError(() => {
+                // If it's not a strict DAG, ForceGraph handles it but logs an error
+                console.warn("Graph contains cycles, but ForceGraph will handle it in DAG mode.");
+            });
+    } else {
+        // Switch back to Neural Graph (Force-directed)
+        Graph.dagMode(null); // Disable DAG mode
+    }
+    
+    // Refresh layout
+    Graph.numDimensions(3); // Ensure 3D is maintained
+}
+
+export function startAutoRotate() {
+    autoRotateEnabled = true;
+}
+
+export function stopAutoRotate() {
+    autoRotateEnabled = false;
+}
+
+export function focusNodeById(nodeId) {
+    const node = graphData.nodes.find(n => String(n.id) === String(nodeId));
+    if (!node) return;
+    const distance = 40;
+    const distRatio = 1 + distance / Math.hypot(node.x || 1, node.y || 1, node.z || 1);
+    Graph.cameraPosition(
+        { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+        node,
+        900
+    );
 }
 
 export function triggerSpark(nodeId) {

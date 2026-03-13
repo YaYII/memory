@@ -19,14 +19,46 @@
 <body>
     <div class="scanline"></div>
     <div id="canvas-container"></div>
+    <div id="graph-placeholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; text-align: center; display: none;">
+        <h2 style="color: #00ff41; font-size: 24px; text-shadow: 0 0 10px #00ff41;">暂无认知数据</h2>
+        <p style="color: #008f11; max-width: 400px;">当前记忆库尚未经过认知分析，图谱与技能树暂时无法显示。<br><br><b>提示：</b>需要配置 DEEPSEEK_API_KEY 以开启后台认知处理，或手动触发记忆扫描。</p>
+        <button id="rebuild-btn" class="view-btn" style="margin-top: 15px; width: auto; padding: 10px 20px;">手动扫描现有记忆 (Scan Memories)</button>
+    </div>
     
     <div id="ui-layer">
+        <!-- DeepSeek Interaction Panel (Center-Left) -->
+        <div class="panel interaction-panel" id="interaction-panel">
+            <h1>深度思考 (DEEPSEEK THINKING)</h1>
+            <div id="interaction-content">
+                <div class="thinking-placeholder">等待思维信号...</div>
+            </div>
+        </div>
+
         <div class="panel stat-card">
             <h1>系统状态监控</h1>
             <div class="stat-row"><span>记忆总量 (MEMORIES)</span><span class="stat-val" id="mem-count">0</span></div>
             <div class="stat-row"><span>知识实体 (ENTITIES)</span><span class="stat-val" id="entity-count">0</span></div>
             <div class="stat-row"><span>服务状态 (STATUS)</span><span class="stat-val" id="status" style="color: #00ff41;">运行中</span></div>
             <div class="stat-row"><span>大脑活动 (ACTIVITY)</span><span class="stat-val" id="activity">待机</span></div>
+            <div class="stat-row"><span>进化策略 (PROFILE)</span><span class="stat-val" id="evolution-profile">标准</span></div>
+            <div class="stat-row"><span>深度思考 (DEEPSEEK)</span><span class="stat-val" id="deepseek-state">未知</span></div>
+            
+            <div class="view-switcher" style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 15px;">
+                <button id="view-neural" class="view-btn active">神经图谱 (Neural)</button>
+                <button id="view-skill" class="view-btn">技能树 (Skill Tree)</button>
+            </div>
+
+            <div class="view-switcher" style="margin-top: 10px;">
+                <button id="profile-light" class="view-btn">轻量</button>
+                <button id="profile-standard" class="view-btn active">标准</button>
+                <button id="profile-aggressive" class="view-btn">激进</button>
+            </div>
+
+            <div class="view-switcher" style="margin-top: 10px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 12px;">
+                <input id="memory-search-input" type="text" placeholder="搜索记忆关键词" style="flex: 1; background: rgba(0,255,65,0.08); border: 1px solid #00ff41; color: #00ff41; padding: 8px 10px; font-family: inherit; font-size: 12px;">
+                <button id="memory-search-btn" class="view-btn" style="max-width: 80px;">搜索</button>
+            </div>
+            <div id="memory-search-results" style="margin-top: 8px; max-height: 130px; overflow-y: auto; font-size: 12px;"></div>
         </div>
 
         <div class="panel legend-panel">
@@ -41,6 +73,21 @@
         <div class="panel log-panel">
             <h1>神经日志流 (NEURAL LOGS)</h1>
             <div id="log-content"></div>
+        </div>
+
+    </div>
+
+    <div id="detail-modal" class="detail-modal" style="display: none;">
+        <div class="detail-dialog">
+            <button id="detail-close" class="detail-close">×</button>
+            <h2 id="detail-title">-</h2>
+            <div class="detail-row"><span>类型</span><span id="detail-type" class="detail-val">-</span></div>
+            <div class="detail-row"><span>分区</span><span id="detail-group" class="detail-val">-</span></div>
+            <div class="detail-row"><span>时间</span><span id="detail-time" class="detail-val">-</span></div>
+            <textarea id="detail-body" class="detail-body" style="width: 100%; min-height: 180px;"></textarea>
+            <div class="view-switcher" style="margin-top: 10px;">
+                <button id="detail-save" class="view-btn">保存记忆</button>
+            </div>
         </div>
     </div>
 
