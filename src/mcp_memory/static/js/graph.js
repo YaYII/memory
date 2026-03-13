@@ -1,13 +1,14 @@
-// Remove imports since we are using UMD Globals
-// import ForceGraph3D from '3d-force-graph';
-// import * as THREE from 'three';
-// import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-// import SpriteText from 'three-spritetext';
+// graph.js - 3D Graph Visualization Module
+// Wait for dependencies to load before initializing
 
-// Ensure Globals are available
-if (typeof ForceGraph3D === 'undefined' || typeof THREE === 'undefined') {
-    console.error("严重错误: Three.js 或 ForceGraph3D 全局变量未加载。");
-}
+let Graph = null;
+let graphData = { nodes: [], links: [] };
+let autoRotateEnabled = true;
+let controls = null;
+let scene = null;
+let currentLayout = 'neural';
+let initAttempts = 0;
+const MAX_INIT_ATTEMPTS = 50;
 
 // --- Configuration ---
 const COLORS = {
@@ -16,215 +17,178 @@ const COLORS = {
     'Personal': '#ffff00',
     'General': '#ffffff',
     'Entity': '#ff4500',
-    'category': '#ffcc00', // Root of skill tree
+    'category': '#ffcc00',
     'Default': '#aaaaaa'
 };
 
-// --- 1. 3D Graph Initialization ---
-// Access globals directly
-const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('canvas-container'))
-    .backgroundColor('#000510')
-    .nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default'])
-    .nodeVal(node => node.type === 'category' ? 6 : (node.type === 'memory' ? 4 : 2))
-    .nodeLabel('label')
-    .nodeResolution(16) // Lower resolution for performance
-    .linkWidth(0.5)
-    .linkColor(() => 'rgba(0, 255, 65, 0.15)')
-    .linkOpacity(0.3)
-    .nodeThreeObject(node => {
-        // Use global SpriteText
-        const sprite = new SpriteText(node.label || node.id);
-        sprite.material.depthWrite = false; // Transparent sprite
-        sprite.color = COLORS[node.group] || COLORS['Default'];
-        sprite.textHeight = 2;
-        return sprite;
-    })
-    .onNodeHover(node => {
-        // Pause auto-rotate on hover
-        if (node) {
-            stopAutoRotate();
-            document.body.style.cursor = 'pointer';
+// Initialize when DOM is ready and libraries are loaded
+function initGraph() {
+    initAttempts++;
+    
+    // Check if libraries are loaded
+    if (typeof ForceGraph3D === 'undefined') {
+        if (initAttempts < MAX_INIT_ATTEMPTS) {
+            console.log(`ForceGraph3D not loaded yet, retrying... (${initAttempts}/${MAX_INIT_ATTEMPTS})`);
+            setTimeout(initGraph, 200);
         } else {
-            // Only resume if detail modal is not open
-            if (!document.getElementById('detail-modal') || document.getElementById('detail-modal').style.display === 'none') {
-                startAutoRotate();
-            }
-            document.body.style.cursor = 'default';
+            console.error("ForceGraph3D failed to load after maximum attempts");
+            showGraphError("3D图形库加载失败，请刷新页面重试");
         }
-    })
-    .onNodeClick(node => {
-        stopAutoRotate();
-        const safeNode = node || {};
-        const event = new CustomEvent('node-selected', { 
-            detail: {
-                id: safeNode.id,
-                label: safeNode.label,
-                title: safeNode.title || safeNode.label || safeNode.id,
-                group: safeNode.group,
-                type: safeNode.type,
-                detail: safeNode.detail || safeNode.content || '',
-                content: safeNode.content || safeNode.detail || '',
-                timestamp: safeNode.timestamp || '',
-                user_id: safeNode.user_id || '',
-                scope: safeNode.scope || ''
+        return;
+    }
+    
+    if (typeof d3 === 'undefined') {
+        if (initAttempts < MAX_INIT_ATTEMPTS) {
+            console.log(`D3 not loaded yet, retrying... (${initAttempts}/${MAX_INIT_ATTEMPTS})`);
+            setTimeout(initGraph, 200);
+        } else {
+            console.error("D3 failed to load after maximum attempts");
+        }
+        return;
+    }
+    
+    console.log("Initializing 3D Graph...");
+    
+    const container = document.getElementById('canvas-container');
+    if (!container) {
+        console.error("Canvas container not found");
+        return;
+    }
+    
+    try {
+        // Create Graph
+        Graph = ForceGraph3D({ controlType: 'orbit' })(container)
+            .backgroundColor('#000510')
+            .nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default'])
+            .nodeVal(node => node.type === 'category' ? 6 : (node.type === 'memory' ? 4 : 2))
+            .nodeLabel('label')
+            .nodeResolution(16)
+            .linkWidth(0.5)
+            .linkColor(() => 'rgba(0, 255, 65, 0.15)')
+            .linkDirectionalArrowLength(0)
+            .linkDirectionalArrowRelPos(1)
+            .linkCurvature(0.1)
+            .linkOpacity(0.4)
+            .dagMode(null)
+            .dagLevelDistance(0)
+            .numDimensions(3)
+            .warmupTicks(100)
+            .cooldownTicks(50)
+            .onNodeHover(node => {
+                if (node) {
+                    stopAutoRotate();
+                    document.body.style.cursor = 'pointer';
+                } else {
+                    startAutoRotate();
+                    document.body.style.cursor = 'default';
+                }
+            })
+            .onNodeClick(node => {
+                stopAutoRotate();
+                const safeNode = node || {};
+                const event = new CustomEvent('node-selected', { 
+                    detail: {
+                        id: safeNode.id,
+                        label: safeNode.label,
+                        title: safeNode.title || safeNode.label || safeNode.id,
+                        group: safeNode.group,
+                        type: safeNode.type,
+                        detail: safeNode.detail || safeNode.content || '',
+                        content: safeNode.content || safeNode.detail || '',
+                        timestamp: safeNode.timestamp || '',
+                        user_id: safeNode.user_id || '',
+                        scope: safeNode.scope || ''
+                    }
+                });
+                window.dispatchEvent(event);
+                
+                // Highlight logic
+                const distance = 40;
+                const nx = node?.x || 1;
+                const ny = node?.y || 1;
+                const nz = node?.z || 1;
+                const distRatio = 1 + distance / Math.hypot(nx, ny, nz);
+                
+                Graph.cameraPosition(
+                    { x: nx * distRatio, y: ny * distRatio, z: nz * distRatio },
+                    node,
+                    3000
+                );
+                
+                highlightNode(node.id);
+            })
+            .onBackgroundClick(() => {
+                resetHighlight();
+            });
+        
+        // Get controls
+        controls = Graph.controls();
+        
+        // Start rotation
+        rotationTick();
+        
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (Graph) {
+                Graph.width(window.innerWidth);
+                Graph.height(window.innerHeight);
             }
         });
-        window.dispatchEvent(event);
-        // --- Highlighting Logic ---
-        const distance = 40;
-        const nx = node?.x || 1;
-        const ny = node?.y || 1;
-        const nz = node?.z || 1;
-        const distRatio = 1 + distance / Math.hypot(nx, ny, nz);
+        Graph.width(window.innerWidth);
+        Graph.height(window.innerHeight);
         
-        // 1. Move Camera
-        Graph.cameraPosition(
-            { x: nx * distRatio, y: ny * distRatio, z: nz * distRatio }, // new position
-            node, // lookAt ({ x, y, z })
-            3000  // ms transition duration
-        );
-        
-        // 2. Highlight Neighbors
-        const neighbors = new Set();
-        const links = new Set();
-        
-        // Iterate all links to find connections
-        // Note: graphData.links contains link objects with source/target as Objects (after D3 init)
-        graphData.links.forEach(link => {
-            const sourceId = link?.source?.id || link?.source;
-            const targetId = link?.target?.id || link?.target;
-            if (sourceId === node.id || targetId === node.id) {
-                neighbors.add(sourceId);
-                neighbors.add(targetId);
-                links.add(link);
-            }
+        // Add initial data
+        Graph.graphData({
+            nodes: [
+                { id: 'CORE', group: 'General', label: '认知核心', type: 'entity' },
+                { id: 'MEM_INIT', group: 'Config', label: '系统已初始化', type: 'memory' }
+            ],
+            links: [
+                { source: 'CORE', target: 'MEM_INIT' }
+            ]
         });
         
-        neighbors.add(node.id); // Add self
+        console.log("3D Graph initialized successfully");
         
-        // Update Graph visual properties
-        Graph.nodeColor(n => {
-            if (neighbors.has(n.id)) {
-                return COLORS[n.group] || COLORS['Default']; // Keep original color
-            } else {
-                return 'rgba(200,200,200,0.1)'; // Dimmed
-            }
-        });
+        // Dispatch event to notify that graph is ready
+        window.dispatchEvent(new CustomEvent('graph-ready'));
         
-        Graph.linkColor(link => {
-            if (links.has(link)) {
-                return 'rgba(0,255,65,0.8)'; // Highlighted link color
-            } else {
-                return 'rgba(255,255,255,0.02)'; // Dimmed
-            }
-        });
-        
-        Graph.linkWidth(link => links.has(link) ? 2 : 0.5);
-        
-    })
-    .onBackgroundClick(() => {
-        // Reset Highlight
-        Graph.nodeColor(node => COLORS[node.group] || COLORS['Default']);
-        Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
-        Graph.linkWidth(0.5);
-    });
+    } catch (error) {
+        console.error("Failed to initialize 3D Graph:", error);
+        showGraphError("3D图形初始化失败: " + error.message);
+    }
+}
 
-const controls = Graph.controls();
-let autoRotateEnabled = true;
-
-function applyAutoRotateState() {
-    controls.autoRotate = autoRotateEnabled;
-    controls.autoRotateSpeed = -1.2;
+function showGraphError(message) {
+    const placeholder = document.getElementById('graph-placeholder');
+    if (placeholder) {
+        placeholder.innerHTML = `<div style="color: #ff4444; text-align: center; padding: 20px;">${message}</div>`;
+        placeholder.style.display = 'block';
+    }
 }
 
 function rotationTick() {
-    applyAutoRotateState();
-    controls.update();
+    if (controls) {
+        controls.autoRotate = autoRotateEnabled;
+        controls.autoRotateSpeed = -1.2;
+        controls.update();
+    }
     requestAnimationFrame(rotationTick);
 }
-rotationTick();
 
-// Force a resize to ensure it fills the container
-window.addEventListener('resize', () => {
-    Graph.width(window.innerWidth);
-    Graph.height(window.innerHeight);
-});
-Graph.width(window.innerWidth);
-Graph.height(window.innerHeight);
-
-// Add initial dummy data to verify rendering immediately
-Graph.graphData({
-    nodes: [
-        { id: 'CORE', group: 'General', label: '认知核心', type: 'entity' },
-        { id: 'MEM_INIT', group: 'Config', label: '系统已初始化', type: 'memory' }
-    ],
-    links: [
-        { source: 'CORE', target: 'MEM_INIT' }
-    ]
-});
-
-// --- Post-Processing Effects (Bloom) ---
-// Access THREE global for UnrealBloomPass if loaded via script tag
-// Note: In UMD, UnrealBloomPass might be attached to THREE or global depending on the build.
-// Standard Three.js examples usually attach to THREE if loaded after.
-// But unpkg raw files might assume modules. 
-// We loaded examples/js/... files which are for UMD. They usually modify THREE namespace.
-// Let's check THREE.UnrealBloomPass
-const BloomPass = THREE.UnrealBloomPass || window.UnrealBloomPass;
-if (BloomPass) {
-    const bloomPass = new BloomPass();
-    bloomPass.strength = 2.0;
-    bloomPass.radius = 1;
-    bloomPass.threshold = 0.1;
-    Graph.postProcessingComposer().addPass(bloomPass);
-} else {
-    console.warn("在全局变量中未找到 UnrealBloomPass。");
-}
-
-// --- Custom Particle System (Data Dust) ---
-// We inject a Three.js PointCloud into the scene
-const scene = Graph.scene();
-const particlesGeometry = new THREE.BufferGeometry();
-const particlesCount = 1000;
-const posArray = new Float32Array(particlesCount * 3);
-
-for(let i = 0; i < particlesCount * 3; i++) {
-    posArray[i] = (Math.random() - 0.5) * 2000; // Spread across space
-}
-
-particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-const particlesMaterial = new THREE.PointsMaterial({
-    size: 2,
-    color: 0x00ff41,
-    transparent: true,
-    opacity: 0.4,
-    blending: THREE.AdditiveBlending
-});
-
-const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-scene.add(particlesMesh);
-
-// Animate particles
-function animateParticles() {
-    particlesMesh.rotation.y += 0.0005;
-    particlesMesh.rotation.x += 0.0002;
-    requestAnimationFrame(animateParticles);
-}
-animateParticles();
-
-
-// --- 2. Data Management ---
-let graphData = { nodes: [], links: [] };
+// --- Exported Functions ---
 
 export function updateGraph(newData) {
+    if (!Graph) {
+        console.warn("Graph not initialized yet");
+        return;
+    }
+    
     console.log("收到图谱更新:", newData);
     
-    // Check if graph data is empty
     const placeholder = document.getElementById('graph-placeholder');
     if (!newData || !newData.nodes || newData.nodes.length === 0) {
         if (placeholder) placeholder.style.display = 'block';
-        // If we haven't loaded real data yet, don't overwrite the initial dummy data
-        // but hide the canvas to focus on the message
         document.getElementById('canvas-container').style.opacity = '0.2';
         return;
     } else {
@@ -232,7 +196,6 @@ export function updateGraph(newData) {
         document.getElementById('canvas-container').style.opacity = '1';
     }
     
-    // Safety check: ensure newData is valid
     if (!newData.nodes || !Array.isArray(newData.nodes)) {
         console.warn("收到无效的图谱数据:", newData);
         return;
@@ -245,7 +208,6 @@ export function updateGraph(newData) {
     let hasChanges = false;
     
     newData.nodes.forEach(n => {
-        // Assign category group based on metadata or type
         let group = 'General';
         if (n.type === 'entity') group = 'Entity';
         else if (n.category) group = n.category;
@@ -294,36 +256,24 @@ export function updateGraph(newData) {
         console.log("正在渲染图谱更新...", graphData);
         Graph.graphData(graphData);
     }
-    
-    // Trigger random spark for aliveness
-    if (graphData.nodes.length > 0) {
-        const randomNode = graphData.nodes[Math.floor(Math.random() * graphData.nodes.length)];
-        triggerSpark(randomNode.id);
-    }
 }
 
-let currentLayout = 'neural';
-
 export function setLayout(layoutType) {
-    if (layoutType === currentLayout) return;
+    if (!Graph || layoutType === currentLayout) return;
     currentLayout = layoutType;
     
     if (layoutType === 'skill') {
-        // Switch to Skill Tree Layout
         Graph
-            .dagMode('td') // Top-down DAG
+            .dagMode('td')
             .dagLevelDistance(100)
             .onDagError(() => {
-                // If it's not a strict DAG, ForceGraph handles it but logs an error
                 console.warn("Graph contains cycles, but ForceGraph will handle it in DAG mode.");
             });
     } else {
-        // Switch back to Neural Graph (Force-directed)
-        Graph.dagMode(null); // Disable DAG mode
+        Graph.dagMode(null);
     }
     
-    // Refresh layout
-    Graph.numDimensions(3); // Ensure 3D is maintained
+    Graph.numDimensions(3);
 }
 
 export function startAutoRotate() {
@@ -335,6 +285,7 @@ export function stopAutoRotate() {
 }
 
 export function focusNodeById(nodeId) {
+    if (!Graph) return;
     const node = graphData.nodes.find(n => String(n.id) === String(nodeId));
     if (!node) return;
     const distance = 40;
@@ -347,66 +298,79 @@ export function focusNodeById(nodeId) {
 }
 
 export function resetFocus() {
-    // Quick zoom out / reset highlight
+    if (!Graph) return;
+    
     Graph.nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default']);
     Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
     Graph.linkWidth(0.5);
     
-    // Zoom out to global view
     Graph.cameraPosition(
-        { x: 0, y: 0, z: 400 }, // Back to far position
-        { x: 0, y: 0, z: 0 },   // Look at origin
-        800                     // Fast transition
+        { x: 0, y: 0, z: 400 },
+        { x: 0, y: 0, z: 0 },
+        800
     );
     
     startAutoRotate();
 }
 
-export function triggerSpark(nodeId) {
-    // 3D Spark: Pulse the node
+export function highlightNode(nodeId) {
+    if (!Graph) return;
+    
     const node = graphData.nodes.find(n => n.id === nodeId);
     if (!node) return;
-
-    // Visual effect: temporary increase size or emission
-    // Since we don't have easy access to the Three object directly here unless we stored it,
-    // we can use the graph accessor to temporarily change the color/size.
-    // But `nodeVal` is an accessor.
     
-    // Let's emit a particle burst from the node position?
-    // We have `scene` accessible in this module scope.
-    // Let's create a temporary light or sprite.
+    const neighbors = new Set();
+    const links = new Set();
     
-    // Simple implementation: Pulse effect via a temporary state
-    // (Requires graph re-render which is expensive, so let's skip re-render for spark)
-    // Better: Add a temporary sprite to the scene at node position
-    
-    // Get node position (ForceGraph updates x,y,z on nodes)
-    if (node.x && node.y && node.z) {
-        // Create a glow sprite
-        const spriteMaterial = new THREE.SpriteMaterial({ 
-            color: 0xffffff,
-            transparent: true,
-            opacity: 1.0,
-            blending: THREE.AdditiveBlending
-        });
-        const sprite = new THREE.Sprite(spriteMaterial);
-        sprite.scale.set(10, 10, 10);
-        sprite.position.set(node.x, node.y, node.z);
-        scene.add(sprite);
-        
-        // Animate fade out
-        let opacity = 1.0;
-        function animateSpark() {
-            opacity -= 0.05;
-            sprite.material.opacity = opacity;
-            sprite.scale.multiplyScalar(1.05); // Expand
-            if (opacity > 0) {
-                requestAnimationFrame(animateSpark);
-            } else {
-                scene.remove(sprite);
-                spriteMaterial.dispose();
-            }
+    graphData.links.forEach(link => {
+        const sourceId = link?.source?.id || link?.source;
+        const targetId = link?.target?.id || link?.target;
+        if (sourceId === nodeId || targetId === nodeId) {
+            neighbors.add(sourceId);
+            neighbors.add(targetId);
+            links.add(link);
         }
-        animateSpark();
-    }
+    });
+    
+    neighbors.add(nodeId);
+    
+    Graph.nodeColor(n => {
+        if (neighbors.has(n.id)) {
+            return COLORS[n.group] || COLORS['Default'];
+        } else {
+            return 'rgba(200,200,200,0.1)';
+        }
+    });
+    
+    Graph.linkColor(link => {
+        if (links.has(link)) {
+            return 'rgba(0,255,65,0.8)';
+        } else {
+            return 'rgba(255,255,255,0.02)';
+        }
+    });
+    
+    Graph.linkWidth(link => links.has(link) ? 2 : 0.5);
+}
+
+export function resetHighlight() {
+    if (!Graph) return;
+    
+    Graph.nodeColor(node => COLORS[node.group] || COLORS['Default']);
+    Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
+    Graph.linkWidth(0.5);
+}
+
+export function triggerSpark(nodeId) {
+    // Spark effect disabled - requires THREE which is bundled inside 3d-force-graph
+    // This is a visual enhancement that can be re-enabled if THREE is exposed
+    console.log("Spark effect triggered for node:", nodeId);
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGraph);
+} else {
+    // DOM already loaded
+    initGraph();
 }

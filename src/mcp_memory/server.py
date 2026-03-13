@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import networkx as nx
+from typing import List
 
 import asyncio
 import random
@@ -691,6 +692,225 @@ async def delete_memory_endpoint(req: DeleteMemoryRequest):
             raise HTTPException(status_code=404, detail="未找到记忆或权限不足")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# 三层记忆系统 API (Memory System V2)
+# ============================================================
+
+from mcp_memory.memory.tiered_manager import TieredMemoryManager
+from mcp_memory.models.data_models import (
+    StorageMemoryCreate, ThinkingMemoryCreate, SkillMemoryCreate,
+    MemoryFeedbackRequest
+)
+
+# 初始化三层记忆管理器
+try:
+    tiered_manager = TieredMemoryManager()
+    print("✅ 三层记忆管理器初始化成功。")
+except Exception as e:
+    print(f"❌ 无法初始化三层记忆管理器: {e}")
+    tiered_manager = None
+
+
+@app.post("/tiered/storage/write")
+async def write_storage_memory_endpoint(req: StorageMemoryCreate):
+    """
+    写入存储记忆（原始对话记录）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        memory_id = tiered_manager.write_storage_memory(
+            content=req.content,
+            user_id=req.user_id,
+            session_id=req.session_id,
+            project_id=req.project_id,
+            scope=req.scope,
+            participants=req.participants,
+            topic=req.topic
+        )
+        return {"status": "success", "memory_id": memory_id, "type": "storage"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tiered/thinking/write")
+async def write_thinking_memory_endpoint(req: ThinkingMemoryCreate):
+    """
+    写入思维记忆（总结）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        memory_id = tiered_manager.write_thinking_memory(
+            content=req.content,
+            user_id=req.user_id,
+            source_memories=req.source_memories,
+            summary_type=req.summary_type,
+            key_points=req.key_points,
+            project_id=req.project_id,
+            scope=req.scope
+        )
+        return {"status": "success", "memory_id": memory_id, "type": "thinking"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tiered/skill/write")
+async def write_skill_memory_endpoint(req: SkillMemoryCreate):
+    """
+    写入技能记忆（可复用知识）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        memory_id = tiered_manager.write_skill_memory(
+            content=req.content,
+            user_id=req.user_id,
+            source_thinking=req.source_thinking,
+            skill_type=req.skill_type,
+            tags=req.tags,
+            project_id=req.project_id,
+            scope=req.scope
+        )
+        return {"status": "success", "memory_id": memory_id, "type": "skill"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tiered/query")
+async def query_tiered_memories(
+    query: str,
+    user_id: str,
+    memory_type: str = "all",
+    limit: int = 10,
+    days: int = None,
+    include_sources: bool = False
+):
+    """
+    分层查询记忆
+    
+    优先级: skill > thinking > storage
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        response = tiered_manager.query_memories(
+            query=query,
+            user_id=user_id,
+            memory_type=memory_type,
+            limit=limit,
+            days=days,
+            include_sources=include_sources
+        )
+        return {
+            "memories": [m.dict() for m in response.memories],
+            "total": response.total,
+            "query_time_ms": response.query_time_ms,
+            "has_more": response.has_more
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tiered/memory/{memory_id}")
+async def get_memory_detail_endpoint(
+    memory_id: str,
+    include_sources: bool = True,
+    include_related: bool = False
+):
+    """
+    获取记忆详情（支持溯源）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        detail = tiered_manager.get_memory_detail(
+            memory_id=memory_id,
+            include_sources=include_sources,
+            include_related=include_related
+        )
+        if not detail:
+            raise HTTPException(status_code=404, detail="记忆不存在")
+        return detail
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tiered/memory/{memory_id}/trace")
+async def trace_memory_origin_endpoint(memory_id: str, max_depth: int = 3):
+    """
+    追溯记忆的起源（完整的溯源链）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        chain = tiered_manager.trace_memory_origin(memory_id, max_depth)
+        return {"chain": chain, "depth": len(chain)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tiered/memory/{memory_id}/feedback")
+async def provide_feedback_endpoint(memory_id: str, req: MemoryFeedbackRequest):
+    """
+    提供记忆反馈（标记不准确）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        success = tiered_manager.provide_feedback(
+            memory_id=memory_id,
+            user_id=req.user_id,
+            feedback_type=req.feedback_type,
+            comment=req.comment,
+            suggested_content=req.suggested_content
+        )
+        if success:
+            return {"status": "success", "message": "反馈已记录"}
+        else:
+            raise HTTPException(status_code=400, detail="记录反馈失败")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tiered/stats")
+async def get_tiered_stats():
+    """
+    获取三层记忆系统统计信息
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        stats = tiered_manager.get_stats()
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tiered/summarize")
+async def force_summarize_endpoint(memory_ids: List[str]):
+    """
+    手动触发总结（用于测试）
+    """
+    if not tiered_manager:
+        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
+    
+    try:
+        result = await tiered_manager.summarizer.force_summary(memory_ids)
+        return {"status": "success", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 def main():
     """

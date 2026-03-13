@@ -2,19 +2,18 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>MCP 认知中枢 (Cognitive Brain)</title>
+    <title>MCP 认知中枢 (Cognitive Brain) - 三层记忆系统</title>
     <link rel="stylesheet" href="/static/css/style.css">
     
-    <!-- Use UMD (Classic Scripts) to avoid Module Import Hell -->
-    <script src="//unpkg.com/three@0.160.0/build/three.js"></script>
-    <script src="//unpkg.com/three@0.160.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="//unpkg.com/three@0.160.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="//unpkg.com/three@0.160.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="//unpkg.com/three@0.160.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-    <script src="//unpkg.com/three@0.160.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="//unpkg.com/three@0.160.0/examples/js/shaders/CopyShader.js"></script>
+    <!-- D3.js -->
+    <script src="//unpkg.com/d3@7.8.5/dist/d3.min.js"></script>
+    <!-- 3D Force Graph (includes Three.js and d3-force-3d) -->
     <script src="//unpkg.com/3d-force-graph@1.73.1/dist/3d-force-graph.min.js"></script>
-    <script src="//unpkg.com/three-spritetext@1.8.2/dist/three-spritetext.min.js"></script>
+    
+    <!-- Cache busting -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 </head>
 <body>
     <div class="scanline"></div>
@@ -26,7 +25,47 @@
     </div>
     
     <div id="ui-layer">
-        <!-- LLM Interaction Panel (Moved to Bottom-Right) -->
+        <!-- 三层记忆系统面板 -->
+        <div class="panel tiered-memory-panel" id="tiered-panel">
+            <h1>三层记忆系统 (Tiered Memory)</h1>
+            
+            <!-- 记忆类型切换 -->
+            <div class="memory-type-tabs">
+                <button class="memory-tab active" data-type="all">全部</button>
+                <button class="memory-tab" data-type="skill">技能记忆</button>
+                <button class="memory-tab" data-type="thinking">思维记忆</button>
+                <button class="memory-tab" data-type="storage">存储记忆</button>
+            </div>
+            
+            <!-- 统计信息 -->
+            <div class="tiered-stats">
+                <div class="stat-item">
+                    <span class="stat-label">技能</span>
+                    <span class="stat-value" id="skill-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">思维</span>
+                    <span class="stat-value" id="thinking-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">存储</span>
+                    <span class="stat-value" id="storage-count">0</span>
+                </div>
+            </div>
+            
+            <!-- 记忆列表 -->
+            <div class="memory-list" id="memory-list">
+                <div class="memory-item-placeholder">加载中...</div>
+            </div>
+            
+            <!-- 搜索框 -->
+            <div class="memory-search-box">
+                <input type="text" id="tiered-search-input" placeholder="搜索三层记忆...">
+                <button id="tiered-search-btn">搜索</button>
+            </div>
+        </div>
+
+        <!-- LLM Interaction Panel -->
         <div class="panel interaction-panel" id="interaction-panel">
             <h1 id="thinking-title">深度思考 (LLM THINKING)</h1>
             <div id="interaction-content">
@@ -77,6 +116,7 @@
 
     </div>
 
+    <!-- 记忆详情模态框 -->
     <div id="detail-modal" class="detail-modal" style="display: none;">
         <div class="detail-dialog">
             <button id="detail-close" class="detail-close">×</button>
@@ -91,7 +131,45 @@
         </div>
     </div>
 
-    <!-- Main Logic (Type Module to support local imports if needed, but using Globals for libs) -->
+    <!-- 三层记忆详情模态框 -->
+    <div id="tiered-detail-modal" class="detail-modal" style="display: none;">
+        <div class="detail-dialog tiered-detail-dialog">
+            <button id="tiered-detail-close" class="detail-close">×</button>
+            <h2 id="tiered-detail-title">记忆详情</h2>
+            <div class="tiered-detail-content">
+                <div class="detail-row">
+                    <span>记忆类型</span>
+                    <span id="tiered-detail-type" class="detail-val">-</span>
+                </div>
+                <div class="detail-row">
+                    <span>置信度</span>
+                    <span id="tiered-detail-confidence" class="detail-val">-</span>
+                </div>
+                <div class="detail-row">
+                    <span>创建时间</span>
+                    <span id="tiered-detail-time" class="detail-val">-</span>
+                </div>
+                <div class="detail-row">
+                    <span>标签</span>
+                    <span id="tiered-detail-tags" class="detail-val">-</span>
+                </div>
+                <div class="detail-section">
+                    <h3>内容</h3>
+                    <div id="tiered-detail-content" class="detail-content-box">-</div>
+                </div>
+                <div class="detail-section" id="tiered-detail-sources-section" style="display: none;">
+                    <h3>源记忆</h3>
+                    <div id="tiered-detail-sources" class="detail-sources-list"></div>
+                </div>
+                <div class="detail-actions">
+                    <button id="tiered-detail-trace" class="view-btn">追溯起源</button>
+                    <button id="tiered-detail-feedback" class="view-btn btn-warning">标记不准确</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Logic -->
     <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>
