@@ -159,15 +159,47 @@ async def get_stats():
 async def get_graph_data():
     """
     获取知识图谱数据用于可视化 (D3/ForceGraph 格式)
+    Enriched with Category/Group logic
     """
     try:
         # 1. 从 NetworkX 加载图谱
-        # 注意：直接访问 store.graph。这里读取是线程安全的。
-        # 理想情况下应该使用读锁，但对于可视化来说是可以的。
         G = memory_manager.store.graph
         
-        # 2. 转换为 D3 格式 {nodes: [], links: []}
+        # 2. 增强数据：为节点添加 'group' 属性
+        # NetworkX 的 node_link_data 会保留节点属性
+        # 我们需要在转换前或转换后注入 group
         data = nx.node_link_data(G)
+        
+        enriched_nodes = []
+        for node in data['nodes']:
+            # 默认
+            group = "General"
+            node_id = str(node.get('id', '')).lower()
+            
+            # 如果节点有 metadata，优先使用
+            # 但 NetworkX 存储的节点属性可能只是 ID，需要查 DB 或者看 Graph 属性
+            # 这里假设 store.graph 存储了部分元数据
+            
+            # Heuristic Categorization based on ID/Label keywords
+            if any(k in node_id for k in ['python', 'java', 'code', 'function', 'api', 'class', 'method', 'git', 'docker']):
+                group = "Coding"
+            elif any(k in node_id for k in ['config', 'env', 'port', 'host', 'setting', 'setup']):
+                group = "Config"
+            elif any(k in node_id for k in ['user', 'profile', 'preference', 'like', 'dislike']):
+                group = "Personal"
+            elif node.get('type') == 'entity':
+                group = "Entity"
+            
+            # Inject group
+            node['group'] = group
+            
+            # Ensure label exists
+            if 'label' not in node:
+                node['label'] = node.get('id')
+                
+            enriched_nodes.append(node)
+            
+        data['nodes'] = enriched_nodes
         return data
     except Exception as e:
         print(f"提供图谱数据时出错: {e}")
