@@ -1,17 +1,38 @@
 import httpx
 from typing import Optional, List, Dict
-from mcp_memory.core.config import settings
 import json
+import time
+from datetime import datetime
+from mcp_memory.llm.base import BaseLLMClient, LLMResponse
 
-class DeepSeekClient:
-    def __init__(self):
-        self.api_key = settings.DEEPSEEK_API_KEY
-        self.base_url = settings.DEEPSEEK_BASE_URL
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+
+class DeepSeekClient(BaseLLMClient):
+    """DeepSeek 客户端 - 作为保底模型"""
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        base_url: str = "https://api.deepseek.com",
+        priority: int = 100
+    ):
+        super().__init__(name="deepseek", priority=priority)
+        self.api_key = api_key
+        self.base_url = base_url
+        self.default_model = "deepseek-chat"
+        self.reasoner_model = "deepseek-reasoner"
+        self._session: Optional[httpx.AsyncClient] = None
         self.interactions: List[Dict] = []
+
+    async def _get_session(self) -> httpx.AsyncClient:
+        if self._session is None or self._session.is_closed:
+            self._session = httpx.AsyncClient(
+                timeout=60.0,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}" if self.api_key else "",
+                    "Content-Type": "application/json"
+                }
+            )
+        return self._session
 
     def _push_interaction(self, item: Dict):
         self.interactions.append(item)
@@ -21,31 +42,44 @@ class DeepSeekClient:
     def get_recent_interactions(self, limit: int = 20) -> List[Dict]:
         return list(reversed(self.interactions[-max(1, limit):]))
 
+    async def is_healthy(self) -> bool:
+        if not self.api_key:
+            self.set_unavailable("No API key configured")
+            return False
+        try:
+            session = await self._get_session()
+            url = f"{self.base_url}/chat/completions"
+            resp = await session.post(
+                url,
+                json={"model": self.default_model, "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
+                headers={"Authorization": f"Bearer {self.api_key}"}
+            )
+            if resp.status_code == 200:
+                self.set_available()
+                return True
+            else:
+                self.set_unavailable(f"API returned {resp.status_code}")
+                return False
+        except Exception as e:
+            self.set_unavailable(str(e))
+            return False
+
     async def chat_completion(
         self,
         messages: List[Dict[str, str]],
-        model: str = "deepseek-chat",
+        model: Optional[str] = None,
         temperature: float = 0.3,
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        **kwargs
     ) -> Optional[str]:
-        """
-        调用 DeepSeek API 进行对话
-        """
         if not self.api_key:
-            print("警告: 未设置 DEEPSEEK_API_KEY。跳过 LLM 调用。")
-            self._push_interaction({
-                "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
-                "model": model,
-                "status": "skipped",
-                "latency_ms": 0,
-                "request_preview": (messages[-1].get("content", "")[:240] if messages else ""),
-                "response_preview": "未设置 DEEPSEEK_API_KEY",
-                "usage": None
-            })
+            self.set_unavailable("No API key configured")
             return None
 
         url = f"{self.base_url}/chat/completions"
-        payload = {
+        model = model or self.default_model
+
+        payload: Dict = {
             "model": model,
             "messages": messages,
             "temperature": temperature
@@ -53,50 +87,136 @@ class DeepSeekClient:
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
-        start = __import__("time").perf_counter()
         request_preview = messages[-1].get("content", "")[:240] if messages else ""
+        start_time = time.perf_counter()
+
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, headers=self.headers, json=payload)
-                response.raise_for_status()
-                data = response.json()
-                content = data["choices"][0]["message"]["content"]
-                usage = data.get("usage")
-                latency_ms = int((__import__("time").perf_counter() - start) * 1000)
-                self._push_interaction({
-                    "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
-                    "model": model,
-                    "status": "success",
-                    "latency_ms": latency_ms,
-                    "request_preview": request_preview,
-                    "response_preview": content[:240],
-                    "usage": usage
-                })
-                return content
-        except Exception as e:
-            latency_ms = int((__import__("time").perf_counter() - start) * 1000)
+            session = await self._get_session()
+            response = await session.post(url, json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            content = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
+            tokens_used = usage.get("total_tokens", 0)
+
+            self.record_request(success=True, tokens_used=tokens_used)
+            self.set_available()
+
             self._push_interaction({
-                "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "model": model,
+                "status": "success",
+                "latency_ms": latency_ms,
+                "request_preview": request_preview,
+                "response_preview": content[:240],
+                "usage": usage
+            })
+
+            return content
+
+        except httpx.HTTPStatusError as e:
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            self.record_request(success=False)
+            error_msg = f"HTTP {e.response.status_code}: {e.response.text[:100]}"
+            self.set_unavailable(error_msg)
+
+            self._push_interaction({
+                "time": datetime.now().strftime("%H:%M:%S"),
                 "model": model,
                 "status": "error",
                 "latency_ms": latency_ms,
                 "request_preview": request_preview,
-                "response_preview": str(e)[:240],
+                "response_preview": error_msg,
                 "usage": None
             })
-            print(f"调用 DeepSeek API 时出错: {e}")
+
+            print(f"[DeepSeek] API Error: {error_msg}")
+            return None
+        except Exception as e:
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            self.record_request(success=False)
+            error_msg = str(e)
+            self.set_unavailable(error_msg)
+
+            self._push_interaction({
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "model": model,
+                "status": "error",
+                "latency_ms": latency_ms,
+                "request_preview": request_preview,
+                "response_preview": error_msg[:240],
+                "usage": None
+            })
+
+            print(f"[DeepSeek] Request Error: {error_msg}")
+            return None
+
+    async def chat_completion_with_full_response(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        temperature: float = 0.3,
+        max_tokens: Optional[int] = None,
+        **kwargs
+    ) -> Optional[LLMResponse]:
+        """获取完整响应包含元数据"""
+        if not self.api_key:
+            return None
+
+        url = f"{self.base_url}/chat/completions"
+        model = model or self.default_model
+
+        payload: Dict = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature
+        }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+
+        request_preview = messages[-1].get("content", "")[:240] if messages else ""
+        start_time = time.perf_counter()
+
+        try:
+            session = await self._get_session()
+            response = await session.post(url, json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            content = data["choices"][0]["message"]["content"]
+            usage = data.get("usage", {})
+            tokens_used = usage.get("total_tokens", 0)
+
+            self.record_request(success=True, tokens_used=tokens_used)
+            self.set_available()
+
+            return LLMResponse(
+                content=content,
+                model=model,
+                provider="deepseek",
+                tokens_used=tokens_used,
+                latency_ms=latency_ms,
+                raw_response=data
+            )
+
+        except Exception as e:
+            self.record_request(success=False)
+            self.set_unavailable(str(e))
+            print(f"[DeepSeek] Full Response Error: {e}")
             return None
 
     async def summarize_memories(self, memories: List[str]) -> Optional[str]:
-        """
-        总结一组记忆
-        """
+        """总结记忆"""
         if not memories:
             return None
-            
+
         memory_text = "\n".join([f"- {m}" for m in memories])
+        from mcp_memory.core.config import settings
         prompt = f"""
-请分析以下记忆片段，并提取出核心的“知识点”或“技能”。
+请分析以下记忆片段，并提取出核心的"知识点"或"技能"。
 忽略琐碎的对话细节，只保留可复用的经验、配置、规则或偏好。
 如果内容杂乱，请尝试分类整理。
 请使用{settings.MCP_MEMORY_LANGUAGE}回复。
@@ -110,10 +230,7 @@ class DeepSeekClient:
         return await self.chat_completion(messages)
 
     async def classify_memory(self, content: str) -> Optional[str]:
-        """
-        对单条记忆进行分类
-        返回类别名称，如：Coding, Config, Personal, Unknown
-        """
+        """分类记忆"""
         prompt = f"""
 请将以下记忆内容分类为以下类别之一：
 - Coding (编程知识、代码片段)
@@ -132,12 +249,9 @@ class DeepSeekClient:
         return result.strip() if result else None
 
     async def critique_and_refine(self, query: str, memories: List[str], initial_answer: str) -> str:
-        """
-        [Self-Correction] 批评与修正
-        使用 DeepSeek-Reasoner (R1) 进行深度思考，检查初始回答的准确性。
-        """
+        """批评与修正"""
         memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
-        
+
         prompt = f"""
 你是一个严格的事实核查员 (Critic)。请检查下方的 [初始回答] 是否忠实于 [参考记忆]。
 
@@ -156,27 +270,21 @@ class DeepSeekClient:
 3. 检查**逻辑一致性**。
 
 如果回答完美，请直接返回 "PASS"。
-如果存在问题，请提供一个**修正后的回答**，必须使用{settings.MCP_MEMORY_LANGUAGE}。
+如果存在问题，请提供一个**修正后的回答**，必须使用简体中文。
 """
-        # 使用 deepseek-reasoner (R1) 模型进行深度思考
-        # 注意：DeepSeek R1 的 API 调用方式可能与 Chat 略有不同 (reasoning_content)，但通常兼容 Chat 接口
-        # 这里假设 deepseek-reasoner 是有效的模型名
         result = await self.chat_completion(
             messages=[{"role": "user", "content": prompt}],
-            model="deepseek-reasoner" 
+            model=self.reasoner_model
         )
-        
+
         if result and result.strip() != "PASS":
             print(f"🔧 Critic corrected the answer.\nOriginal: {initial_answer[:50]}...\nCorrected: {result[:50]}...")
             return result
-        
+
         return initial_answer
 
     async def extract_entities(self, content: str) -> List[str]:
-        """
-        [Knowledge Graph] 实体提取
-        从记忆中提取关键实体（文件名、变量名、技术栈、项目名），用于构建轻量级知识图谱。
-        """
+        """提取实体"""
         prompt = f"""
 请从以下内容中提取关键实体 (Entities)。
 关注：文件名、配置项、变量名、错误码、技术栈名称、项目名称。
@@ -190,27 +298,23 @@ class DeepSeekClient:
 """
         result = await self.chat_completion(
             messages=[{"role": "user", "content": prompt}],
-            model="deepseek-chat", # 实体提取不需要推理模型，Chat 足够
+            model=self.default_model,
             temperature=0.1
         )
-        
+
         try:
             if result:
-                # 清理可能存在的 Markdown 代码块标记
                 cleaned = result.replace("```json", "").replace("```", "").strip()
                 return json.loads(cleaned)
         except:
-            print(f"Entity extraction failed to parse JSON: {result}")
-        
+            print(f"[DeepSeek] Entity extraction failed to parse JSON: {result}")
+
         return []
 
     async def optimize_memory_storage(self, memories: List[str]) -> Optional[str]:
-        """
-        [Memory GC] 记忆库优化 (深度思考模式)
-        分析一批记忆，找出冲突、冗余，并生成优化后的版本。
-        """
+        """记忆库优化"""
         memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
-        
+
         prompt = f"""
 你是一个专业的记忆整理专家。请对以下记忆片段进行深度分析和重构 (Garbage Collection)。
 
@@ -226,24 +330,17 @@ class DeepSeekClient:
 """
         return await self.chat_completion(
             messages=[{"role": "user", "content": prompt}],
-            model="deepseek-reasoner" # 使用 R1 进行深度思考
+            model=self.reasoner_model
         )
 
     async def synthesize_search_results(self, query: str, memories: List[str]) -> Optional[str]:
-        """
-        基于用户查询，综合多条记忆生成一个简洁但不简单的答案。
-        用于 read_memory 时的实时增强，减少 AI 的阅读负担。
-        
-        Strict Safety Rules:
-        1. 必须基于提供的记忆回答，禁止编造 (Hallucination Control)
-        2. 如果记忆中没有相关内容，直接返回 "NO_CONTEXT"
-        3. 保持极简 (Conciseness)
-        """
+        """综合搜索结果"""
         if not memories:
             return None
-            
+
         memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
-        
+        from mcp_memory.core.config import settings
+
         prompt = f"""
 你是一个严格的记忆检索助手。请根据以下[参考记忆]回答用户的[查询]。
 
@@ -263,50 +360,55 @@ class DeepSeekClient:
 - 核心结论...
 - 补充细节...
 """
-        # 使用 temperature=0.0 以最大程度降低幻觉
         url = f"{self.base_url}/chat/completions"
         payload = {
-            "model": "deepseek-chat",
+            "model": self.default_model,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.0, 
+            "temperature": 0.0,
             "max_tokens": 500
         }
 
         try:
-            start = __import__("time").perf_counter()
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(url, headers=self.headers, json=payload)
-                response.raise_for_status()
-                data = response.json()
-                content = data["choices"][0]["message"]["content"].strip()
-                latency_ms = int((__import__("time").perf_counter() - start) * 1000)
-                self._push_interaction({
-                    "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
-                    "model": "deepseek-chat",
-                    "status": "success",
-                    "latency_ms": latency_ms,
-                    "request_preview": prompt[:240],
-                    "response_preview": content[:240],
-                    "usage": data.get("usage")
-                })
-                
-                if "NO_CONTEXT" in content:
-                    return None
-                
-                # [自我修正步骤]
-                # 使用 R1 (DeepSeek Reasoner) 进行深度反思和修正
-                corrected_content = await self.critique_and_refine(query, memories, content)
-                return corrected_content
-                
+            start_time = time.perf_counter()
+            session = await self._get_session()
+            response = await session.post(url, json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+            latency_ms = int((time.perf_counter() - start_time) * 1000)
+            content = data["choices"][0]["message"]["content"].strip()
+            usage = data.get("usage", {})
+
+            self._push_interaction({
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "model": self.default_model,
+                "status": "success",
+                "latency_ms": latency_ms,
+                "request_preview": prompt[:240],
+                "response_preview": content[:240],
+                "usage": usage
+            })
+
+            if "NO_CONTEXT" in content:
+                return None
+
+            corrected_content = await self.critique_and_refine(query, memories, content)
+            return corrected_content
+
         except Exception as e:
             self._push_interaction({
-                "time": __import__("datetime").datetime.now().strftime("%H:%M:%S"),
-                "model": "deepseek-chat",
+                "time": datetime.now().strftime("%H:%M:%S"),
+                "model": self.default_model,
                 "status": "error",
                 "latency_ms": 0,
                 "request_preview": prompt[:240],
                 "response_preview": str(e)[:240],
                 "usage": None
             })
-            print(f"DeepSeek API 综合检索结果时出错: {e}")
+            print(f"[DeepSeek] Synthesize Error: {e}")
             return None
+
+    async def close(self):
+        """关闭会话"""
+        if self._session and not self._session.is_closed:
+            await self._session.aclose()

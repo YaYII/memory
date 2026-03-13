@@ -1,17 +1,19 @@
 import asyncio
 from typing import List
 from datetime import datetime
-from mcp_memory.llm.deepseek import DeepSeekClient
+from mcp_memory.llm.facade import llm_facade, LLMFacade
 from mcp_memory.memory.manager import MemoryManager
 from mcp_memory.core.config import settings
+
 
 class CognitiveProcessor:
     """
     认知处理器：负责后台的记忆总结、分类和技能生成
+    使用 LLMFacade 支持多模型自动切换
     """
     def __init__(self, memory_manager: MemoryManager):
         self.memory_manager = memory_manager
-        self.llm = DeepSeekClient()
+        self.llm: LLMFacade = llm_facade
         self.processing_queue = asyncio.Queue()
         self.is_running = False
         self.last_scan_time = None
@@ -21,6 +23,10 @@ class CognitiveProcessor:
         self.last_scan_processed = 0
         self.last_reflection_note = ""
         self.log_callback = None
+
+    async def initialize(self):
+        """初始化 LLM 客户端"""
+        await self.llm.initialize()
 
     def set_logger(self, logger):
         self.log_callback = logger
@@ -37,6 +43,7 @@ class CognitiveProcessor:
             pass
 
     def get_status(self) -> dict:
+        router_status = self.llm.get_status()
         return {
             "running": self.is_running,
             "last_scan_time": self.last_scan_time.isoformat() if self.last_scan_time else None,
@@ -45,7 +52,8 @@ class CognitiveProcessor:
             "last_scan_processed": self.last_scan_processed,
             "last_error": self.last_error,
             "last_reflection_note": self.last_reflection_note,
-            "deepseek_enabled": bool(settings.DEEPSEEK_API_KEY)
+            "deepseek_enabled": True,
+            "llm_status": router_status
         }
 
     async def periodic_scan_once(self, batch_size: int = None) -> int:
@@ -80,45 +88,41 @@ class CognitiveProcessor:
         处理单条记忆写入事件 (Hook)
         """
         await self._emit(f"[COGNITIVE] 开始分析记忆: {memory_id[:8]}")
-        
-        # 1. 尝试使用 LLM 进行分类，若无则设为 Unknown
+
+        has_llm = len(settings.providers) > 0
+
         category = "Unknown"
-        if settings.DEEPSEEK_API_KEY:
-            await self._emit("[DEEPSEEK] 正在进行分类...")
+        if has_llm:
+            await self._emit("[LLM] 正在进行分类...")
             category = await self.llm.classify_memory(content) or "Unknown"
-            await self._emit(f"[DEEPSEEK] 分类完成: {category}")
+            await self._emit(f"[LLM] 分类完成: {category}")
         else:
-            # 简单启发式分类
             if any(kw in content.lower() for kw in ["config", "install", "pip", "setup"]):
                 category = "Config"
             elif any(kw in content.lower() for kw in ["def ", "class ", "import ", "const ", "function"]):
                 category = "Coding"
             await self._emit(f"[COGNITIVE] 启发式分类: {category}")
 
-        # 2. 实体提取
         entities = []
-        if settings.DEEPSEEK_API_KEY:
-            await self._emit("[DEEPSEEK] 正在抽取实体...")
+        if has_llm:
+            await self._emit("[LLM] 正在抽取实体...")
             entities = await self.llm.extract_entities(content)
-            await self._emit(f"[DEEPSEEK] 实体抽取完成，数量={len(entities)}")
-        
-        # 如果 LLM 提取失败或未开启，使用 Fallback 逻辑
+            await self._emit(f"[LLM] 实体抽取完成，数量={len(entities)}")
+
         if not entities:
             entities = self.memory_manager.store._fallback_extract_entities(content)
             if entities:
                 await self._emit(f"[COGNITIVE] Fallback 实体抽取: {len(entities)} 个")
 
         if entities:
-            # 将实体和分类存入图谱库以构建技能树
             self.memory_manager.store.add_entities_to_graph(memory_id, entities, category=category)
             await self._emit(f"[GRAPH] 已写入图谱节点关系: category={category}, entities={len(entities)}")
-        
-        # 3. 技能总结 (仅在有 LLM 时进行)
-        if settings.DEEPSEEK_API_KEY and category in ["Coding", "Config"]:
-            await self._emit("[DEEPSEEK] 正在生成认知总结...")
+
+        if (settings.GLM_API_KEY or settings.DEEPSEEK_API_KEY) and category in ["Coding", "Config"]:
+            await self._emit("[LLM] 正在生成认知总结...")
             summary = await self.llm.summarize_memories([content])
             if summary:
-                await self._emit(f"[DEEPSEEK] 总结生成成功: {summary[:36]}...")
+                await self._emit(f"[LLM] 总结生成成功: {summary[:36]}...")
                 self.memory_manager.write_memory(
                     user_id=user_id,
                     content=f"【认知总结】{summary}",
@@ -141,8 +145,8 @@ class CognitiveProcessor:
             await self._emit("[EVOLUTION] 深度反思跳过：无可反思记忆")
             return
 
-        if settings.DEEPSEEK_API_KEY:
-            await self._emit("[DEEPSEEK] 正在执行深度反思推理...")
+        if settings.GLM_API_KEY or settings.DEEPSEEK_API_KEY:
+            await self._emit("[LLM] 正在执行深度反思推理...")
             optimized = await self.llm.optimize_memory_storage(docs)
             if optimized:
                 self.memory_manager.write_memory(
@@ -150,8 +154,8 @@ class CognitiveProcessor:
                     content=f"【深度反思】记忆库优化建议：\n{optimized}",
                     scope="project"
                 )
-                self.last_reflection_note = "已完成 DeepSeek 深度反思"
-                await self._emit("[DEEPSEEK] 深度反思完成并写回优化建议")
+                self.last_reflection_note = "已完成 LLM 深度反思"
+                await self._emit("[LLM] 深度反思完成并写回优化建议")
         else:
             unique_docs = list(dict.fromkeys(docs))
             duplicate_count = len(docs) - len(unique_docs)
@@ -173,8 +177,12 @@ class CognitiveProcessor:
                 content=fallback_summary,
                 scope="project"
             )
-            self.last_reflection_note = "已完成无 DeepSeek 启发式反思"
+            self.last_reflection_note = "已完成无 LLM 启发式反思"
             await self._emit("[EVOLUTION] 已完成启发式反思并写回结果")
 
         self.last_reflection_time = datetime.now()
         await self._emit("[EVOLUTION] 深度反思流程结束")
+
+    async def close(self):
+        """关闭资源"""
+        await self.llm.close()

@@ -28,10 +28,19 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 try:
     memory_manager = MemoryManager()
     cognitive_processor = CognitiveProcessor(memory_manager)
-    print("✅ 记忆管理器与认知处理器初始化成功。")
+    print("✅ 记忆管理器初始化成功。")
 except Exception as e:
     print(f"❌ 无法初始化记忆管理器: {e}")
     sys.exit(1)
+
+
+async def initialize_services():
+    """初始化服务"""
+    try:
+        await cognitive_processor.initialize()
+        print("✅ LLM 服务初始化成功（多模型支持已启用）")
+    except Exception as e:
+        print(f"⚠️ LLM 服务初始化失败: {e}")
 
 # Dashboard HTML Template - Now served from static/index.html
 # Keeping this var for reference or fallback, but actual serving uses FileResponse
@@ -196,13 +205,8 @@ async def startup_event():
     cognitive_processor.is_running = True
     cognitive_processor.set_logger(log_event)
     asyncio.create_task(system_heartbeat_task())
-    
-    # Check DeepSeek Status
-    if settings.DEEPSEEK_API_KEY:
-        log_event("[SYSTEM] DeepSeek 认知核心已激活 (API Key Verified)")
-        log_event("[SYSTEM] 正在初始化深度思考模型...")
-    else:
-        log_event("[SYSTEM] DeepSeek 模块未激活: 未检测到 API Key")
+
+    await initialize_services()
 
     if settings.MCP_EVOLUTION_ENABLED:
         global EVOLUTION_SCAN_TASK, EVOLUTION_REFLECTION_TASK
@@ -247,12 +251,17 @@ async def get_evolution_status():
     })
     return status
 
-@app.get("/dashboard/deepseek/interactions")
-async def get_deepseek_interactions(limit: int = 20):
+@app.get("/dashboard/llm/interactions")
+async def get_llm_interactions(limit: int = 20):
     return {
-        "enabled": bool(settings.DEEPSEEK_API_KEY),
+        "provider": settings.MCP_LLM_PROVIDER,
+        "enabled": bool(settings.GLM_API_KEY or settings.DEEPSEEK_API_KEY),
         "items": cognitive_processor.llm.get_recent_interactions(limit=limit)
     }
+
+@app.get("/dashboard/llm/status")
+async def get_llm_status():
+    return cognitive_processor.llm.get_status()
 
 @app.get("/dashboard/memory/{memory_id}")
 async def get_memory_detail(memory_id: str):
