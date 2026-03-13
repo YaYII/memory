@@ -208,6 +208,16 @@ async def startup_event():
     asyncio.create_task(system_heartbeat_task())
 
     await initialize_services()
+    
+    # 初始化三层记忆管理器和自动总结系统
+    try:
+        if memory_manager.tiered_manager:
+            await memory_manager.tiered_manager.initialize()
+            log_event("[AUTO-SUMMARIZER] 自动总结系统已启动，将主动处理记忆清洗和技能提取")
+        else:
+            log_event("[AUTO-SUMMARIZER] 三层记忆管理器未初始化，自动总结功能已禁用")
+    except Exception as e:
+        log_event(f"[AUTO-SUMMARIZER] 初始化失败：{e}")
 
     if settings.MCP_EVOLUTION_ENABLED:
         global EVOLUTION_SCAN_TASK, EVOLUTION_REFLECTION_TASK
@@ -225,15 +235,25 @@ async def dashboard():
 @app.get("/dashboard/stats")
 async def get_stats():
     """
-    Get system stats
+    Get system stats - 使用统一的 MemoryStore 统计
     """
     try:
-        count = memory_manager.store.collection.count()
+        # 使用统一的 MemoryStore 统计
+        tiered_stats = memory_manager.store.get_tiered_stats()
+        
         # 检查是否有任何 LLM 提供商可用
         providers = settings.providers
         llm_enabled = len(providers) > 0
+        
         return {
-            "memory_count": count,
+            "memory_count": tiered_stats["total_count"],
+            "traditional_count": tiered_stats["total_count"],
+            "tiered_count": tiered_stats["total_count"],
+            "tiered_breakdown": {
+                "storage": tiered_stats["storage_count"],
+                "thinking": tiered_stats["thinking_count"],
+                "skill": tiered_stats["skill_count"]
+            },
             "llm_enabled": llm_enabled,
             "providers_count": len(providers),
             "preferred_provider": settings.MCP_LLM_PROVIDER
@@ -419,14 +439,16 @@ async def set_evolution_profile(profile: str):
     return {"status": "ok", "profile": profile}
 
 @app.get("/dashboard/graph")
-async def get_graph_data(days: int = 7, max_nodes: int = 1000):
+async def get_graph_data(days: int = 7, max_nodes: int = 1000, memory_only: bool = False):
     """
     获取知识图谱数据用于可视化 (D3/ForceGraph 格式)
     Enriched with Category/Group logic
+    合并传统记忆图谱和三层记忆图谱
     
     Args:
         days: 只显示最近几天的记忆 (默认7天)
         max_nodes: 最大节点数量限制 (默认100个)
+        memory_only: 是否只返回记忆节点，不返回实体节点
     """
     try:
         from datetime import datetime, timedelta
@@ -434,53 +456,71 @@ async def get_graph_data(days: int = 7, max_nodes: int = 1000):
         # 计算时间阈值
         cutoff_date = datetime.now() - timedelta(days=days)
         
-        G = memory_manager.store.graph
+        # 合并两个图谱：传统记忆 + 三层记忆
+        G = nx.DiGraph()
+        
+        # 1. 添加传统记忆图谱
+        traditional_graph = memory_manager.store.graph
+        for node_id, node_data in traditional_graph.nodes(data=True):
+            G.add_node(node_id, **node_data)
+        for source, target, edge_data in traditional_graph.edges(data=True):
+            G.add_edge(source, target, **edge_data)
+        
+        # 注意：三层记忆已合并到统一的 MemoryStore 中，不再需要单独获取
+        
         data = nx.node_link_data(G)
 
-        memory_ids = [str(n.get("id")) for n in data.get("nodes", []) if n.get("type") == "memory"]
+        memory_ids = [str(n.get("id")) for n in data.get("nodes", []) if n.get("type") in ["memory", "storage", "thinking", "skill"]]
         memory_payload = {}
         filtered_memory_ids = set()
         
+        # 1. 从传统记忆系统获取
         if memory_ids:
-            raw = memory_manager.store.collection.get(ids=memory_ids)
-            ids = raw.get("ids", [])
-            docs = raw.get("documents", [])
-            metas = raw.get("metadatas", [])
-            
-            for i, mid in enumerate(ids):
-                content = docs[i] if i < len(docs) else ""
-                meta = metas[i] if i < len(metas) else {}
-                timestamp_str = meta.get("timestamp", "")
+            try:
+                raw = memory_manager.store.collection.get(ids=memory_ids)
+                ids = raw.get("ids", [])
+                docs = raw.get("documents", [])
+                metas = raw.get("metadatas", [])
                 
-                # 检查时间是否在范围内
-                try:
-                    if timestamp_str:
-                        memory_date = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
-                        if memory_date < cutoff_date:
-                            continue  # 跳过过期的记忆
-                except:
-                    pass  # 如果解析失败，保留该记忆
-                
-                first_line = (content or "").splitlines()[0].strip()
-                short_title = first_line[:22] + "…" if len(first_line) > 22 else first_line
-                if not short_title:
-                    short_title = f"记忆 {str(mid)[:8]}"
-                memory_payload[str(mid)] = {
-                    "title": short_title,
-                    "detail": content or "",
-                    "timestamp": timestamp_str,
-                    "scope": meta.get("scope", "project"),
-                    "user_id": meta.get("user_id", "")
-                }
-                filtered_memory_ids.add(str(mid))
+                for i, mid in enumerate(ids):
+                    content = docs[i] if i < len(docs) else ""
+                    meta = metas[i] if i < len(metas) else {}
+                    timestamp_str = meta.get("timestamp", "")
+                    
+                    # 检查时间是否在范围内
+                    try:
+                        if timestamp_str:
+                            memory_date = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                            if memory_date < cutoff_date:
+                                continue
+                    except:
+                        pass
+                    
+                    first_line = (content or "").splitlines()[0].strip()
+                    short_title = first_line[:22] + "…" if len(first_line) > 22 else first_line
+                    if not short_title:
+                        short_title = f"记忆 {str(mid)[:8]}"
+                    memory_payload[str(mid)] = {
+                        "title": short_title,
+                        "detail": content or "",
+                        "timestamp": timestamp_str,
+                        "scope": meta.get("scope", "project"),
+                        "user_id": meta.get("user_id", ""),
+                        "memory_type": meta.get("memory_type", "storage")
+                    }
+                    filtered_memory_ids.add(str(mid))
+            except Exception as e:
+                print(f"[Graph] 从记忆系统获取数据失败: {e}")
+        
+        # 注意：三层记忆已合并到统一的 MemoryStore 中
 
-        category_name_map = {
-            "Coding": "编程技能",
-            "Config": "环境配置",
-            "Personal": "用户画像",
-            "General": "通用知识",
-            "Knowledge": "知识体系",
-            "Other": "其他"
+        # 三层记忆类型映射 - 用于3D图谱分组和着色
+        tiered_memory_groups = {
+            "storage": {"label": "存储记忆", "color": "#4A90E2"},   # 蓝色 - 原始对话
+            "thinking": {"label": "思维记忆", "color": "#F5A623"},  # 橙色 - 总结
+            "skill": {"label": "技能记忆", "color": "#7ED321"},     # 绿色 - 可复用知识
+            "entity": {"label": "实体", "color": "#9013FE"},        # 紫色 - 实体节点
+            "category": {"label": "分类", "color": "#BD10E0"}       # 紫色 - 分类节点
         }
 
         enriched_nodes = []
@@ -489,6 +529,10 @@ async def get_graph_data(days: int = 7, max_nodes: int = 1000):
         for node in data.get("nodes", []):
             node_id = str(node.get("id", ""))
             node_type = node.get("type", "")
+            
+            # 如果只显示记忆节点，跳过实体节点
+            if memory_only and node_type == "entity":
+                continue
             
             # 如果是记忆节点，检查是否通过时间过滤
             if node_type == "memory" and node_id not in filtered_memory_ids:
@@ -500,19 +544,20 @@ async def get_graph_data(days: int = 7, max_nodes: int = 1000):
                 
             filtered_node_ids.add(node_id)
             
-            group = "General"
-            node_id_lower = node_id.lower()
-
-            if any(k in node_id_lower for k in ["python", "java", "code", "function", "api", "class", "method", "git", "docker"]):
-                group = "Coding"
-            elif any(k in node_id_lower for k in ["config", "env", "port", "host", "setting", "setup"]):
-                group = "Config"
-            elif any(k in node_id_lower for k in ["user", "profile", "preference", "like", "dislike"]):
-                group = "Personal"
-            elif node_type == "entity":
-                group = "Entity"
+            # 根据三层记忆类型确定分组
+            group = "storage"  # 默认分组
+            
+            if node_type == "entity":
+                group = "entity"
             elif node_type == "category":
-                group = node_id if node_id in category_name_map else "General"
+                group = "category"
+            elif node_type == "memory" and node_id in memory_payload:
+                # 从记忆数据中获取三层记忆类型
+                mem_type = memory_payload[node_id].get("memory_type", "storage")
+                if mem_type in ["storage", "thinking", "skill"]:
+                    group = mem_type
+                else:
+                    group = "storage"
 
             if node_type == "memory" and node_id in memory_payload:
                 mp = memory_payload[node_id]
@@ -522,14 +567,17 @@ async def get_graph_data(days: int = 7, max_nodes: int = 1000):
                 node["timestamp"] = mp["timestamp"]
                 node["scope"] = mp["scope"]
                 node["user_id"] = mp["user_id"]
+                node["memory_type"] = mp.get("memory_type", "storage")  # 添加记忆类型
             elif node_type == "category":
-                node["label"] = category_name_map.get(node_id, str(node_id))
+                node["label"] = tiered_memory_groups.get(group, {}).get("label", str(node_id))
                 node["title"] = node["label"]
             elif "label" not in node or not node["label"]:
                 node["label"] = str(node_id)
                 node["title"] = str(node_id)
 
             node["group"] = group
+            node["group_label"] = tiered_memory_groups.get(group, {}).get("label", group)
+            node["color"] = tiered_memory_groups.get(group, {}).get("color", "#999999")
             enriched_nodes.append(node)
         
         # 过滤链接，只保留两个端点都在过滤后节点集中的链接
@@ -695,42 +743,32 @@ async def delete_memory_endpoint(req: DeleteMemoryRequest):
 
 
 # ============================================================
-# 三层记忆系统 API (Memory System V2)
+# 三层记忆系统 API (Memory System V2) - 已合并到统一存储
 # ============================================================
 
-from mcp_memory.memory.tiered_manager import TieredMemoryManager
 from mcp_memory.models.data_models import (
     StorageMemoryCreate, ThinkingMemoryCreate, SkillMemoryCreate,
     MemoryFeedbackRequest
 )
-
-# 初始化三层记忆管理器
-try:
-    tiered_manager = TieredMemoryManager()
-    print("✅ 三层记忆管理器初始化成功。")
-except Exception as e:
-    print(f"❌ 无法初始化三层记忆管理器: {e}")
-    tiered_manager = None
 
 
 @app.post("/tiered/storage/write")
 async def write_storage_memory_endpoint(req: StorageMemoryCreate):
     """
     写入存储记忆（原始对话记录）
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        memory_id = tiered_manager.write_storage_memory(
+        memory_id = memory_manager.store.save_storage_memory(
             content=req.content,
             user_id=req.user_id,
             session_id=req.session_id,
-            project_id=req.project_id,
-            scope=req.scope,
+            topic=req.topic,
             participants=req.participants,
-            topic=req.topic
+            scope=req.scope,
+            project_id=req.project_id
         )
+        log_event(f"写入存储记忆: {memory_id[:8]}")
         return {"status": "success", "memory_id": memory_id, "type": "storage"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -740,20 +778,19 @@ async def write_storage_memory_endpoint(req: StorageMemoryCreate):
 async def write_thinking_memory_endpoint(req: ThinkingMemoryCreate):
     """
     写入思维记忆（总结）
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        memory_id = tiered_manager.write_thinking_memory(
+        memory_id = memory_manager.store.save_thinking_memory(
             content=req.content,
             user_id=req.user_id,
             source_memories=req.source_memories,
             summary_type=req.summary_type,
             key_points=req.key_points,
-            project_id=req.project_id,
-            scope=req.scope
+            scope=req.scope,
+            project_id=req.project_id
         )
+        log_event(f"写入思维记忆: {memory_id[:8]}")
         return {"status": "success", "memory_id": memory_id, "type": "thinking"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -763,20 +800,19 @@ async def write_thinking_memory_endpoint(req: ThinkingMemoryCreate):
 async def write_skill_memory_endpoint(req: SkillMemoryCreate):
     """
     写入技能记忆（可复用知识）
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        memory_id = tiered_manager.write_skill_memory(
+        memory_id = memory_manager.store.save_skill_memory(
             content=req.content,
             user_id=req.user_id,
             source_thinking=req.source_thinking,
             skill_type=req.skill_type,
             tags=req.tags,
-            project_id=req.project_id,
-            scope=req.scope
+            scope=req.scope,
+            project_id=req.project_id
         )
+        log_event(f"写入技能记忆: {memory_id[:8]}")
         return {"status": "success", "memory_id": memory_id, "type": "skill"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -785,34 +821,25 @@ async def write_skill_memory_endpoint(req: SkillMemoryCreate):
 @app.get("/tiered/query")
 async def query_tiered_memories(
     query: str,
-    user_id: str,
+    user_id: str = None,
     memory_type: str = "all",
-    limit: int = 10,
-    days: int = None,
-    include_sources: bool = False
+    limit: int = 10
 ):
     """
     分层查询记忆
-    
-    优先级: skill > thinking > storage
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        response = tiered_manager.query_memories(
+        memories = memory_manager.store.query_by_type(
             query=query,
-            user_id=user_id,
             memory_type=memory_type,
-            limit=limit,
-            days=days,
-            include_sources=include_sources
+            user_id=user_id,
+            limit=limit
         )
         return {
-            "memories": [m.dict() for m in response.memories],
-            "total": response.total,
-            "query_time_ms": response.query_time_ms,
-            "has_more": response.has_more
+            "memories": memories,
+            "total": len(memories),
+            "query_time_ms": 0
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -826,19 +853,34 @@ async def get_memory_detail_endpoint(
 ):
     """
     获取记忆详情（支持溯源）
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        detail = tiered_manager.get_memory_detail(
-            memory_id=memory_id,
-            include_sources=include_sources,
-            include_related=include_related
-        )
-        if not detail:
+        # 获取记忆内容
+        res = memory_manager.store.collection.get(ids=[memory_id])
+        if not res or not res["ids"]:
             raise HTTPException(status_code=404, detail="记忆不存在")
+        
+        meta = res["metadatas"][0]
+        detail = {
+            "memory_id": memory_id,
+            "content": res["documents"][0],
+            "memory_type": meta.get("memory_type", "storage"),
+            "timestamp": meta.get("timestamp"),
+            "user_id": meta.get("user_id"),
+            "scope": meta.get("scope"),
+            "project_id": meta.get("project_id"),
+            "confidence": float(meta.get("confidence", 1.0)),
+            "verified": meta.get("verified") == "True"
+        }
+        
+        # 获取源记忆
+        if include_sources:
+            detail["sources"] = memory_manager.store.get_source_memories(memory_id)
+        
         return detail
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -847,12 +889,26 @@ async def get_memory_detail_endpoint(
 async def trace_memory_origin_endpoint(memory_id: str, max_depth: int = 3):
     """
     追溯记忆的起源（完整的溯源链）
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        chain = tiered_manager.trace_memory_origin(memory_id, max_depth)
+        chain = []
+        visited = set()
+        current_id = memory_id
+        
+        for _ in range(max_depth):
+            if current_id in visited:
+                break
+            visited.add(current_id)
+            
+            sources = memory_manager.store.get_source_memories(current_id)
+            if not sources:
+                break
+            
+            chain.extend(sources)
+            # 继续追溯第一个源记忆
+            current_id = sources[0]["memory_id"]
+        
         return {"chain": chain, "depth": len(chain)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -862,36 +918,41 @@ async def trace_memory_origin_endpoint(memory_id: str, max_depth: int = 3):
 async def provide_feedback_endpoint(memory_id: str, req: MemoryFeedbackRequest):
     """
     提供记忆反馈（标记不准确）
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        success = tiered_manager.provide_feedback(
-            memory_id=memory_id,
-            user_id=req.user_id,
-            feedback_type=req.feedback_type,
-            comment=req.comment,
-            suggested_content=req.suggested_content
+        # 获取记忆
+        res = memory_manager.store.collection.get(ids=[memory_id])
+        if not res or not res["ids"]:
+            raise HTTPException(status_code=404, detail="记忆不存在")
+        
+        # 更新记忆元数据
+        meta = res["metadatas"][0]
+        meta["feedback_type"] = req.feedback_type
+        meta["feedback_comment"] = req.comment or ""
+        if req.suggested_content:
+            meta["suggested_content"] = req.suggested_content
+        
+        memory_manager.store.collection.update(
+            ids=[memory_id],
+            metadatas=[meta]
         )
-        if success:
-            return {"status": "success", "message": "反馈已记录"}
-        else:
-            raise HTTPException(status_code=400, detail="记录反馈失败")
+        
+        return {"status": "success", "message": "反馈已记录"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/tiered/stats")
-async def get_tiered_stats():
+async def get_tiered_stats(user_id: str = None):
     """
     获取三层记忆系统统计信息
+    使用统一的 MemoryStore
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
     try:
-        stats = tiered_manager.get_stats()
+        stats = memory_manager.store.get_tiered_stats(user_id)
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -901,15 +962,9 @@ async def get_tiered_stats():
 async def force_summarize_endpoint(memory_ids: List[str]):
     """
     手动触发总结（用于测试）
+    注意：此功能暂时禁用，等待重新实现
     """
-    if not tiered_manager:
-        raise HTTPException(status_code=503, detail="三层记忆系统未初始化")
-    
-    try:
-        result = await tiered_manager.summarizer.force_summary(memory_ids)
-        return {"status": "success", "result": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    raise HTTPException(status_code=501, detail="此功能正在重构中，请稍后再试")
 
 
 def main():

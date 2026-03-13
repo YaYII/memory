@@ -1,10 +1,32 @@
-import { updateGraph, highlightNode, resetHighlight } from './graph.js';
+import { updateGraph, highlightNode, resetHighlight, focusNodeById as focusNodeByIdGraph, resetFocus } from './graph.js';
+
+// Expose graph functions to window for global access
+window.highlightNode = highlightNode;
+window.focusNodeById = focusNodeByIdGraph;
+window.resetHighlight = resetHighlight;
+window.updateGraph = updateGraph;
+window.resetGraphFocus = resetFocus;
 
 // Global state
 let currentGraphData = { nodes: [], links: [] };
 let logEventSource = null;
 let currentMemoryType = 'all';
 let currentMemoryId = null;
+let currentUserId = 'yangying'; // Default user ID from system
+
+// 三层记忆类型中文映射
+const TIERED_LABELS = {
+    'storage': '存储记忆',
+    'thinking': '思维记忆',
+    'skill': '技能记忆',
+    'entity': '关联实体',
+    'category': '分类节点'
+};
+
+// Helper function to get Chinese label for memory group
+function getMemoryGroupLabel(group) {
+    return TIERED_LABELS[group] || group || '通用';
+}
 
 // Profile labels
 const PROFILE_LABELS = {
@@ -72,43 +94,100 @@ async function fetchLLMStatus() {
     }
 }
 
+// 全局记忆数据缓存
+const MemoryDataCache = {
+    totalCount: 0,
+    tieredCounts: { skill: 0, thinking: 0, storage: 0 },
+    memories: [],
+    graphNodes: [],
+    lastUpdate: null
+};
+
+// 统一的记忆数据更新函数
+function updateMemoryDisplay() {
+    // 更新系统状态监控 - 使用三层记忆的汇总数据
+    const tieredTotal = MemoryDataCache.tieredCounts.skill + 
+                        MemoryDataCache.tieredCounts.thinking + 
+                        MemoryDataCache.tieredCounts.storage;
+    
+    // 优先显示三层记忆的汇总，如果没有则显示缓存总数
+    const displayTotal = tieredTotal > 0 ? tieredTotal : MemoryDataCache.totalCount;
+    document.getElementById('mem-count').innerText = displayTotal;
+    
+    // 更新三层记忆统计
+    document.getElementById('skill-count').innerText = MemoryDataCache.tieredCounts.skill;
+    document.getElementById('thinking-count').innerText = MemoryDataCache.tieredCounts.thinking;
+    document.getElementById('storage-count').innerText = MemoryDataCache.tieredCounts.storage;
+    
+    // 更新实体数量（基于图谱数据）
+    const entityCount = MemoryDataCache.graphNodes.filter(n => n.type === 'entity').length;
+    document.getElementById('entity-count').innerText = entityCount;
+    
+    // 记录日志
+    if (MemoryDataCache.lastUpdate) {
+        addLog(`记忆数据已同步: 总计${displayTotal} | 技能${MemoryDataCache.tieredCounts.skill} | 思维${MemoryDataCache.tieredCounts.thinking} | 存储${MemoryDataCache.tieredCounts.storage}`, 'info');
+    }
+}
+
 async function fetchState() {
     try {
-        // Stats
-        const statsRes = await fetch('/dashboard/stats');
-        const stats = await statsRes.json();
-        document.getElementById('mem-count').innerText = stats.memory_count;
+        // 并行获取所有数据源
+        const [statsRes, tieredStatsRes, graphRes, evoRes] = await Promise.allSettled([
+            fetch('/dashboard/stats'),
+            fetch('/tiered/stats'),
+            fetch('/dashboard/graph?memory_only=true'),
+            fetch('/dashboard/evolution/status')
+        ]);
         
-        // Get LLM status
-        await fetchLLMStatus();
-
-        // Evolution status
-        const evoRes = await fetch('/dashboard/evolution/status');
-        if (evoRes.ok) {
-            const evo = await evoRes.json();
+        // 处理基础统计
+        if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+            const stats = await statsRes.value.json();
+            MemoryDataCache.totalCount = stats.memory_count || 0;
+        }
+        
+        // 处理三层记忆统计 - 与系统状态融合
+        if (tieredStatsRes.status === 'fulfilled' && tieredStatsRes.value.ok) {
+            const tieredStats = await tieredStatsRes.value.json();
+            MemoryDataCache.tieredCounts = {
+                skill: tieredStats.skill_count || 0,
+                thinking: tieredStats.thinking_count || 0,
+                storage: tieredStats.storage_count || 0
+            };
+        }
+        
+        // 处理进化状态
+        if (evoRes.status === 'fulfilled' && evoRes.value.ok) {
+            const evo = await evoRes.value.json();
             const profile = evo.profile || 'standard';
             document.getElementById('evolution-profile').innerText = PROFILE_LABELS[profile] || profile;
             setProfileActiveButton(profile);
         }
-
-        // Graph
-        const graphRes = await fetch('/dashboard/graph');
-        if (!graphRes.ok) {
-            throw new Error(`Graph API returned ${graphRes.status}`);
+        
+        // 处理图谱数据
+        if (graphRes.status === 'fulfilled' && graphRes.value.ok) {
+            const graph = await graphRes.value.json();
+            
+            // Safety check: ensure graph has nodes/links
+            if (!graph.nodes) graph.nodes = [];
+            if (!graph.links) graph.links = [];
+            
+            // 缓存图谱节点
+            MemoryDataCache.graphNodes = graph.nodes;
+            
+            // Simple adapter to match D3 format expected by updateGraph
+            graph.nodes.forEach(n => {
+                if (!n.label) n.label = n.id.substring(0, 10) + '...';
+            });
+            
+            updateGraph(graph);
         }
         
-        const graph = await graphRes.json();
+        // 统一更新显示
+        MemoryDataCache.lastUpdate = new Date();
+        updateMemoryDisplay();
         
-        // Safety check: ensure graph has nodes/links
-        if (!graph.nodes) graph.nodes = [];
-        if (!graph.links) graph.links = [];
-        
-        // Simple adapter to match D3 format expected by updateGraph
-        graph.nodes.forEach(n => {
-            if (!n.label) n.label = n.id.substring(0, 10) + '...';
-        });
-        document.getElementById('entity-count').innerText = graph.nodes.filter(n => n.type === 'entity').length;
-        updateGraph(graph);
+        // Get LLM status
+        await fetchLLMStatus();
 
     } catch (e) {
         console.error("连接断开:", e);
@@ -195,9 +274,49 @@ function createMemoryItem(memory) {
         <div class="memory-item-content">${memory.content.substring(0, 100)}${memory.content.length > 100 ? '...' : ''}</div>
     `;
     
-    div.addEventListener('click', () => showMemoryDetail(memory.memory_id));
+    div.addEventListener('click', () => {
+        // 显示详情
+        showMemoryDetail(memory.memory_id);
+        
+        // 在神经图谱中高亮对应节点
+        highlightMemoryInGraph(memory);
+    });
     
     return div;
+}
+
+// 在神经图谱中高亮记忆对应的节点
+function highlightMemoryInGraph(memory) {
+    // 尝试找到对应的图谱节点
+    const nodeId = memory.memory_id;
+    const node = MemoryDataCache.graphNodes.find(n => n.id === nodeId);
+    
+    if (node) {
+        // 如果找到节点，高亮它
+        window.highlightNode(nodeId);
+        window.focusNodeById(nodeId);
+        addLog(`已在神经图谱中定位记忆: ${memory.memory_id.substring(0, 20)}...`, 'success');
+    } else {
+        // 如果没有找到精确匹配，尝试根据内容相似度找到相关节点
+        const relatedNodes = findRelatedNodes(memory);
+        if (relatedNodes.length > 0) {
+            addLog(`找到 ${relatedNodes.length} 个相关记忆节点`, 'info');
+            // 高亮第一个相关节点
+            window.highlightNode(relatedNodes[0].id);
+        } else {
+            addLog('该记忆尚未在神经图谱中可视化', 'warn');
+        }
+    }
+}
+
+// 查找与记忆相关的图谱节点
+function findRelatedNodes(memory) {
+    const content = memory.content.toLowerCase();
+    return MemoryDataCache.graphNodes.filter(node => {
+        const nodeText = (node.label + ' ' + (node.title || '') + ' ' + (node.detail || '')).toLowerCase();
+        // 简单的文本匹配，可以改进为更复杂的相似度算法
+        return content.split(' ').some(word => word.length > 2 && nodeText.includes(word));
+    });
 }
 
 // 显示记忆详情
@@ -206,8 +325,12 @@ async function showMemoryDetail(memoryId) {
         const res = await fetch(`/tiered/memory/${memoryId}?include_sources=true`);
         if (!res.ok) throw new Error('获取详情失败');
         
-        const detail = await res.json();
-        const memory = detail.memory;
+        const memory = await res.json();
+        
+        // Check if memory data exists
+        if (!memory || !memory.memory_id) {
+            throw new Error('记忆数据不存在');
+        }
         
         currentMemoryId = memoryId;
         
@@ -216,21 +339,21 @@ async function showMemoryDetail(memoryId) {
             memory.memory_type === 'skill' ? '技能记忆' :
             memory.memory_type === 'thinking' ? '思维记忆' : '存储记忆';
         document.getElementById('tiered-detail-confidence').innerText = 
-            (memory.metadata?.confidence || 1.0).toFixed(2);
+            (memory.confidence || 1.0).toFixed(2);
         document.getElementById('tiered-detail-time').innerText = 
-            new Date(memory.timestamp).toLocaleString();
+            memory.timestamp ? new Date(memory.timestamp).toLocaleString() : '-';
         document.getElementById('tiered-detail-tags').innerText = 
-            (memory.metadata?.tags || []).join(', ') || '无';
-        document.getElementById('tiered-detail-content').innerText = memory.content;
+            (memory.tags || []).join(', ') || '无';
+        document.getElementById('tiered-detail-content').innerText = memory.content || '';
         
         // 显示源记忆
         const sourcesSection = document.getElementById('tiered-detail-sources-section');
         const sourcesList = document.getElementById('tiered-detail-sources');
         
-        if (detail.sources && detail.sources.length > 0) {
+        if (memory.sources && memory.sources.length > 0) {
             sourcesSection.style.display = 'block';
             sourcesList.innerHTML = '';
-            detail.sources.forEach(source => {
+            memory.sources.forEach(source => {
                 const item = document.createElement('div');
                 item.className = 'source-item';
                 item.innerText = `[${source.memory_type}] ${source.content.substring(0, 50)}...`;
@@ -372,6 +495,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 关闭详情弹窗
     document.getElementById('tiered-detail-close')?.addEventListener('click', () => {
         document.getElementById('tiered-detail-modal').style.display = 'none';
+        // Reset 3D graph effects
+        if (window.resetGraphFocus) {
+            window.resetGraphFocus();
+        }
     });
     
     // 追溯起源按钮
@@ -384,6 +511,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('tiered-detail-modal')?.addEventListener('click', (e) => {
         if (e.target.id === 'tiered-detail-modal') {
             document.getElementById('tiered-detail-modal').style.display = 'none';
+            // Reset 3D graph effects
+            if (window.resetGraphFocus) {
+                window.resetGraphFocus();
+            }
         }
     });
     
@@ -448,24 +579,58 @@ document.getElementById('rebuild-btn')?.addEventListener('click', async () => {
     }
 });
 
-// Search functionality
-document.getElementById('memory-search-btn')?.addEventListener('click', async () => {
-    const query = document.getElementById('memory-search-input').value;
-    if (!query) return;
+// 统一搜索功能 - 同步更新三层记忆列表和图谱
+async function performUnifiedSearch(query) {
+    if (!query || query.trim() === '') {
+        // 如果搜索为空，恢复显示所有记忆
+        loadMemoryList('all');
+        resetHighlight();
+        return;
+    }
+    
+    addLog(`正在搜索记忆: "${query}"...`, 'info');
     
     try {
-        const res = await fetch('/memory/read', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: 'yangying', query: query, limit: 5 })
-        });
+        // 同时搜索三层记忆和传统记忆
+        const [tieredRes, legacyRes] = await Promise.allSettled([
+            fetch(`/tiered/query?query=${encodeURIComponent(query)}&user_id=yangying&memory_type=all&limit=10`),
+            fetch('/memory/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: 'yangying', query: query, limit: 5 })
+            })
+        ]);
         
-        if (res.ok) {
-            const results = await res.json();
-            const resultsDiv = document.getElementById('memory-search-results');
-            resultsDiv.innerHTML = '';
+        const allResults = [];
+        
+        // 处理三层记忆搜索结果
+        if (tieredRes.status === 'fulfilled' && tieredRes.value.ok) {
+            const tieredData = await tieredRes.value.json();
+            const tieredMemories = tieredData.memories || [];
+            allResults.push(...tieredMemories);
             
-            results.forEach(item => {
+            // 更新三层记忆列表显示
+            const listEl = document.getElementById('memory-list');
+            if (tieredMemories.length === 0) {
+                listEl.innerHTML = '<div class="memory-item-placeholder">未找到匹配的记忆</div>';
+            } else {
+                listEl.innerHTML = '';
+                tieredMemories.forEach(memory => {
+                    const item = createMemoryItem(memory);
+                    listEl.appendChild(item);
+                });
+                addLog(`三层记忆搜索完成: 找到 ${tieredMemories.length} 条记忆`, 'success');
+            }
+        }
+        
+        // 处理传统记忆搜索结果
+        const resultsDiv = document.getElementById('memory-search-results');
+        resultsDiv.innerHTML = '';
+        
+        if (legacyRes.status === 'fulfilled' && legacyRes.value.ok) {
+            const legacyResults = await legacyRes.value.json();
+            
+            legacyResults.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'log-entry info';
                 div.style.cursor = 'pointer';
@@ -474,27 +639,167 @@ document.getElementById('memory-search-btn')?.addEventListener('click', async ()
                     // Show detail modal
                     document.getElementById('detail-title').innerText = '记忆详情';
                     document.getElementById('detail-type').innerText = item.type || 'memory';
-                    document.getElementById('detail-group').innerText = item.group || 'general';
+                    document.getElementById('detail-group').innerText = getMemoryGroupLabel(item.group) || getMemoryGroupLabel(item.memory_type) || '通用';
                     document.getElementById('detail-time').innerText = new Date(item.timestamp).toLocaleString();
                     document.getElementById('detail-body').value = item.content;
                     document.getElementById('detail-modal').style.display = 'flex';
+                    
+                    // 同时在图谱中高亮
+                    const relatedNode = MemoryDataCache.graphNodes.find(n => n.id === item.memory_id);
+                    if (relatedNode) {
+                        window.highlightNode(item.memory_id);
+                        window.focusNodeById(item.memory_id);
+                    }
                 });
                 resultsDiv.appendChild(div);
             });
         }
+        
+        // 在神经图谱中高亮所有搜索结果相关的节点
+        highlightSearchResultsInGraph(allResults);
+        
     } catch (e) {
-        console.error('搜索失败:', e);
+        console.error('统一搜索失败:', e);
+        addLog('搜索失败: ' + e.message, 'error');
+    }
+}
+
+// 在图谱中高亮搜索结果
+function highlightSearchResultsInGraph(memories) {
+    if (!memories || memories.length === 0) return;
+    
+    const matchedNodeIds = [];
+    
+    memories.forEach(memory => {
+        // 精确匹配
+        const exactMatch = MemoryDataCache.graphNodes.find(n => n.id === memory.memory_id);
+        if (exactMatch) {
+            matchedNodeIds.push(exactMatch.id);
+        } else {
+            // 模糊匹配
+            const related = findRelatedNodes(memory);
+            related.forEach(node => matchedNodeIds.push(node.id));
+        }
+    });
+    
+    if (matchedNodeIds.length > 0) {
+        // 去重
+        const uniqueIds = [...new Set(matchedNodeIds)];
+        addLog(`在神经图谱中定位到 ${uniqueIds.length} 个相关节点`, 'success');
+        
+        // 高亮第一个节点并聚焦
+        window.highlightNode(uniqueIds[0]);
+        window.focusNodeById(uniqueIds[0]);
+        
+        // 如果有多个结果，可以在这里实现循环浏览功能
+    } else {
+        addLog('搜索结果在神经图谱中暂无对应节点', 'warn');
+    }
+}
+
+// 绑定搜索按钮事件
+document.getElementById('memory-search-btn')?.addEventListener('click', async () => {
+    const query = document.getElementById('memory-search-input').value;
+    await performUnifiedSearch(query);
+});
+
+// 绑定回车键搜索
+document.getElementById('memory-search-input')?.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+        const query = document.getElementById('memory-search-input').value;
+        await performUnifiedSearch(query);
     }
 });
 
 // Detail modal close
 document.getElementById('detail-close')?.addEventListener('click', () => {
     document.getElementById('detail-modal').style.display = 'none';
+    // Reset 3D graph effects
+    if (window.resetGraphFocus) {
+        window.resetGraphFocus();
+    }
+});
+
+// Listen for node selection from graph
+window.addEventListener('node-selected', async (e) => {
+    const nodeData = e.detail;
+    if (!nodeData || !nodeData.id) return;
+    
+    // Only allow viewing/updating memory nodes, not entity nodes
+    if (nodeData.type !== 'memory') {
+        addLog(`点击的是"${nodeData.type}"类型节点，只有记忆节点可以查看详情`, 'warn');
+        return;
+    }
+    
+    currentMemoryId = nodeData.id;
+    
+    // Fetch full memory details from server
+    try {
+        const res = await fetch(`/dashboard/memory/${nodeData.id}`);
+        if (res.ok) {
+            const memory = await res.json();
+            
+            // Show detail modal
+            document.getElementById('detail-title').innerText = memory.title || memory.content?.substring(0, 50) || '记忆详情';
+            document.getElementById('detail-type').innerText = memory.memory_type || memory.type || 'memory';
+            document.getElementById('detail-group').innerText = getMemoryGroupLabel(memory.group) || getMemoryGroupLabel(memory.memory_type) || '通用';
+            document.getElementById('detail-time').innerText = memory.timestamp ? new Date(memory.timestamp).toLocaleString() : '-';
+            document.getElementById('detail-body').value = memory.content || '';
+            document.getElementById('detail-modal').style.display = 'flex';
+        } else {
+            // Fallback to node data if fetch fails
+            document.getElementById('detail-title').innerText = nodeData.title || nodeData.label || '记忆详情';
+            document.getElementById('detail-type').innerText = nodeData.type || 'memory';
+            document.getElementById('detail-group').innerText = getMemoryGroupLabel(nodeData.group) || getMemoryGroupLabel(nodeData.memory_type) || '通用';
+            document.getElementById('detail-time').innerText = nodeData.timestamp ? new Date(nodeData.timestamp).toLocaleString() : '-';
+            document.getElementById('detail-body').value = nodeData.content || nodeData.detail || '';
+            document.getElementById('detail-modal').style.display = 'flex';
+        }
+    } catch (err) {
+        console.error('获取记忆详情失败:', err);
+        // Fallback to node data
+        document.getElementById('detail-title').innerText = nodeData.title || nodeData.label || '记忆详情';
+        document.getElementById('detail-type').innerText = nodeData.type || 'memory';
+        document.getElementById('detail-group').innerText = getMemoryGroupLabel(nodeData.group) || getMemoryGroupLabel(nodeData.memory_type) || '通用';
+        document.getElementById('detail-time').innerText = nodeData.timestamp ? new Date(nodeData.timestamp).toLocaleString() : '-';
+        document.getElementById('detail-body').value = nodeData.content || nodeData.detail || '';
+        document.getElementById('detail-modal').style.display = 'flex';
+    }
 });
 
 document.getElementById('detail-save')?.addEventListener('click', async () => {
-    // Save memory logic here
-    document.getElementById('detail-modal').style.display = 'none';
+    if (!currentMemoryId) {
+        addLog('没有选中的记忆', 'error');
+        return;
+    }
+    
+    const newContent = document.getElementById('detail-body').value;
+    
+    try {
+        const res = await fetch('/dashboard/memory/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                memory_id: currentMemoryId,
+                user_id: currentUserId,
+                content: newContent,
+                reason: '用户手动更新'
+            })
+        });
+        
+        if (res.ok) {
+            addLog('记忆更新成功', 'success');
+            document.getElementById('detail-modal').style.display = 'none';
+            // Refresh the graph data
+            fetchState();
+        } else {
+            const err = await res.json();
+            addLog(`记忆更新失败: ${err.detail || '未知错误'}`, 'error');
+        }
+    } catch (e) {
+        console.error('保存记忆失败:', e);
+        addLog('记忆更新失败: 网络错误', 'error');
+    }
 });
 
 // Click outside to close modal
@@ -502,6 +807,10 @@ window.addEventListener('click', (e) => {
     const modal = document.getElementById('detail-modal');
     if (e.target === modal) {
         modal.style.display = 'none';
+        // Reset 3D graph effects
+        if (window.resetGraphFocus) {
+            window.resetGraphFocus();
+        }
     }
 });
 

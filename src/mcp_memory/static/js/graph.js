@@ -11,6 +11,17 @@ let initAttempts = 0;
 const MAX_INIT_ATTEMPTS = 50;
 
 // --- Configuration ---
+// 三层记忆类型颜色映射 - 与后端保持一致
+const TIERED_COLORS = {
+    'storage': '#4A90E2',   // 蓝色 - 存储记忆
+    'thinking': '#F5A623',  // 橙色 - 思维记忆
+    'skill': '#7ED321',     // 绿色 - 技能记忆
+    'entity': '#9013FE',    // 紫色 - 实体
+    'category': '#BD10E0',  // 紫色 - 分类
+    'Default': '#aaaaaa'
+};
+
+// 保留旧的颜色映射用于向后兼容
 const COLORS = {
     'Coding': '#00ffff',
     'Config': '#ff00ff',
@@ -59,7 +70,14 @@ function initGraph() {
         // Create Graph
         Graph = ForceGraph3D({ controlType: 'orbit' })(container)
             .backgroundColor('#000510')
-            .nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default'])
+            .nodeColor(node => {
+                // 优先使用后端传来的color字段
+                if (node.color) return node.color;
+                // 其次使用三层记忆类型颜色
+                if (TIERED_COLORS[node.group]) return TIERED_COLORS[node.group];
+                // 最后使用旧的颜色映射
+                return COLORS[node.group] || COLORS[node.type] || COLORS['Default'];
+            })
             .nodeVal(node => node.type === 'category' ? 6 : (node.type === 'memory' ? 4 : 2))
             .nodeLabel('label')
             .nodeResolution(16)
@@ -75,7 +93,7 @@ function initGraph() {
             .warmupTicks(100)
             .cooldownTicks(50)
             .onNodeHover(node => {
-                if (node) {
+                if (node && node.type !== 'category') {
                     stopAutoRotate();
                     document.body.style.cursor = 'pointer';
                 } else {
@@ -84,13 +102,33 @@ function initGraph() {
                 }
             })
             .onNodeClick(node => {
+                if (!node) return;
+                
+                // 跳过 category 类型节点，不触发点击事件
+                if (node.type === 'category') {
+                    console.log('Category node clicked - ignoring');
+                    return;
+                }
+                
                 stopAutoRotate();
                 const safeNode = node || {};
-                const event = new CustomEvent('node-selected', { 
+                
+                // Debug: log the node data to see what id is being passed
+                console.log('Node clicked:', safeNode);
+                
+                // Ensure we have the correct memory_id - it could be in different properties
+                const memoryId = safeNode.id || safeNode.memory_id;
+                
+                if (!memoryId) {
+                    console.error('Node clicked but no memory ID found:', safeNode);
+                    return;
+                }
+                
+                const event = new CustomEvent('node-selected', {
                     detail: {
-                        id: safeNode.id,
+                        id: memoryId,
                         label: safeNode.label,
-                        title: safeNode.title || safeNode.label || safeNode.id,
+                        title: safeNode.title || safeNode.label || memoryId,
                         group: safeNode.group,
                         type: safeNode.type,
                         detail: safeNode.detail || safeNode.content || '',
@@ -300,7 +338,11 @@ export function focusNodeById(nodeId) {
 export function resetFocus() {
     if (!Graph) return;
     
-    Graph.nodeColor(node => COLORS[node.group] || COLORS[node.type] || COLORS['Default']);
+    Graph.nodeColor(node => {
+        if (node.color) return node.color;
+        if (TIERED_COLORS[node.group]) return TIERED_COLORS[node.group];
+        return COLORS[node.group] || COLORS[node.type] || COLORS['Default'];
+    });
     Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
     Graph.linkWidth(0.5);
     
@@ -336,6 +378,8 @@ export function highlightNode(nodeId) {
     
     Graph.nodeColor(n => {
         if (neighbors.has(n.id)) {
+            if (n.color) return n.color;
+            if (TIERED_COLORS[n.group]) return TIERED_COLORS[n.group];
             return COLORS[n.group] || COLORS['Default'];
         } else {
             return 'rgba(200,200,200,0.1)';
@@ -356,7 +400,14 @@ export function highlightNode(nodeId) {
 export function resetHighlight() {
     if (!Graph) return;
     
-    Graph.nodeColor(node => COLORS[node.group] || COLORS['Default']);
+    Graph.nodeColor(node => {
+        // 优先使用后端传来的color字段
+        if (node.color) return node.color;
+        // 其次使用三层记忆类型颜色
+        if (TIERED_COLORS[node.group]) return TIERED_COLORS[node.group];
+        // 最后使用旧的颜色映射
+        return COLORS[node.group] || COLORS[node.type] || COLORS['Default'];
+    });
     Graph.linkColor(() => 'rgba(0, 255, 65, 0.15)');
     Graph.linkWidth(0.5);
 }

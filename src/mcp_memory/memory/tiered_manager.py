@@ -23,10 +23,21 @@ class TieredMemoryManager:
     2. 实现分层查询（skill > thinking > storage）
     3. 支持记忆溯源
     4. 管理自动总结流程
+    
+    注意：现在使用统一的MemoryStore，不再使用独立的TieredMemoryStore
     """
     
-    def __init__(self, data_path: str = "data/chroma"):
-        self.store = TieredMemoryStore(data_path)
+    def __init__(self, memory_store=None, data_path: str = "data/chroma"):
+        # 如果提供了外部store，使用外部的；否则创建新的（向后兼容）
+        if memory_store is not None:
+            self.store = memory_store
+            self._using_external_store = True
+            print(f"[TieredManager] 使用外部store: {type(memory_store).__name__}")
+        else:
+            self.store = TieredMemoryStore(data_path)
+            self._using_external_store = False
+            print(f"[TieredManager] 使用内部TieredMemoryStore")
+        
         self.summarizer = AutoSummarizer(self.store)
         self._initialized = False
     

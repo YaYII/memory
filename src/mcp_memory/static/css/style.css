@@ -44,6 +44,7 @@ body { margin: 0; overflow: hidden; background-color: #000; color: #00ff41; font
     color: #ff00ff;
     text-shadow: 0 0 5px #ff00ff;
     border-bottom: 1px solid rgba(255, 0, 255, 0.3);
+    font-size: 15px;
 }
 
 #interaction-content {
@@ -183,7 +184,7 @@ body { margin: 0; overflow: hidden; background-color: #000; color: #00ff41; font
 .legend-panel {
     top: 20px;
     left: 20px;
-    width: 200px;
+    width: 300px;
     padding: 15px;
 }
 

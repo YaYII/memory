@@ -2,12 +2,12 @@
 自动总结系统
 - 自动将存储记忆总结为思维记忆
 - 自动从思维记忆提取技能记忆
+- 自动进行记忆去重和清洗
 """
 
 import asyncio
 from typing import List, Dict, Optional
 from datetime import datetime, timedelta
-from mcp_memory.memory.tiered_memory import TieredMemoryStore
 from mcp_memory.models.data_models import (
     StorageMemoryCreate, ThinkingMemoryCreate, SkillMemoryCreate
 )
@@ -18,21 +18,25 @@ class AutoSummarizer:
     """
     自动总结处理器
     负责：
-    1. 存储记忆 → 思维记忆（定期总结）
+    1. 全局扫描存储记忆 → 思维记忆（定期总结）
     2. 思维记忆 → 技能记忆（技能提取）
+    3. 记忆去重和清洗
     """
     
-    def __init__(self, memory_store: TieredMemoryStore):
-        self.memory_store = memory_store
+    def __init__(self, memory_store):
+        self.memory_store = memory_store  # 使用统一的 MemoryStore
         self.llm = llm_facade
         self._running = False
         self._summary_task: Optional[asyncio.Task] = None
         self._extraction_task: Optional[asyncio.Task] = None
+        self._deduplication_task: Optional[asyncio.Task] = None
         
         # 配置参数
-        self.session_summary_threshold = 1000  # 字符数阈值，超过则触发会话总结
-        self.daily_summary_hour = 2  # 每天凌晨2点进行日总结
-        self.skill_extraction_interval = 3600  # 每小时检查一次技能提取
+        self.session_summary_threshold = 500  # 字符数阈值，超过则触发会话总结
+        self.daily_summary_hour = 2  # 每天凌晨 2 点进行日总结
+        self.skill_extraction_interval = 300  # 每 5 分钟检查一次技能提取（加快测试）
+        self.summary_check_interval = 60  # 每 1 分钟检查一次是否需要总结（加快测试）
+        self.deduplication_interval = 1800  # 每 30 分钟进行一次去重
         
     async def initialize(self):
         """初始化LLM服务"""
@@ -52,7 +56,10 @@ class AutoSummarizer:
         # 启动技能提取监控
         self._extraction_task = asyncio.create_task(self._skill_extraction_loop())
         
-        print("[AutoSummarizer] 自动总结任务已启动")
+        # 启动记忆去重任务
+        self._deduplication_task = asyncio.create_task(self._deduplication_loop())
+        
+        print("[AutoSummarizer] 自动总结任务已启动（包含全局扫描、技能提取、记忆去重）")
     
     async def stop(self):
         """停止自动总结任务"""
@@ -72,6 +79,13 @@ class AutoSummarizer:
             except asyncio.CancelledError:
                 pass
         
+        if self._deduplication_task:
+            self._deduplication_task.cancel()
+            try:
+                await self._deduplication_task
+            except asyncio.CancelledError:
+                pass
+        
         print("[AutoSummarizer] 自动总结任务已停止")
     
     async def _session_summary_loop(self):
@@ -81,12 +95,12 @@ class AutoSummarizer:
         """
         while self._running:
             try:
-                await asyncio.sleep(300)  # 每5分钟检查一次
+                await asyncio.sleep(self.summary_check_interval)  # 每5分钟检查一次
                 
                 # 获取最近未总结的存储记忆
-                recent_memories = self._get_recent_storage_memories(minutes=30)
+                recent_memories = self._get_recent_storage_memories(minutes=60)
                 
-                if len(recent_memories) >= 3:  # 至少有3条记忆才总结
+                if len(recent_memories) >= 2:  # 至少有3条记忆才总结
                     await self._create_session_summary(recent_memories)
                     
             except asyncio.CancelledError:
@@ -117,27 +131,34 @@ class AutoSummarizer:
     def _get_recent_storage_memories(self, minutes: int = 30) -> List[Dict]:
         """获取最近未总结的存储记忆"""
         try:
-            # 获取所有存储记忆
-            all_memories = self.memory_store.storage_collection.get()
+            # 使用统一的 MemoryStore 查询 storage 记忆
+            from datetime import datetime, timedelta
             
-            if not all_memories or not all_memories["ids"]:
-                return []
+            cutoff_time = datetime.now() - timedelta(minutes=minutes)
+            
+            # 查询所有 storage 记忆
+            results = self.memory_store.query_by_type(
+                query="",  # 空查询获取所有
+                memory_type="storage",
+                limit=1000
+            )
             
             # 过滤出最近未总结的记忆
             recent_memories = []
-            cutoff_time = datetime.now() - timedelta(minutes=minutes)
-            
-            for i, memory_id in enumerate(all_memories["ids"]):
-                meta = all_memories["metadatas"][i]
-                timestamp_str = meta.get("timestamp", "")
+            for memory in results:
+                timestamp_str = memory.get("timestamp", "")
                 
                 try:
                     memory_time = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
                     if memory_time >= cutoff_time:
                         recent_memories.append({
-                            "memory_id": memory_id,
-                            "content": all_memories["documents"][i],
-                            "metadata": meta
+                            "memory_id": memory.get("memory_id"),
+                            "content": memory.get("content"),
+                            "metadata": {
+                                "user_id": memory.get("user_id"),
+                                "project_id": memory.get("project_id"),
+                                "scope": memory.get("scope")
+                            }
                         })
                 except:
                     continue
@@ -150,21 +171,25 @@ class AutoSummarizer:
     def _get_unprocessed_thinking_memories(self) -> List[Dict]:
         """获取未提取技能的思维记忆"""
         try:
-            all_memories = self.memory_store.thinking_collection.get()
-            
-            if not all_memories or not all_memories["ids"]:
-                return []
+            # 使用统一的 MemoryStore 查询 thinking 记忆
+            results = self.memory_store.query_by_type(
+                query="",
+                memory_type="thinking",
+                limit=1000
+            )
             
             unprocessed = []
-            for i, memory_id in enumerate(all_memories["ids"]):
-                meta = all_memories["metadatas"][i]
-                # 检查是否已经提取过技能（简化处理）
-                if not meta.get("skill_extracted", False):
-                    unprocessed.append({
-                        "memory_id": memory_id,
-                        "content": all_memories["documents"][i],
-                        "metadata": meta
-                    })
+            for memory in results:
+                # 简化处理：所有 thinking 记忆都检查是否可以提取技能
+                unprocessed.append({
+                    "memory_id": memory.get("memory_id"),
+                    "content": memory.get("content"),
+                    "metadata": {
+                        "user_id": memory.get("user_id"),
+                        "project_id": memory.get("project_id"),
+                        "scope": memory.get("scope")
+                    }
+                })
             
             return unprocessed
         except Exception as e:
@@ -198,18 +223,16 @@ class AutoSummarizer:
             project_id = memories[0]["metadata"].get("project_id", "")
             scope = memories[0]["metadata"].get("scope", "project")
             
-            # 创建思维记忆
-            thinking_data = ThinkingMemoryCreate(
+            # 使用统一的 MemoryStore 创建思维记忆
+            thinking_id = self.memory_store.save_thinking_memory(
                 content=summary_content,
                 user_id=user_id,
                 source_memories=memory_ids,
                 summary_type="session",
                 key_points=key_points,
-                project_id=project_id,
-                scope=scope
+                scope=scope,
+                project_id=project_id
             )
-            
-            thinking_id = self.memory_store.create_thinking_memory(thinking_data)
             print(f"[AutoSummarizer] 会话总结已创建: {thinking_id[:8]} (基于 {len(memories)} 条存储记忆)")
             
         except Exception as e:
@@ -234,22 +257,19 @@ class AutoSummarizer:
             user_id = meta.get("user_id", "unknown")
             project_id = meta.get("project_id", "")
             
-            # 创建技能记忆
-            skill_data = SkillMemoryCreate(
+            # 使用统一的 MemoryStore 创建技能记忆
+            skill_id = self.memory_store.save_skill_memory(
                 content=skill_info["skill_content"],
                 user_id=user_id,
                 source_thinking=[memory_id],
                 skill_type=skill_info.get("skill_type", "knowledge"),
                 tags=skill_info.get("tags", []),
-                project_id=project_id,
-                scope="global"  # 技能通常全局共享
+                scope="global",
+                project_id="global"
             )
-            
-            skill_id = self.memory_store.create_skill_memory(skill_data)
             print(f"[AutoSummarizer] 技能已提取: {skill_id[:8]} (来自思维记忆 {memory_id[:8]})")
             
-            # 标记思维记忆已提取技能
-            self._mark_thinking_as_processed(memory_id)
+            # 不需要标记已处理，因为使用统一存储
             
         except Exception as e:
             print(f"[AutoSummarizer] 提取技能失败: {e}")
@@ -287,6 +307,56 @@ class AutoSummarizer:
         except Exception as e:
             print(f"[AutoSummarizer] LLM生成总结失败: {e}")
             return None
+    
+    async def _deduplication_loop(self):
+        """
+        记忆去重循环
+        定期扫描所有记忆，识别重复或相似的内容，进行合并或删除
+        """
+        while self._running:
+            try:
+                await asyncio.sleep(self.deduplication_interval)
+                
+                # 获取所有记忆
+                all_memories = self.memory_store.query_by_type(
+                    query="",
+                    memory_type="all",
+                    limit=2000
+                )
+                
+                if len(all_memories) < 2:
+                    continue
+                
+                # 简单的去重策略：检查内容相似度
+                to_delete = []
+                for i in range(len(all_memories)):
+                    for j in range(i + 1, min(i + 10, len(all_memories))):
+                        mem1 = all_memories[i]
+                        mem2 = all_memories[j]
+                        
+                        # 检查是否同一用户、相同内容
+                        if (mem1.get("user_id") == mem2.get("user_id") and
+                            mem1.get("memory_type") == mem2.get("memory_type") and
+                            mem1.get("content") == mem2.get("content")):
+                            # 标记后者为重复，准备删除
+                            if mem2.get("memory_id") not in to_delete:
+                                to_delete.append(mem2.get("memory_id"))
+                
+                # 删除重复记忆
+                if to_delete:
+                    print(f"[AutoSummarizer] 发现 {len(to_delete)} 个重复记忆，开始清理...")
+                    for mem_id in to_delete:
+                        try:
+                            self.memory_store.delete_memory(mem_id, "system")
+                        except Exception as e:
+                            print(f"[AutoSummarizer] 删除记忆 {mem_id[:8]} 失败: {e}")
+                    
+                    print(f"[AutoSummarizer] 记忆去重完成，清理了 {len(to_delete)} 个重复记忆")
+                    
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                print(f"[AutoSummarizer] 去重循环出错: {e}")
     
     async def _extract_key_points(self, contents: List[str]) -> List[str]:
         """

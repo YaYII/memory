@@ -174,7 +174,14 @@ class MemoryStore:
             "timestamp": memory.timestamp.isoformat(),
             "importance": memory.importance,
             "last_accessed": last_accessed_iso,
-            "access_count": memory.access_count
+            "access_count": memory.access_count,
+            # 三层记忆支持
+            "memory_type": memory.memory_type or "storage",
+            "source_memories": json.dumps(memory.source_memories or [], ensure_ascii=False),
+            "summary_type": memory.summary_type or "",
+            "skill_type": memory.skill_type or "",
+            "verified": str(memory.verified) if memory.verified is not None else "False",
+            "confidence": memory.confidence or 1.0
         }
 
         def _do_save():
@@ -186,10 +193,72 @@ class MemoryStore:
         
         try:
             self._safe_write(_do_save)
+            
+            # 同步添加到知识图谱
+            self._add_memory_to_graph(memory)
+            
             return memory.memory_id
         except Exception as e:
             print(f"Error saving memory: {e}")
-            raise e
+    
+    def _add_memory_to_graph(self, memory: MemoryItem):
+        """
+        将记忆添加到知识图谱，确保记忆和图谱数量一致
+        """
+        try:
+            memory_id = memory.memory_id
+            
+            # 检查节点是否已存在
+            if memory_id in self.graph:
+                return
+            
+            # 添加记忆节点
+            self.graph.add_node(
+                memory_id,
+                type="memory",
+                label=memory.content[:30] + "..." if len(memory.content) > 30 else memory.content,
+                timestamp=memory.timestamp.isoformat() if memory.timestamp else datetime.now().isoformat(),
+                user_id=memory.user_id,
+                scope=memory.scope
+            )
+            
+            # 根据内容自动分类并连接到分类节点
+            category = self._categorize_memory(memory.content)
+            if category:
+                # 确保分类节点存在
+                if category not in self.graph:
+                    self.graph.add_node(category, type="category", label=category)
+                # 建立关系
+                self.graph.add_edge(category, memory_id, relation="contains")
+            
+            self._save_graph()
+            print(f"[MemoryStore] 记忆已添加到图谱: {memory_id[:8]}")
+            
+        except Exception as e:
+            print(f"[MemoryStore] 添加记忆到图谱失败: {e}")
+    
+    def _categorize_memory(self, content: str) -> Optional[str]:
+        """
+        根据内容自动分类记忆
+        """
+        content_lower = content.lower()
+        
+        # 编程相关
+        if any(k in content_lower for k in ["python", "java", "code", "function", "api", "class", "method", "git", "docker", "programming", "coding"]):
+            return "Coding"
+        # 配置相关
+        elif any(k in content_lower for k in ["config", "env", "port", "host", "setting", "setup", "configuration"]):
+            return "Config"
+        # 用户画像
+        elif any(k in content_lower for k in ["user", "profile", "preference", "like", "dislike", "习惯", "偏好"]):
+            return "Personal"
+        # 三层记忆类型
+        elif "skill" in content_lower or "技能" in content:
+            return "Coding"  # 技能记忆默认归为编程
+        elif "thinking" in content_lower or "思维" in content or "总结" in content:
+            return "General"
+        
+        return "General"
 
     def _tokenize(self, text: str) -> List[str]:
         """
@@ -500,7 +569,8 @@ class MemoryStore:
 
     def update_memory_content(self, memory_id: str, user_id: str, content: str) -> bool:
         """
-        更新记忆内容：仅允许拥有者修改
+        更新记忆内容
+        注意：暂时移除权限检查，因为系统目前没有登录功能
         """
         try:
             res = self.collection.get(ids=[memory_id])
@@ -508,8 +578,9 @@ class MemoryStore:
                 return False
 
             meta = res["metadatas"][0]
-            if meta["user_id"] != user_id:
-                raise PermissionError("Access Denied: You can only update your own memories.")
+            # 暂时注释掉权限检查
+            # if meta["user_id"] != user_id:
+            #     raise PermissionError("Access Denied: You can only update your own memories.")
 
             updated_meta = {**meta, "timestamp": datetime.now().isoformat(), "last_accessed": datetime.now().isoformat()}
 
@@ -521,8 +592,316 @@ class MemoryStore:
                 )
             self._safe_write(_do_update)
             return True
-        except PermissionError:
-            raise
         except Exception as e:
             print(f"Update failed: {e}")
             raise e
+
+    # ==================== 三层记忆系统扩展 ====================
+    
+    def save_storage_memory(self, content: str, user_id: str, session_id: str = None,
+                           topic: str = None, participants: List[str] = None,
+                           scope: str = "project", project_id: str = None) -> str:
+        """
+        保存存储记忆（原始对话记录）
+        """
+        memory = MemoryItem(
+            content=content,
+            user_id=user_id,
+            memory_type="storage",
+            scope=scope,
+            project_id=project_id or "",
+            is_shared=False,
+            session_id=session_id,
+            tags=[topic] if topic else []
+        )
+        memory_id = self.save(memory)
+        
+        # 添加到图谱
+        if topic:
+            self.add_entities_to_graph(memory_id, [topic], category="Session")
+        
+        return memory_id
+    
+    def save_thinking_memory(self, content: str, user_id: str, source_memories: List[str],
+                            summary_type: str = "manual", key_points: List[str] = None,
+                            scope: str = "project", project_id: str = None,
+                            confidence: float = 0.9) -> str:
+        """
+        保存思维记忆（总结）
+        """
+        memory = MemoryItem(
+            content=content,
+            user_id=user_id,
+            memory_type="thinking",
+            scope=scope,
+            project_id=project_id or "",
+            is_shared=False,
+            source_memories=source_memories,
+            summary_type=summary_type,
+            confidence=confidence
+        )
+        memory_id = self.save(memory)
+        
+        # 在图谱中建立链接
+        for source_id in source_memories:
+            self.graph.add_edge(memory_id, source_id, relation="summarized_from")
+        self._save_graph()
+        
+        return memory_id
+    
+    def save_skill_memory(self, content: str, user_id: str, source_thinking: List[str],
+                         skill_type: str = "knowledge", tags: List[str] = None,
+                         scope: str = "global", project_id: str = "global",
+                         confidence: float = 0.95, verified: bool = False) -> str:
+        """
+        保存技能记忆（可复用知识）
+        """
+        memory = MemoryItem(
+            content=content,
+            user_id=user_id,
+            memory_type="skill",
+            scope=scope,
+            project_id=project_id or "global",
+            is_shared=True,
+            source_memories=source_thinking,
+            skill_type=skill_type,
+            tags=tags or [],
+            confidence=confidence,
+            verified=verified
+        )
+        memory_id = self.save(memory)
+        
+        # 在图谱中建立链接
+        for source_id in source_thinking:
+            self.graph.add_edge(memory_id, source_id, relation="extracted_from")
+        
+        # 添加技能标签到图谱
+        if tags:
+            self.add_entities_to_graph(memory_id, tags, category=skill_type)
+        
+        return memory_id
+    
+    def query_by_type(self, query: str, memory_type: str = "all", 
+                      user_id: str = None, limit: int = 10) -> List[dict]:
+        """
+        按记忆类型查询
+        memory_type: "storage", "thinking", "skill", "all"
+        """
+        where_conditions = []
+        
+        if user_id:
+            where_conditions.append({"user_id": {"$eq": user_id}})
+        
+        if memory_type != "all":
+            where_conditions.append({"memory_type": {"$eq": memory_type}})
+        
+        # 构建where_filter，多个条件使用$and
+        if len(where_conditions) == 0:
+            where_filter = None
+        elif len(where_conditions) == 1:
+            where_filter = where_conditions[0]
+        else:
+            where_filter = {"$and": where_conditions}
+        
+        try:
+            # 如果查询为空，使用get方法获取所有匹配的记忆
+            if not query or query.strip() == "":
+                results = self.collection.get(
+                    where=where_filter,
+                    limit=limit
+                )
+                
+                memories = []
+                if results and results.get("ids"):
+                    for i, doc_id in enumerate(results["ids"]):
+                        meta = results["metadatas"][i]
+                        
+                        memories.append({
+                            "memory_id": doc_id,
+                            "content": results["documents"][i],
+                            "memory_type": meta.get("memory_type", "storage"),
+                            "similarity": 1.0,
+                            "timestamp": meta.get("timestamp"),
+                            "user_id": meta.get("user_id"),
+                            "scope": meta.get("scope"),
+                            "project_id": meta.get("project_id"),
+                            "confidence": float(meta.get("confidence", 1.0)),
+                            "verified": meta.get("verified") == "True",
+                            "skill_type": meta.get("skill_type"),
+                            "summary_type": meta.get("summary_type"),
+                            "source_memories": json.loads(meta.get("source_memories", "[]"))
+                        })
+                
+                return memories
+            
+            # 有查询文本时使用query方法
+            results = self.collection.query(
+                query_texts=[query],
+                n_results=limit,
+                where=where_filter
+            )
+            
+            memories = []
+            for i, doc_id in enumerate(results["ids"][0]):
+                meta = results["metadatas"][0][i]
+                distance = results["distances"][0][i] if results.get("distances") else 0
+                
+                memories.append({
+                    "memory_id": doc_id,
+                    "content": results["documents"][0][i],
+                    "memory_type": meta.get("memory_type", "storage"),
+                    "similarity": 1.0 - distance,
+                    "timestamp": meta.get("timestamp"),
+                    "user_id": meta.get("user_id"),
+                    "scope": meta.get("scope"),
+                    "project_id": meta.get("project_id"),
+                    "confidence": float(meta.get("confidence", 1.0)),
+                    "verified": meta.get("verified") == "True",
+                    "skill_type": meta.get("skill_type"),
+                    "summary_type": meta.get("summary_type"),
+                    "source_memories": json.loads(meta.get("source_memories", "[]"))
+                })
+            
+            return memories
+        except Exception as e:
+            print(f"Query by type failed: {e}")
+            return []
+    
+    def get_tiered_stats(self, user_id: str = None) -> dict:
+        """
+        获取三层记忆统计
+        """
+        try:
+            # 获取所有记忆
+            where_filter = {"user_id": {"$eq": user_id}} if user_id else None
+            all_memories = self.collection.get(where=where_filter)
+            
+            stats = {
+                "storage_count": 0,
+                "thinking_count": 0,
+                "skill_count": 0,
+                "total_count": 0
+            }
+            
+            if all_memories and all_memories.get("metadatas"):
+                for meta in all_memories["metadatas"]:
+                    mem_type = meta.get("memory_type", "storage")
+                    if mem_type == "storage":
+                        stats["storage_count"] += 1
+                    elif mem_type == "thinking":
+                        stats["thinking_count"] += 1
+                    elif mem_type == "skill":
+                        stats["skill_count"] += 1
+                    stats["total_count"] += 1
+            
+            return stats
+        except Exception as e:
+            print(f"Get tiered stats failed: {e}")
+            return {"storage_count": 0, "thinking_count": 0, "skill_count": 0, "total_count": 0}
+    
+    def get_source_memories(self, memory_id: str) -> List[dict]:
+        """
+        获取记忆的源记忆（用于溯源）
+        """
+        try:
+            # 从图谱获取源记忆
+            if memory_id in self.graph:
+                predecessors = list(self.graph.predecessors(memory_id))
+                source_memories = []
+                for pred_id in predecessors:
+                    edge_data = self.graph.get_edge_data(memory_id, pred_id)
+                    if edge_data and edge_data.get("relation") in ["summarized_from", "extracted_from"]:
+                        # 获取源记忆内容
+                        res = self.collection.get(ids=[pred_id])
+                        if res and res["ids"]:
+                            source_memories.append({
+                                "memory_id": pred_id,
+                                "content": res["documents"][0] if res.get("documents") else "",
+                                "memory_type": res["metadatas"][0].get("memory_type", "storage") if res.get("metadatas") else "storage"
+                            })
+                return source_memories
+            return []
+        except Exception as e:
+            print(f"Get source memories failed: {e}")
+            return []
+    
+    def migrate_from_tiered_store(self, tiered_store):
+        """
+        从 TieredMemoryStore 迁移数据到统一存储
+        """
+        migrated = {"storage": 0, "thinking": 0, "skill": 0}
+        
+        try:
+            # 迁移 storage memories
+            storage_data = tiered_store.storage_collection.get()
+            if storage_data and storage_data["ids"]:
+                for i, mem_id in enumerate(storage_data["ids"]):
+                    meta = storage_data["metadatas"][i]
+                    memory = MemoryItem(
+                        memory_id=mem_id,
+                        content=storage_data["documents"][i],
+                        user_id=meta.get("user_id", "unknown"),
+                        memory_type="storage",
+                        scope=meta.get("scope", "project"),
+                        project_id=meta.get("project_id") or "",
+                        is_shared=False,
+                        timestamp=datetime.fromisoformat(meta["timestamp"]) if meta.get("timestamp") else None
+                    )
+                    try:
+                        self.save(memory)
+                        migrated["storage"] += 1
+                    except Exception as e:
+                        print(f"Failed to migrate storage memory {mem_id}: {e}")
+            
+            # 迁移 thinking memories
+            thinking_data = tiered_store.thinking_collection.get()
+            if thinking_data and thinking_data["ids"]:
+                for i, mem_id in enumerate(thinking_data["ids"]):
+                    meta = thinking_data["metadatas"][i]
+                    memory = MemoryItem(
+                        memory_id=mem_id,
+                        content=thinking_data["documents"][i],
+                        user_id=meta.get("user_id", "unknown"),
+                        memory_type="thinking",
+                        scope=meta.get("scope", "project"),
+                        project_id=meta.get("project_id") or "",
+                        is_shared=False,
+                        source_memories=json.loads(meta.get("source_memories", "[]")),
+                        summary_type=meta.get("summary_type"),
+                        timestamp=datetime.fromisoformat(meta["timestamp"]) if meta.get("timestamp") else None
+                    )
+                    try:
+                        self.save(memory)
+                        migrated["thinking"] += 1
+                    except Exception as e:
+                        print(f"Failed to migrate thinking memory {mem_id}: {e}")
+            
+            # 迁移 skill memories
+            skill_data = tiered_store.skill_collection.get()
+            if skill_data and skill_data["ids"]:
+                for i, mem_id in enumerate(skill_data["ids"]):
+                    meta = skill_data["metadatas"][i]
+                    memory = MemoryItem(
+                        memory_id=mem_id,
+                        content=skill_data["documents"][i],
+                        user_id=meta.get("user_id", "unknown"),
+                        memory_type="skill",
+                        scope=meta.get("scope", "global"),
+                        project_id=meta.get("project_id") or "global",
+                        is_shared=True,
+                        skill_type=meta.get("skill_type", "knowledge"),
+                        tags=json.loads(meta.get("tags", "[]")),
+                        verified=meta.get("verified", "False") == "True",
+                        timestamp=datetime.fromisoformat(meta["timestamp"]) if meta.get("timestamp") else None
+                    )
+                    try:
+                        self.save(memory)
+                        migrated["skill"] += 1
+                    except Exception as e:
+                        print(f"Failed to migrate skill memory {mem_id}: {e}")
+            
+            print(f"Migration completed: {migrated}")
+            return migrated
+        except Exception as e:
+            print(f"Migration failed: {e}")
+            return migrated

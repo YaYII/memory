@@ -108,6 +108,23 @@ class Settings(BaseSettings):
             self._providers_cache = parse_providers_from_env()
         return self._providers_cache
 
+    # 向后兼容：直接读取环境变量
+    @property
+    def GLM_API_KEY(self) -> str:
+        return os.environ.get("GLM_API_KEY", "")
+    
+    @property
+    def DEEPSEEK_API_KEY(self) -> str:
+        return os.environ.get("DEEPSEEK_API_KEY", "")
+    
+    @property
+    def OPENAI_API_KEY(self) -> str:
+        return os.environ.get("OPENAI_API_KEY", "")
+    
+    @property
+    def ANTHROPIC_API_KEY(self) -> str:
+        return os.environ.get("ANTHROPIC_API_KEY", "")
+
     # 首选模型（兼容旧配置）
     MCP_LLM_PROVIDER: str = "glm"
 

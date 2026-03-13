@@ -172,13 +172,11 @@ class TokenPoolManager:
         self._save()
 
     def is_pool_available(self, provider: str) -> bool:
-        """检查池是否可用（有剩余 Token）"""
+        """检查池是否可用（只检查是否启用，不限制 Token）"""
         if provider not in self.pools:
             return False
         cfg = self.pools[provider]
-        if not cfg.enabled:
-            return False
-        return self.get_remaining_daily_tokens(provider) > 0
+        return cfg.enabled
 
     def disable_pool(self, provider: str):
         """禁用池"""

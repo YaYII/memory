@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>MCP 认知中枢 (Cognitive Brain) - 三层记忆系统</title>
+    <title>MCP 认知中枢- 三层记忆系统</title>
     <link rel="stylesheet" href="/static/css/style.css">
     
     <!-- D3.js -->
@@ -25,9 +25,9 @@
     </div>
     
     <div id="ui-layer">
-        <!-- 三层记忆系统面板 -->
-        <div class="panel tiered-memory-panel" id="tiered-panel">
-            <h1>三层记忆系统 (Tiered Memory)</h1>
+        <!-- 三层记忆系统图例面板 (左上角) -->
+        <div class="panel legend-panel">
+            <h1>三层记忆系统 </h1>
             
             <!-- 记忆类型切换 -->
             <div class="memory-type-tabs">
@@ -63,11 +63,12 @@
                 <input type="text" id="tiered-search-input" placeholder="搜索三层记忆...">
                 <button id="tiered-search-btn">搜索</button>
             </div>
+           
         </div>
 
         <!-- LLM Interaction Panel -->
         <div class="panel interaction-panel" id="interaction-panel">
-            <h1 id="thinking-title">深度思考 (LLM THINKING)</h1>
+            <h1 id="thinking-title">深度思考</h1>
             <div id="interaction-content">
                 <div class="thinking-placeholder">等待思维信号...</div>
             </div>
@@ -75,16 +76,16 @@
 
         <div class="panel stat-card">
             <h1>系统状态监控</h1>
-            <div class="stat-row"><span>记忆总量 (MEMORIES)</span><span class="stat-val" id="mem-count">0</span></div>
-            <div class="stat-row"><span>知识实体 (ENTITIES)</span><span class="stat-val" id="entity-count">0</span></div>
-            <div class="stat-row"><span>服务状态 (STATUS)</span><span class="stat-val" id="status" style="color: #00ff41;">运行中</span></div>
-            <div class="stat-row"><span>大脑活动 (ACTIVITY)</span><span class="stat-val" id="activity">待机</span></div>
-            <div class="stat-row"><span>进化策略 (PROFILE)</span><span class="stat-val" id="evolution-profile">标准</span></div>
-            <div class="stat-row"><span>深度思考 (LLM)</span><span class="stat-val" id="llm-state">未知</span></div>
+            <div class="stat-row"><span>记忆总量 </span><span class="stat-val" id="mem-count">0</span></div>
+            <div class="stat-row"><span>知识实体 </span><span class="stat-val" id="entity-count">0</span></div>
+            <div class="stat-row"><span>服务状态 </span><span class="stat-val" id="status" style="color: #00ff41;">运行中</span></div>
+            <div class="stat-row"><span>大脑活动 </span><span class="stat-val" id="activity">待机</span></div>
+            <div class="stat-row"><span>进化策略 </span><span class="stat-val" id="evolution-profile">标准</span></div>
+            <div class="stat-row"><span>深度思考 </span><span class="stat-val" id="llm-state">未知</span></div>
             
             <div class="view-switcher" style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 15px;">
-                <button id="view-neural" class="view-btn active">神经图谱 (Neural)</button>
-                <button id="view-skill" class="view-btn">技能树 (Skill Tree)</button>
+                <button id="view-neural" class="view-btn active">神经图谱</button>
+                <button id="view-skill" class="view-btn">技能树 </button>
             </div>
 
             <div class="view-switcher" style="margin-top: 10px;">
@@ -100,17 +101,10 @@
             <div id="memory-search-results" style="margin-top: 8px; max-height: 130px; overflow-y: auto; font-size: 12px;"></div>
         </div>
 
-        <div class="panel legend-panel">
-            <h1>记忆分区 (ZONES)</h1>
-            <div class="legend-item"><div class="dot" style="background: #00ffff; color: #00ffff;"></div>编程技能 (Coding)</div>
-            <div class="legend-item"><div class="dot" style="background: #ff00ff; color: #ff00ff;"></div>环境配置 (Config)</div>
-            <div class="legend-item"><div class="dot" style="background: #ffff00; color: #ffff00;"></div>用户画像 (Personal)</div>
-            <div class="legend-item"><div class="dot" style="background: #ffffff; color: #ffffff;"></div>通用知识 (General)</div>
-            <div class="legend-item"><div class="dot" style="background: #ff4500; color: #ff4500;"></div>关联实体 (Entity)</div>
-        </div>
+      
 
         <div class="panel log-panel">
-            <h1>神经日志流 (NEURAL LOGS)</h1>
+            <h1>神经日志流</h1>
             <div id="log-content"></div>
         </div>
 
@@ -122,7 +116,7 @@
             <button id="detail-close" class="detail-close">×</button>
             <h2 id="detail-title">-</h2>
             <div class="detail-row"><span>类型</span><span id="detail-type" class="detail-val">-</span></div>
-            <div class="detail-row"><span>分区</span><span id="detail-group" class="detail-val">-</span></div>
+            <div class="detail-row"><span>记忆类型</span><span id="detail-group" class="detail-val">-</span></div>
             <div class="detail-row"><span>时间</span><span id="detail-time" class="detail-val">-</span></div>
             <textarea id="detail-body" class="detail-body" style="width: 100%; min-height: 180px;"></textarea>
             <div class="view-switcher" style="margin-top: 10px;">
