@@ -88,7 +88,19 @@ const Graph = ForceGraph3D({ controlType: 'orbit' })(document.getElementById('ca
         Graph.linkWidth(link => links.has(link) ? 2 : 0.5);
         
         // 3. Dispatch Event for UI updates
-        window.dispatchEvent(new CustomEvent('node-selected', { detail: node }));
+        // Use a CustomEvent and ensure the detail property contains the full node object
+        const event = new CustomEvent('node-selected', { 
+            detail: {
+                id: node.id,
+                label: node.label,
+                title: node.title || node.label || node.id,
+                group: node.group,
+                type: node.type,
+                detail: node.detail || node.content || '', // Handle varied naming
+                timestamp: node.timestamp || ''
+            }
+        });
+        window.dispatchEvent(event);
     })
     .onBackgroundClick(() => {
         // Reset Highlight
