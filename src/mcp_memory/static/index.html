@@ -141,9 +141,22 @@
             <button id="tiered-detail-close" class="detail-close">×</button>
             <h2 id="tiered-detail-title">记忆详情</h2>
             <div class="tiered-detail-content">
+                <!-- 标题和元信息 -->
+                <div class="detail-row">
+                    <span>标题</span>
+                    <span id="tiered-detail-main-title" class="detail-val" style="font-weight: bold; color: #00ff41;">-</span>
+                </div>
+                <div class="detail-row">
+                    <span>内容类型</span>
+                    <span id="tiered-detail-content-type" class="detail-val">-</span>
+                </div>
                 <div class="detail-row">
                     <span>记忆类型</span>
                     <span id="tiered-detail-type" class="detail-val">-</span>
+                </div>
+                <div class="detail-row">
+                    <span>作用域</span>
+                    <span id="tiered-detail-scope" class="detail-val">-</span>
                 </div>
                 <div class="detail-row">
                     <span>置信度</span>
@@ -154,13 +167,38 @@
                     <span id="tiered-detail-time" class="detail-val">-</span>
                 </div>
                 <div class="detail-row">
-                    <span>标签</span>
-                    <span id="tiered-detail-tags" class="detail-val">-</span>
+                    <span>字数</span>
+                    <span id="tiered-detail-char-count" class="detail-val">-</span>
                 </div>
+                
+                <!-- 关键词和标签 -->
+                <div class="detail-section">
+                    <h3>关键词</h3>
+                    <div id="tiered-detail-keywords" class="detail-tags-list">-</div>
+                </div>
+                <div class="detail-section">
+                    <h3>标签</h3>
+                    <div id="tiered-detail-tags" class="detail-tags-list">-</div>
+                </div>
+                
+                <!-- 描述 -->
+                <div class="detail-section" id="tiered-detail-description-section" style="display: none;">
+                    <h3>任务描述</h3>
+                    <div id="tiered-detail-description" class="detail-content-box">-</div>
+                </div>
+                
+                <!-- 内容 -->
                 <div class="detail-section">
                     <h3>内容</h3>
                     <div id="tiered-detail-content" class="detail-content-box">-</div>
                 </div>
+                
+                <!-- 总结 -->
+                <div class="detail-section" id="tiered-detail-summary-section" style="display: none;">
+                    <h3>任务总结</h3>
+                    <div id="tiered-detail-summary" class="detail-content-box">-</div>
+                </div>
+                
                 <div class="detail-section" id="tiered-detail-sources-section" style="display: none;">
                     <h3>源记忆</h3>
                     <div id="tiered-detail-sources" class="detail-sources-list"></div>

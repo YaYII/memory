@@ -28,6 +28,19 @@ function getMemoryGroupLabel(group) {
     return TIERED_LABELS[group] || group || '通用';
 }
 
+// 内容类型标签映射
+function getContentTypeLabel(contentType) {
+    const labels = {
+        'task': '任务',
+        'note': '笔记',
+        'summary': '总结',
+        'code': '代码',
+        'config': '配置',
+        'workflow': '工作流'
+    };
+    return labels[contentType] || contentType || '笔记';
+}
+
 // Profile labels
 const PROFILE_LABELS = {
     'light': '轻量',
@@ -409,17 +422,65 @@ async function showMemoryDetail(memoryId) {
         
         currentMemoryId = memoryId;
         
-        // 填充详情
+        // 填充详情 - 新字段
+        document.getElementById('tiered-detail-main-title').innerText = 
+            memory.title || memory.content?.substring(0, 50) + '...' || '无标题';
+        document.getElementById('tiered-detail-content-type').innerText = 
+            getContentTypeLabel(memory.content_type) || '笔记';
         document.getElementById('tiered-detail-type').innerText = 
             memory.memory_type === 'skill' ? '技能记忆' :
             memory.memory_type === 'thinking' ? '思维记忆' : '存储记忆';
+        document.getElementById('tiered-detail-scope').innerText = 
+            memory.scope === 'global' ? '全局' : '当前项目';
         document.getElementById('tiered-detail-confidence').innerText = 
             (memory.confidence || 1.0).toFixed(2);
         document.getElementById('tiered-detail-time').innerText = 
             memory.timestamp ? new Date(memory.timestamp).toLocaleString() : '-';
-        document.getElementById('tiered-detail-tags').innerText = 
-            (memory.tags || []).join(', ') || '无';
+        document.getElementById('tiered-detail-char-count').innerText = 
+            `${memory.char_count || 0} / ${memory.max_chars || 1000}`;
+        
+        // 关键词（新字段）
+        const keywordsEl = document.getElementById('tiered-detail-keywords');
+        if (memory.keywords && memory.keywords.length > 0) {
+            keywordsEl.innerHTML = memory.keywords.map(k => 
+                `<span class="tag-item">${k}</span>`
+            ).join('');
+        } else {
+            keywordsEl.innerHTML = '<span style="color: #666;">无关键词</span>';
+        }
+        
+        // 标签
+        const tagsEl = document.getElementById('tiered-detail-tags');
+        if (memory.tags && memory.tags.length > 0) {
+            tagsEl.innerHTML = memory.tags.map(t => 
+                `<span class="tag-item tag-${memory.memory_type}">${t}</span>`
+            ).join('');
+        } else {
+            tagsEl.innerHTML = '<span style="color: #666;">无标签</span>';
+        }
+        
+        // 描述（新字段）
+        const descSection = document.getElementById('tiered-detail-description-section');
+        const descEl = document.getElementById('tiered-detail-description');
+        if (memory.description) {
+            descSection.style.display = 'block';
+            descEl.innerText = memory.description;
+        } else {
+            descSection.style.display = 'none';
+        }
+        
+        // 内容
         document.getElementById('tiered-detail-content').innerText = memory.content || '';
+        
+        // 总结（新字段）
+        const summarySection = document.getElementById('tiered-detail-summary-section');
+        const summaryEl = document.getElementById('tiered-detail-summary');
+        if (memory.summary) {
+            summarySection.style.display = 'block';
+            summaryEl.innerText = memory.summary;
+        } else {
+            summarySection.style.display = 'none';
+        }
         
         // 显示源记忆
         const sourcesSection = document.getElementById('tiered-detail-sources-section');

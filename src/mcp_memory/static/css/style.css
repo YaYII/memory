@@ -528,6 +528,47 @@ body { margin: 0; overflow: hidden; background-color: #000; color: #00ff41; font
     white-space: pre-wrap;
 }
 
+/* 标签列表样式 */
+.detail-tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 5px 0;
+}
+
+.tag-item {
+    display: inline-block;
+    padding: 3px 8px;
+    background: rgba(0, 255, 65, 0.15);
+    border: 1px solid rgba(0, 255, 65, 0.4);
+    border-radius: 3px;
+    font-size: 11px;
+    color: #00ff41;
+}
+
+.tag-item:hover {
+    background: rgba(0, 255, 65, 0.25);
+}
+
+/* 不同记忆类型的标签颜色 */
+.tag-skill {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: rgba(255, 215, 0, 0.4);
+    color: #ffd700;
+}
+
+.tag-thinking {
+    background: rgba(0, 191, 255, 0.15);
+    border-color: rgba(0, 191, 255, 0.4);
+    color: #00bfff;
+}
+
+.tag-storage {
+    background: rgba(0, 255, 65, 0.15);
+    border-color: rgba(0, 255, 65, 0.4);
+    color: #00ff41;
+}
+
 .detail-sources-list {
     max-height: 100px;
     overflow-y: auto;

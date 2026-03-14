@@ -19,29 +19,48 @@ class MemoryManager:
     def write_memory(self, user_id: str, content: str, project_id: Optional[str] = None, scope: str = "project",
                       title: str = None, description: str = None, summary: str = None,
                       content_type: str = "note", keywords: List[str] = None, tags: List[str] = None,
-                      max_chars: int = 1000) -> str:
+                      max_chars: int = 1000, auto_enhance: bool = True) -> str:
         """
         写入记忆：支持 AI 动态指定 project_id，若不指定则使用当前环境的自动ID
         
-        增强版：支持标题、关键词、结构化内容
+        智能增强版：
+        1. 如果AI只提供了简单content，系统会在后台自动补全结构化信息
+        2. 如果AI已经提供了完整信息，则直接使用
         
         Args:
             user_id: 用户ID
             content: 记忆内容
             project_id: 项目ID（可选）
             scope: 作用域（project/global）
-            title: 记忆标题（可选，默认取内容前50字）
+            title: 记忆标题（可选）
             description: 任务描述（可选）
             summary: 任务总结（可选）
-            content_type: 内容类型（task/note/summary/code/config/workflow）
+            content_type: 内容类型（可选）
             keywords: 关键词列表（可选）
             tags: 标签列表（可选）
             max_chars: 最大字符限制（默认1000）
+            auto_enhance: 是否自动增强（默认True）
         """
         # 确定最终的 project_id
         final_project_id = project_id or settings.MCP_PROJECT_ID
         
-        # 如果没有提供标题，从内容生成
+        # 检查是否需要自动增强（AI只提供了简单内容）
+        needs_enhancement = auto_enhance and not (title and keywords and description)
+        
+        if needs_enhancement:
+            print(f"[MemoryManager] 检测到简单内容，启动后台结构化增强...")
+            # 在后台异步增强（不阻塞写入）
+            enhanced = self._auto_enhance_memory(content, content_type)
+            if enhanced:
+                # 使用增强后的信息（如果AI没提供的话）
+                title = title or enhanced.get('title')
+                description = description or enhanced.get('description')
+                summary = summary or enhanced.get('summary')
+                keywords = keywords or enhanced.get('keywords', [])
+                content_type = content_type or enhanced.get('content_type', 'note')
+                print(f"[MemoryManager] 结构化增强完成: {title[:30]}...")
+        
+        # 如果没有提供标题，从内容生成基础标题
         if not title:
             title = content[:50] + "..." if len(content) > 50 else content
         
@@ -86,6 +105,110 @@ class MemoryManager:
             print(f"[MemoryManager] 同步到三层系统失败: {e}")
         
         return memory_id
+    
+    def _auto_enhance_memory(self, content: str, content_type_hint: str = None) -> Optional[dict]:
+        """
+        自动增强记忆：使用LLM深度思考生成结构化信息
+        
+        调用底层AI模型（DeepSeek）进行深度思考：
+        1. 理解内容核心主题，生成精准标题
+        2. 提炼关键概念，构建关键词标签
+        3. 判断内容类型（code/config/workflow/task/note）
+        4. 生成简洁描述
+        """
+        try:
+            from mcp_memory.llm.facade import llm_facade
+            from mcp_memory.core.config import settings
+            import json
+            import re
+            
+            # 检查LLM是否可用
+            if not llm_facade.is_available():
+                print("[MemoryManager] LLM不可用，跳过智能增强")
+                return None
+            
+            print("[MemoryManager] 调用LLM进行深度思考增强...")
+            
+            target_language = settings.MCP_MEMORY_LANGUAGE or "简体中文"
+            
+            prompt = f"""
+请深度分析以下内容，提取结构化元数据。
+
+【待分析内容】
+{content[:2000]}
+
+【深度思考任务】
+1. **标题生成**：基于内容核心主题，生成一个简洁、准确的标题（20-50字）
+   - 标题应该概括内容的本质
+   - 避免使用过于笼统的词汇
+
+2. **关键词提取**：提取3-5个最能代表内容主题的关键词
+   - 关键词应该是具体的概念、技术、工具或主题
+   - 避免通用词汇如"方法"、"技巧"等
+
+3. **内容类型判断**：判断这是什么类型的内容
+   - code: 代码片段、编程相关
+   - config: 配置信息、环境设置
+   - workflow: 工作流程、操作步骤
+   - task: 任务描述、待办事项
+   - note: 一般笔记、记录
+
+4. **描述生成**：用1-2句话概括内容的核心价值（50-100字）
+
+【语言要求】
+- 必须使用{target_language}
+- 禁止中英文混杂
+- 代码和技术术语保持原样
+
+【输出格式】
+请严格按照以下JSON格式输出：
+{{
+    "title": "生成的标题",
+    "keywords": ["关键词1", "关键词2", "关键词3"],
+    "content_type": "code|config|workflow|task|note",
+    "description": "内容描述"
+}}
+"""
+            
+            # 调用LLM进行深度思考
+            response = llm_facade.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=1000
+            )
+            
+            if not response:
+                print("[MemoryManager] LLM未返回响应")
+                return None
+            
+            # 解析JSON响应
+            json_match = re.search(r'\{[\s\S]*\}', response)
+            if not json_match:
+                print("[MemoryManager] 无法从LLM响应中提取JSON")
+                return None
+            
+            json_str = json_match.group()
+            enhanced = json.loads(json_str)
+            
+            # 验证必要字段
+            if not enhanced.get('title') or not enhanced.get('keywords'):
+                print("[MemoryManager] LLM返回的结构缺少必要字段")
+                return None
+            
+            print(f"[MemoryManager] LLM深度思考完成: {enhanced['title'][:30]}...")
+            print(f"[MemoryManager] 提取关键词: {', '.join(enhanced['keywords'])}")
+            
+            return {
+                'title': enhanced['title'],
+                'description': enhanced.get('description', ''),
+                'summary': None,  # 简单内容不生成总结，留给后续认知处理
+                'keywords': enhanced['keywords'],
+                'content_type': enhanced.get('content_type', content_type_hint or 'note')
+            }
+            
+        except Exception as e:
+            print(f"[MemoryManager] LLM智能增强失败: {e}")
+            return None
 
     def read_memory(self, user_id: str, query: str, project_id: Optional[str] = None, limit: int = 10) -> List[dict]:
         """
