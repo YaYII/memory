@@ -380,16 +380,40 @@ class DeepReflectionEngine:
         # 深度分析合并后的内容
         combined_content = "\n\n===\n\n".join([m.get("content", "") for m in group])
         
+        # 获取配置的语言设置
+        from mcp_memory.core.config import settings
+        target_language = settings.MCP_MEMORY_LANGUAGE or "简体中文"
+        
         prompt = f"""
 请将以下内容合并为一份完整的记忆，保留所有关键信息，去除重复：
 
-{combined_content[:3000]}
+【语言强制要求 - 必须遵守】
+1. 所有自然语言内容必须使用: {target_language}
+2. 禁止中英文混杂，保持语言一致性
+3. 如果来源记忆包含英文，必须翻译为{target_language}
+4. **例外保护**（不得翻译）:
+   - 代码片段（Python、JavaScript等）
+   - 命令行命令和参数
+   - 配置文件内容
+   - 文件路径和URL
+   - 技术术语和API名称
+   - 变量名、函数名、类名
 
-要求：
+【内容处理要求】
 1. 保留所有关键细节，不做信息压缩
 2. 识别并合并重复的部分
 3. 补充相互之间的关联信息
 4. 输出完整的合并后内容
+
+【待合并内容】
+{combined_content[:3000]}
+
+【输出要求】
+- 必须使用{target_language}输出
+- 禁止出现英文单词（例外情况除外）
+- 保持技术术语的准确性
+
+请输出合并后的完整内容：
 """
         
         try:

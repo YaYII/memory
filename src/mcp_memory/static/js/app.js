@@ -156,11 +156,86 @@ async function fetchState() {
         }
         
         // 处理进化状态
+        console.log('[DEBUG] evoRes:', evoRes);
         if (evoRes.status === 'fulfilled' && evoRes.value.ok) {
             const evo = await evoRes.value.json();
+            console.log('[DEBUG] evo data:', evo);
             const profile = evo.profile || 'standard';
             document.getElementById('evolution-profile').innerText = PROFILE_LABELS[profile] || profile;
             setProfileActiveButton(profile);
+            
+            // 更新每日深度思考状态
+            console.log('[DEBUG] daily_reflection data:', evo.daily_reflection);
+            if (!evo.daily_reflection) {
+                console.log('[DEBUG] daily_reflection is undefined!');
+            }
+            if (evo.daily_reflection) {
+                const daily = evo.daily_reflection;
+                
+                // 检查元素是否存在
+                const dailyNextEl = document.getElementById('daily-next');
+                console.log('[DEBUG] daily-next element:', dailyNextEl);
+                
+                // 下次执行时间
+                if (daily.next_reflection) {
+                    const nextDate = new Date(daily.next_reflection);
+                    const formatted = nextDate.toLocaleString('zh-CN', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    console.log('[DEBUG] next_reflection formatted:', formatted);
+                    if (dailyNextEl) {
+                        dailyNextEl.innerText = formatted;
+                    }
+                } else {
+                    console.log('[DEBUG] next_reflection is null or undefined');
+                    if (dailyNextEl) {
+                        dailyNextEl.innerText = '--:--';
+                    }
+                }
+                
+                // 上次执行时间
+                if (daily.last_reflection_time) {
+                    const lastDate = new Date(daily.last_reflection_time);
+                    document.getElementById('daily-last').innerText = lastDate.toLocaleString('zh-CN', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+                
+                // 执行次数
+                document.getElementById('daily-count').innerText = daily.total_reflections || 0;
+                
+                // 合并组数（从last_reflection_note中解析）
+                const note = daily.last_reflection_note || '';
+                const mergeMatch = note.match(/(\d+)\s*组/);
+                document.getElementById('daily-merged').innerText = mergeMatch ? mergeMatch[1] + ' 组' : '0 组';
+                
+                // 状态描述
+                const statusEl = document.getElementById('daily-status');
+                if (daily.running) {
+                    if (daily.last_reflection_time) {
+                        const hoursSince = (new Date() - new Date(daily.last_reflection_time)) / (1000 * 60 * 60);
+                        if (hoursSince < 1) {
+                            statusEl.innerText = '✅ 刚刚完成';
+                            statusEl.style.color = '#00ff41';
+                        } else {
+                            statusEl.innerText = '📅 等待下次执行';
+                            statusEl.style.color = '#008f11';
+                        }
+                    } else {
+                        statusEl.innerText = '⏳ 等待首次执行';
+                        statusEl.style.color = '#008f11';
+                    }
+                } else {
+                    statusEl.innerText = '⏹️ 已停止';
+                    statusEl.style.color = '#ff0000';
+                }
+            }
         }
         
         // 处理图谱数据

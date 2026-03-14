@@ -620,6 +620,135 @@ class MemoryStore:
             print(f"[MemoryStore] 更新元数据失败: {e}")
             return False
 
+    def get_merged_memories(self, user_id: str = None, limit: int = 50) -> List[Dict]:
+        """
+        查询合并的记忆
+        
+        返回两类记忆：
+        1. 合并后的增强版记忆 (is_merged_memory=True)
+        2. 被合并的源记忆 (merge_status=merged_into)
+        
+        Args:
+            user_id: 用户ID（可选，不指定则返回所有）
+            limit: 返回数量限制
+            
+        Returns:
+            合并记忆列表
+        """
+        try:
+            results = []
+            
+            # 获取所有记忆
+            all_memories = self.collection.get(limit=limit * 2)  # 获取更多以便筛选
+            ids = all_memories.get("ids", [])
+            docs = all_memories.get("documents", [])
+            metas = all_memories.get("metadatas", [])
+            
+            for i in range(len(ids)):
+                meta = metas[i] if i < len(metas) else {}
+                
+                # 检查是否是合并相关的记忆
+                is_merged = meta.get("is_merged_memory", False)
+                merge_status = meta.get("merge_status", "")
+                
+                if is_merged or merge_status == "merged_into":
+                    # 如果指定了用户ID，检查是否匹配
+                    if user_id and meta.get("user_id") != user_id:
+                        continue
+                    
+                    results.append({
+                        "id": ids[i],
+                        "content": docs[i] if i < len(docs) else "",
+                        "metadata": meta,
+                        "type": "merged_enhanced" if is_merged else "merged_source",
+                        "created_at": meta.get("timestamp", ""),
+                        "merged_at": meta.get("merged_at", meta.get("merge_time", "")),
+                        "merged_count": meta.get("merged_count", 0),
+                        "merged_from": meta.get("merged_from", []),
+                        "merged_into_id": meta.get("merged_into_id", ""),
+                        "merge_reason": meta.get("merge_reason", "")
+                    })
+            
+            # 按合并时间排序
+            results.sort(key=lambda x: x.get("merged_at", ""), reverse=True)
+            
+            return results[:limit]
+            
+        except Exception as e:
+            print(f"[MemoryStore] 查询合并记忆失败: {e}")
+            return []
+
+    def get_merge_chain(self, memory_id: str) -> Dict:
+        """
+        获取记忆的合并链
+        
+        追踪一个记忆的所有合并关系：
+        - 如果是合并后的记忆，返回所有源记忆
+        - 如果是源记忆，返回合并后的目标记忆
+        
+        Args:
+            memory_id: 记忆ID
+            
+        Returns:
+            合并链信息
+        """
+        try:
+            # 获取记忆详情
+            res = self.collection.get(ids=[memory_id])
+            if not res or not res["ids"]:
+                return {"error": "记忆不存在"}
+            
+            meta = res["metadatas"][0] if res["metadatas"] else {}
+            content = res["documents"][0] if res["documents"] else ""
+            
+            result = {
+                "memory_id": memory_id,
+                "content_preview": content[:200] if content else "",
+                "is_merged_memory": meta.get("is_merged_memory", False),
+                "merge_status": meta.get("merge_status", ""),
+                "merged_count": meta.get("merged_count", 0),
+                "merged_at": meta.get("merged_at", ""),
+                "merge_reason": meta.get("merge_reason", ""),
+                "sources": [],
+                "target": None
+            }
+            
+            # 如果是合并后的记忆，获取所有源记忆
+            if result["is_merged_memory"]:
+                source_ids = meta.get("merged_from", [])
+                for sid in source_ids:
+                    try:
+                        sres = self.collection.get(ids=[sid])
+                        if sres and sres["ids"]:
+                            result["sources"].append({
+                                "id": sid,
+                                "content_preview": sres["documents"][0][:200] if sres["documents"] else "",
+                                "metadata": sres["metadatas"][0] if sres["metadatas"] else {}
+                            })
+                    except Exception:
+                        pass
+            
+            # 如果是被合并的源记忆，获取目标记忆
+            elif result["merge_status"] == "merged_into":
+                target_id = meta.get("merged_into_id", "")
+                if target_id:
+                    try:
+                        tres = self.collection.get(ids=[target_id])
+                        if tres and tres["ids"]:
+                            result["target"] = {
+                                "id": target_id,
+                                "content_preview": tres["documents"][0][:200] if tres["documents"] else "",
+                                "metadata": tres["metadatas"][0] if tres["metadatas"] else {}
+                            }
+                    except Exception:
+                        pass
+            
+            return result
+            
+        except Exception as e:
+            print(f"[MemoryStore] 获取合并链失败: {e}")
+            return {"error": str(e)}
+
     # ==================== 三层记忆系统扩展 ====================
     
     def save_storage_memory(self, content: str, user_id: str, session_id: str = None,

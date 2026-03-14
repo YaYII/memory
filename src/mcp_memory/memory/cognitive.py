@@ -3,6 +3,7 @@ from typing import List
 from datetime import datetime
 from mcp_memory.llm.facade import llm_facade, LLMFacade
 from mcp_memory.memory.manager import MemoryManager
+from mcp_memory.memory.daily_reflection import DailyReflectionScheduler
 from mcp_memory.core.config import settings
 
 
@@ -23,10 +24,17 @@ class CognitiveProcessor:
         self.last_scan_processed = 0
         self.last_reflection_note = ""
         self.log_callback = None
+        
+        # 初始化每日深度思考调度器
+        self.daily_reflection = DailyReflectionScheduler(memory_manager, llm_facade)
 
     async def initialize(self):
-        """初始化 LLM 客户端"""
+        """初始化 LLM 客户端和每日深度思考调度器"""
         await self.llm.initialize()
+        
+        # 启动每日深度思考调度器
+        self.daily_reflection.set_logger(self.log_callback)
+        await self.daily_reflection.start()
 
     def set_logger(self, logger):
         self.log_callback = logger
@@ -47,6 +55,10 @@ class CognitiveProcessor:
         # 获取首选提供商名称
         preferred = router_status.get("preferred_provider", "unknown")
         available = router_status.get("available_providers", [])
+        
+        # 获取每日深度思考状态
+        daily_status = self.daily_reflection.get_status()
+        
         return {
             "running": self.is_running,
             "last_scan_time": self.last_scan_time.isoformat() if self.last_scan_time else None,
@@ -58,7 +70,8 @@ class CognitiveProcessor:
             "llm_enabled": len(available) > 0,
             "preferred_provider": preferred,
             "available_providers": available,
-            "llm_status": router_status
+            "llm_status": router_status,
+            "daily_reflection": daily_status  # 每日深度思考状态
         }
 
     async def periodic_scan_once(self, batch_size: int = None) -> int:

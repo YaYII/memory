@@ -83,6 +83,16 @@
             <div class="stat-row"><span>进化策略 </span><span class="stat-val" id="evolution-profile">标准</span></div>
             <div class="stat-row"><span>深度思考 </span><span class="stat-val" id="llm-state">未知</span></div>
             
+            <!-- 每日深度思考状态 -->
+            <div style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 12px;">
+                <h3 style="color: #00ff41; font-size: 13px; margin-bottom: 8px;">📅 每日深度思考</h3>
+                <div class="stat-row"><span>下次执行 </span><span class="stat-val" id="daily-next">--:--</span></div>
+                <div class="stat-row"><span>上次执行 </span><span class="stat-val" id="daily-last">从未</span></div>
+                <div class="stat-row"><span>执行次数 </span><span class="stat-val" id="daily-count">0</span></div>
+                <div class="stat-row"><span>合并记忆 </span><span class="stat-val" id="daily-merged">0 组</span></div>
+                <div id="daily-status" style="margin-top: 5px; font-size: 11px; color: #008f11;">等待调度...</div>
+            </div>
+            
             <div class="view-switcher" style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 15px;">
                 <button id="view-neural" class="view-btn active">神经图谱</button>
                 <button id="view-skill" class="view-btn">技能树 </button>

@@ -1015,6 +1015,83 @@ async def force_summarize_endpoint(memory_ids: List[str]):
     raise HTTPException(status_code=501, detail="此功能正在重构中，请稍后再试")
 
 
+@app.get("/tiered/merged")
+async def get_merged_memories_endpoint(user_id: str = None, limit: int = 50):
+    """
+    查询合并的记忆
+    
+    返回两类记忆：
+    - merged_enhanced: 合并后的增强版记忆
+    - merged_source: 被合并的源记忆
+    
+    Args:
+        user_id: 用户ID（可选）
+        limit: 返回数量限制（默认50）
+    """
+    try:
+        log_event(f"查询合并记忆 (用户: {user_id}, 限制: {limit})")
+        merged_memories = memory_manager.store.get_merged_memories(user_id, limit)
+        
+        return {
+            "count": len(merged_memories),
+            "memories": merged_memories
+        }
+    except Exception as e:
+        log_event(f"查询合并记忆失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tiered/memory/{memory_id}/merge-chain")
+async def get_merge_chain_endpoint(memory_id: str):
+    """
+    获取记忆的合并链
+    
+    追踪一个记忆的所有合并关系
+    """
+    try:
+        log_event(f"查询记忆合并链: {memory_id}")
+        chain = memory_manager.store.get_merge_chain(memory_id)
+        
+        if "error" in chain:
+            raise HTTPException(status_code=404, detail=chain["error"])
+        
+        return chain
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_event(f"查询合并链失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tiered/daily-reflection/trigger")
+async def trigger_daily_reflection():
+    """
+    手动触发每日深度思考
+    用于测试和立即执行合并操作
+    """
+    try:
+        log_event("手动触发每日深度思考")
+        
+        # 在后台执行，不阻塞API响应
+        async def run_reflection():
+            try:
+                await cognitive_processor.daily_reflection.run_daily_reflection()
+                log_event("手动每日深度思考完成")
+            except Exception as e:
+                log_event(f"手动每日深度思考失败: {e}")
+        
+        # 启动后台任务
+        asyncio.create_task(run_reflection())
+        
+        return {
+            "status": "started",
+            "message": "每日深度思考已在后台启动，请查看日志"
+        }
+    except Exception as e:
+        log_event(f"触发每日深度思考失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 def main():
     """
     启动服务器
