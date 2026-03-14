@@ -16,18 +16,49 @@ class MemoryManager:
         # 初始化三层记忆管理器，传入统一的store
         self.tiered_manager = TieredMemoryManager(memory_store=self.store, data_path=settings.CHROMA_DATA_PATH)
 
-    def write_memory(self, user_id: str, content: str, project_id: Optional[str] = None, scope: str = "project") -> str:
+    def write_memory(self, user_id: str, content: str, project_id: Optional[str] = None, scope: str = "project",
+                      title: str = None, description: str = None, summary: str = None,
+                      content_type: str = "note", keywords: List[str] = None, tags: List[str] = None,
+                      max_chars: int = 1000) -> str:
         """
         写入记忆：支持 AI 动态指定 project_id，若不指定则使用当前环境的自动ID
         
-        同时写入传统记忆系统和三层记忆系统（作为storage记忆）
+        增强版：支持标题、关键词、结构化内容
+        
+        Args:
+            user_id: 用户ID
+            content: 记忆内容
+            project_id: 项目ID（可选）
+            scope: 作用域（project/global）
+            title: 记忆标题（可选，默认取内容前50字）
+            description: 任务描述（可选）
+            summary: 任务总结（可选）
+            content_type: 内容类型（task/note/summary/code/config/workflow）
+            keywords: 关键词列表（可选）
+            tags: 标签列表（可选）
+            max_chars: 最大字符限制（默认1000）
         """
         # 确定最终的 project_id
         final_project_id = project_id or settings.MCP_PROJECT_ID
         
+        # 如果没有提供标题，从内容生成
+        if not title:
+            title = content[:50] + "..." if len(content) > 50 else content
+        
+        # 计算字符数
+        char_count = len(content) if content else 0
+        
         # 1. 写入传统记忆系统
         memory = MemoryItem(
+            title=title,
             content=content,
+            description=description,
+            summary=summary,
+            content_type=content_type,
+            keywords=keywords or [],
+            tags=tags or [],
+            char_count=char_count,
+            max_chars=max_chars,
             user_id=user_id,
             scope=scope,
             project_id=final_project_id,
@@ -48,7 +79,7 @@ class MemoryManager:
                 project_id=final_project_id,
                 scope=scope,
                 participants=[user_id],
-                topic=None
+                topic=title  # 使用标题作为topic
             )
             print(f"[MemoryManager] 记忆已同步到三层系统: {tiered_id[:8]}")
         except Exception as e:

@@ -11,9 +11,32 @@ class MemoryItem(BaseModel):
     - storage: 存储记忆（原始对话）
     - thinking: 思维记忆（总结）
     - skill: 技能记忆（可复用知识）
+    
+    增强版：支持标题、关键词、结构化内容
     """
     memory_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="记忆唯一ID")
-    content: str = Field(..., description="记忆内容")
+    
+    # ========== 新增：标题和元信息 ==========
+    title: str = Field(..., description="记忆标题", max_length=200)
+    content: str = Field(..., description="记忆完整内容")
+    description: Optional[str] = Field(None, description="任务描述/内容摘要")
+    summary: Optional[str] = Field(None, description="任务总结")
+    
+    # 内容类型
+    content_type: Literal["task", "note", "summary", "code", "config", "workflow"] = Field(
+        "note",
+        description="内容类型: task=任务, note=笔记, summary=总结, code=代码, config=配置, workflow=工作流"
+    )
+    
+    # ========== 关键词和标签系统 ==========
+    keywords: List[str] = Field(default_factory=list, description="关键词标签列表")
+    tags: List[str] = Field(default_factory=list, description="分类标签列表")
+    
+    # ========== 字数统计和限制 ==========
+    char_count: int = Field(0, description="当前字符数")
+    max_chars: int = Field(1000, description="最大字符限制", ge=100, le=5000)
+    
+    # ========== 基础信息 ==========
     user_id: str = Field(..., description="记忆所有者ID")
     
     # 三层记忆类型
@@ -29,12 +52,12 @@ class MemoryItem(BaseModel):
     
     timestamp: datetime = Field(default_factory=datetime.now, description="记忆产生时间")
     
-    # 认知增强字段
+    # ========== 认知增强字段 ==========
     importance: float = Field(1.0, description="记忆重要性权重 (1-10)")
     last_accessed: Optional[datetime] = Field(default_factory=datetime.now, description="最后访问时间")
     access_count: int = Field(0, description="访问次数")
     
-    # 三层记忆关联字段
+    # ========== 三层记忆关联字段 ==========
     source_memories: List[str] = Field(default_factory=list, description="源记忆ID列表（用于链接）")
     session_id: Optional[str] = Field(None, description="对话会话ID（仅storage类型使用）")
     summary_type: Optional[Literal["session", "daily", "weekly", "manual"]] = Field(
@@ -45,7 +68,6 @@ class MemoryItem(BaseModel):
         None,
         description="技能类型（仅skill类型使用）"
     )
-    tags: List[str] = Field(default_factory=list, description="标签列表")
     confidence: float = Field(1.0, description="置信度（0-1）")
     version: int = Field(1, description="版本号")
     verified: bool = Field(False, description="是否已验证")

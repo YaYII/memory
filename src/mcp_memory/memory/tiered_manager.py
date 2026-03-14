@@ -24,19 +24,23 @@ class TieredMemoryManager:
     3. 支持记忆溯源
     4. 管理自动总结流程
     
-    注意：现在使用统一的MemoryStore，不再使用独立的TieredMemoryStore
+    支持两种模式：
+    1. 独立模式：使用 TieredMemoryStore（三层独立存储）
+    2. 兼容模式：使用外部 MemoryStore（统一存储，通过metadata区分层级）
     """
     
     def __init__(self, memory_store=None, data_path: str = "data/chroma"):
-        # 如果提供了外部store，使用外部的；否则创建新的（向后兼容）
+        # 如果提供了外部store，使用兼容模式；否则创建独立的三层存储
         if memory_store is not None:
             self.store = memory_store
             self._using_external_store = True
-            print(f"[TieredManager] 使用外部store: {type(memory_store).__name__}")
+            self._tiered_store = None
+            print(f"[TieredManager] 使用外部store（兼容模式）: {type(memory_store).__name__}")
         else:
-            self.store = TieredMemoryStore(data_path)
+            self._tiered_store = TieredMemoryStore(data_path)
+            self.store = self._tiered_store
             self._using_external_store = False
-            print(f"[TieredManager] 使用内部TieredMemoryStore")
+            print(f"[TieredManager] 使用内部TieredMemoryStore（独立模式）")
         
         self.summarizer = AutoSummarizerV2(self.store)
         self._initialized = False

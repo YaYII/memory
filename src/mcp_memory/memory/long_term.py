@@ -165,6 +165,9 @@ class MemoryStore:
         # 确保 last_accessed 有值
         last_accessed_iso = memory.last_accessed.isoformat() if memory.last_accessed else datetime.now().isoformat()
         
+        # 计算字符数
+        char_count = len(memory.content) if memory.content else 0
+        
         metadata = {
             "user_id": memory.user_id,
             "scope": memory.scope,
@@ -181,7 +184,18 @@ class MemoryStore:
             "summary_type": memory.summary_type or "",
             "skill_type": memory.skill_type or "",
             "verified": str(memory.verified) if memory.verified is not None else "False",
-            "confidence": memory.confidence or 1.0
+            "confidence": memory.confidence or 1.0,
+            # ========== 新增：标题和元信息 ==========
+            "title": memory.title or "",
+            "description": memory.description or "",
+            "summary": memory.summary or "",
+            "content_type": memory.content_type or "note",
+            # ========== 新增：关键词和标签 ==========
+            "keywords": json.dumps(memory.keywords or [], ensure_ascii=False),
+            "tags": json.dumps(memory.tags or [], ensure_ascii=False),
+            # ========== 新增：字数统计 ==========
+            "char_count": char_count,
+            "max_chars": memory.max_chars or 1000
         }
 
         def _do_save():
@@ -620,6 +634,262 @@ class MemoryStore:
             print(f"[MemoryStore] 更新元数据失败: {e}")
             return False
 
+    # ==================== 三层记忆系统兼容接口 ====================
+    
+    def create_storage_memory(self, data) -> str:
+        """
+        创建存储记忆（三层记忆系统兼容接口）
+        实际存储到统一的collection中，通过metadata标记层级
+        """
+        from datetime import datetime
+        import uuid
+        import json
+        
+        memory_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        metadata = {
+            "memory_id": memory_id,
+            "memory_type": "storage",
+            "user_id": data.user_id,
+            "session_id": data.session_id,
+            "project_id": data.project_id or "",
+            "scope": data.scope,
+            "timestamp": timestamp,
+            "participants": json.dumps(data.participants) if hasattr(data, 'participants') else "[]",
+            "topic": data.topic if hasattr(data, 'topic') else "",
+            "importance": 1.0,
+            "access_count": 0,
+            "memory_tier": "storage"  # 标记为存储层
+        }
+        
+        self.collection.add(
+            ids=[memory_id],
+            documents=[data.content],
+            metadatas=[metadata]
+        )
+        
+        # 添加到图谱
+        self.add_entities_to_graph(memory_id, self._fallback_extract_entities(data.content))
+        
+        print(f"[MemoryStore] 存储记忆已创建: {memory_id[:8]}")
+        return memory_id
+    
+    def create_thinking_memory(self, data) -> str:
+        """
+        创建思维记忆（三层记忆系统兼容接口）
+        """
+        from datetime import datetime
+        import uuid
+        import json
+        
+        memory_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        source_memories = data.source_memories if hasattr(data, 'source_memories') else []
+        
+        metadata = {
+            "memory_id": memory_id,
+            "memory_type": "thinking",
+            "user_id": data.user_id,
+            "project_id": data.project_id or "",
+            "scope": data.scope,
+            "timestamp": timestamp,
+            "source_memories": json.dumps(source_memories),
+            "summary_type": data.summary_type if hasattr(data, 'summary_type') else "manual",
+            "key_points": json.dumps(data.key_points) if hasattr(data, 'key_points') else "[]",
+            "confidence": 0.9,
+            "version": 1,
+            "verified": False,
+            "importance": 2.0,
+            "access_count": 0,
+            "memory_tier": "thinking"  # 标记为思维层
+        }
+        
+        self.collection.add(
+            ids=[memory_id],
+            documents=[data.content],
+            metadatas=[metadata]
+        )
+        
+        # 创建与源记忆的链接
+        for source_id in source_memories:
+            self._create_memory_link(memory_id, source_id, "summarized_from")
+        
+        print(f"[MemoryStore] 思维记忆已创建: {memory_id[:8]}")
+        return memory_id
+    
+    def create_skill_memory(self, data) -> str:
+        """
+        创建技能记忆（三层记忆系统兼容接口）
+        """
+        from datetime import datetime
+        import uuid
+        import json
+        
+        memory_id = str(uuid.uuid4())
+        timestamp = datetime.now().isoformat()
+        
+        source_thinking = data.source_thinking if hasattr(data, 'source_thinking') else []
+        tags = data.tags if hasattr(data, 'tags') else []
+        
+        metadata = {
+            "memory_id": memory_id,
+            "memory_type": "skill",
+            "user_id": data.user_id,
+            "project_id": data.project_id or "",
+            "scope": data.scope,
+            "timestamp": timestamp,
+            "source_thinking": json.dumps(source_thinking),
+            "skill_type": data.skill_type if hasattr(data, 'skill_type') else "knowledge",
+            "tags": json.dumps(tags),
+            "usage_count": 0,
+            "effectiveness": 1.0,
+            "confidence": 0.85,
+            "version": 1,
+            "verified": False,
+            "importance": 3.0,
+            "access_count": 0,
+            "memory_tier": "skill"  # 标记为技能层
+        }
+        
+        self.collection.add(
+            ids=[memory_id],
+            documents=[data.content],
+            metadatas=[metadata]
+        )
+        
+        # 创建与源思维记忆的链接
+        for source_id in source_thinking:
+            self._create_memory_link(memory_id, source_id, "extracted_from")
+        
+        print(f"[MemoryStore] 技能记忆已创建: {memory_id[:8]}")
+        return memory_id
+    
+    def _create_memory_link(self, from_id: str, to_id: str, relation: str):
+        """创建记忆之间的链接关系"""
+        try:
+            # 在图谱中添加边
+            if hasattr(self, 'graph'):
+                self.graph.add_edge(from_id, to_id, relation=relation)
+                self._save_graph()
+        except Exception as e:
+            print(f"[MemoryStore] 创建记忆链接失败: {e}")
+    
+    def query_memories(self, query: str, memory_type: str = "all", user_id: str = None, limit: int = 10, days: int = None) -> List[Dict]:
+        """
+        分层查询记忆（三层记忆系统兼容接口）
+        """
+        from datetime import datetime, timedelta
+        
+        # 使用现有的搜索功能
+        results = self.search(query, user_id=user_id or "", limit=limit * 2)
+        
+        # 根据memory_type过滤
+        filtered_results = []
+        for r in results:
+            meta = r.get("metadata", {})
+            tier = meta.get("memory_tier", "storage")
+            
+            # 类型过滤
+            if memory_type != "all" and tier != memory_type:
+                continue
+            
+            # 时间过滤
+            if days is not None:
+                try:
+                    timestamp = meta.get("timestamp", "")
+                    if timestamp:
+                        mem_time = datetime.fromisoformat(timestamp)
+                        if datetime.now() - mem_time > timedelta(days=days):
+                            continue
+                except:
+                    pass
+            
+            # 转换为统一格式
+            filtered_results.append({
+                "memory_id": r["id"],
+                "content": r["content"],
+                "memory_type": tier,
+                "metadata": meta,
+                "timestamp": meta.get("timestamp", ""),
+                "score": r.get("score", 0)
+            })
+        
+        return filtered_results[:limit]
+    
+    def get_memory_by_id(self, memory_id: str) -> Optional[Dict]:
+        """根据ID获取记忆（三层记忆系统兼容接口）"""
+        try:
+            result = self.collection.get(ids=[memory_id])
+            if result and result["ids"]:
+                return {
+                    "memory_id": memory_id,
+                    "content": result["documents"][0] if result["documents"] else "",
+                    "metadata": result["metadatas"][0] if result["metadatas"] else {},
+                    "memory_type": result["metadatas"][0].get("memory_tier", "storage") if result["metadatas"] else "storage"
+                }
+        except Exception as e:
+            print(f"[MemoryStore] 获取记忆失败: {e}")
+        return None
+    
+    def get_source_memories(self, memory_id: str) -> List[Dict]:
+        """获取源记忆（三层记忆系统兼容接口）"""
+        try:
+            memory = self.get_memory_by_id(memory_id)
+            if not memory:
+                return []
+            
+            meta = memory.get("metadata", {})
+            import json
+            
+            # 获取源记忆ID列表
+            source_ids = []
+            if "source_memories" in meta:
+                try:
+                    source_ids = json.loads(meta["source_memories"])
+                except:
+                    pass
+            elif "source_thinking" in meta:
+                try:
+                    source_ids = json.loads(meta["source_thinking"])
+                except:
+                    pass
+            
+            # 获取源记忆详情
+            sources = []
+            for sid in source_ids:
+                source = self.get_memory_by_id(sid)
+                if source:
+                    sources.append(source)
+            
+            return sources
+        except Exception as e:
+            print(f"[MemoryStore] 获取源记忆失败: {e}")
+            return []
+    
+    def get_stats(self) -> Dict:
+        """获取统计信息（三层记忆系统兼容接口）"""
+        try:
+            all_memories = self.collection.get()
+            metas = all_memories.get("metadatas", [])
+            
+            storage_count = sum(1 for m in metas if m.get("memory_tier") == "storage")
+            thinking_count = sum(1 for m in metas if m.get("memory_tier") == "thinking")
+            skill_count = sum(1 for m in metas if m.get("memory_tier") == "skill")
+            
+            return {
+                "total_memories": len(metas),
+                "storage_count": storage_count,
+                "thinking_count": thinking_count,
+                "skill_count": skill_count
+            }
+        except Exception as e:
+            print(f"[MemoryStore] 获取统计失败: {e}")
+            return {"total_memories": 0, "storage_count": 0, "thinking_count": 0, "skill_count": 0}
+    
+    # ==================== 合并记忆查询 ====================
+    
     def get_merged_memories(self, user_id: str = None, limit: int = 50) -> List[Dict]:
         """
         查询合并的记忆
