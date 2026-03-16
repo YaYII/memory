@@ -119,7 +119,7 @@ function updateGraph(data: GraphData) {
       .on('drag', dragged)
       .on('end', dragended) as any
     )
-    .on('click', (event: MouseEvent, d: GraphNode) => {
+    .on('click', (_event: MouseEvent, d: GraphNode) => {
       emit('nodeClick', d)
     })
 
@@ -148,16 +148,16 @@ function dragstarted(event: d3.D3DragEvent<SVGCircleElement, GraphNode, GraphNod
 }
 
 function dragged(event: d3.D3DragEvent<SVGCircleElement, GraphNode, GraphNode>) {
-  (event.subject as any).fx = event.x
-  (event.subject as any).fy = event.y
+  ;(event.subject as any).fx = event.x as number
+  ;(event.subject as any).fy = event.y as number
 }
 
 function dragended(event: d3.D3DragEvent<SVGCircleElement, GraphNode, GraphNode>) {
   if (!event.active && simulation) {
     simulation.alphaTarget(0)
   }
-  (event.subject as any).fx = null
-  (event.subject as any).fy = null
+  ;(event.subject as any).fx = null as any
+  ;(event.subject as any).fy = null as any
 }
 </script>
 

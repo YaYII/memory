@@ -69,7 +69,14 @@ export const useMemoryStore = defineStore('memory', () => {
       isLoading.value = true
       searchQuery.value = query
       const result = await memoryApi.searchMemories(query)
-      searchResults.value = result.items as Memory[]
+      searchResults.value = result.items.map(item => ({
+        ...item,
+        content_type: 'note' as const,
+        keywords: [],
+        tags: [],
+        char_count: item.content?.length || 0,
+        importance: 0.5
+      })) as Memory[]
     } catch (e) {
       error.value = 'Failed to search memories'
       console.error(e)

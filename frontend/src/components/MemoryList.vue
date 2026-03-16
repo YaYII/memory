@@ -6,7 +6,7 @@
       <button 
         v-for="type in memoryTypes" 
         :key="type.value"
-        :class="['memory-tab', { active: currentType === type.value }]"
+        :class="['memory-tab', { active: currentMemoryType === type.value }]"
         @click="selectType(type.value)"
       >
         {{ type.label }}
@@ -75,7 +75,8 @@ const emit = defineEmits<{
 }>()
 
 const memoryStore = useMemoryStore()
-const { filteredMemories, memoryCountByType, isLoading, currentMemoryType } = storeToRefs(memoryStore)
+const { filteredMemories, memoryCountByType, isLoading } = storeToRefs(memoryStore)
+const currentMemoryType = computed(() => memoryStore.currentMemoryType)
 
 const searchQuery = ref('')
 
