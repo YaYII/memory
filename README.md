@@ -2,6 +2,81 @@
 
 本项目实现了一个 **基于个体、构建集体** 且具备 **生物学本能** 的 AI 记忆系统。
 
+## 快速开始 (Quick Start)
+
+### 方式一：本地 CLI（推荐，无需启动服务器）
+
+```bash
+# 激活环境
+source .venv/bin/activate
+
+# 查看系统统计
+mcp-memory-local stats
+
+# 写入记忆
+mcp-memory-local write "重要信息" --title "记忆标题" --keywords "标签1,标签2"
+
+# 搜索记忆
+mcp-memory-local read "关键词"
+
+# 列出所有记忆
+mcp-memory-local list --user cli_user
+
+# 显示记忆详情
+mcp-memory-local show <memory_id>
+
+# 删除记忆
+mcp-memory-local delete <memory_id>
+
+# 交互式 TUI 模式
+mcp-memory-local interactive
+```
+
+### 方式二：HTTP 服务器 + CLI
+
+```bash
+# 启动服务器
+mcp-memory-cli server start
+
+# 使用 CLI 操作（通过 HTTP API）
+mcp-memory-cli write "内容" --title "标题"
+mcp-memory-cli read "查询"
+mcp-memory-cli list
+mcp-memory-cli stats
+```
+
+## 本地 CLI 完整命令参考
+
+### `mcp-memory-local` - 本地直接操作（无需服务器）
+
+| 命令 | 功能 | 示例 |
+|------|------|------|
+| `write` | 写入新记忆 | `mcp-memory-local write "内容" --title "标题" --keywords "a,b"` |
+| `read` | 搜索记忆 | `mcp-memory-local read "查询内容" --top-k 5` |
+| `list` | 列出记忆 | `mcp-memory-local list --type storage --limit 20` |
+| `show` | 显示详情 | `mcp-memory-local show <memory_id>` |
+| `delete` | 删除记忆 | `mcp-memory-local delete <id> --force` |
+| `stats` | 系统统计 | `mcp-memory-local stats` |
+| `reflect` | 触发反思 | `mcp-memory-local reflect` |
+| `interactive` | 交互式模式 | `mcp-memory-local interactive` |
+
+### `mcp-memory-cli` - HTTP API 客户端（需要服务器）
+
+| 命令 | 功能 | 示例 |
+|------|------|------|
+| `write` | 写入记忆 | `mcp-memory-cli write "内容" --title "标题"` |
+| `read` | 搜索记忆 | `mcp-memory-cli read "查询" --top-k 5` |
+| `list` | 列出记忆 | `mcp-memory-cli list --type storage` |
+| `delete` | 删除记忆 | `mcp-memory-cli delete <id>` |
+| `stats` | 显示统计 | `mcp-memory-cli stats` |
+| `reflect` | 触发反思 | `mcp-memory-cli reflect` |
+| `rebuild` | 重建图谱 | `mcp-memory-cli rebuild` |
+| `feedback` | 提交反馈 | `mcp-memory-cli feedback <id> --rating 5` |
+| `tiered` | 三层记忆 | `mcp-memory-cli tiered write "内容" storage --title "标题"` |
+| `server start` | 启动服务器 | `mcp-memory-cli server start` |
+| `server stop` | 停止服务器 | `mcp-memory-cli server stop` |
+| `server status` | 查看状态 | `mcp-memory-cli server status` |
+
 ## 数据持久化说明 (Persistence)
 
 **数据不会因为服务关闭而丢失。**

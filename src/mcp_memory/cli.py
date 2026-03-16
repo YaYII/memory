@@ -217,9 +217,14 @@ def list_memories(
             table.add_column("时间", style="dim")
             
             for mem in memories:
+                # API返回memory_id而不是id
+                mem_id = mem.get("memory_id", mem.get("id", ""))
+                # 从content中提取前20字符作为标题（如果没有title字段）
+                content = mem.get("content", "")
+                title = mem.get("title", content[:30] + "..." if len(content) > 30 else content)
                 table.add_row(
-                    mem.get("id", "")[:12],
-                    mem.get("title", "无标题")[:25],
+                    mem_id[:12] if mem_id else "N/A",
+                    title[:25] if title else "无标题",
                     mem.get("memory_type", "unknown"),
                     mem.get("scope", ""),
                     mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
@@ -285,12 +290,16 @@ def stats():
             table.add_column("指标", style="cyan")
             table.add_column("值", style="green")
             
-            table.add_row("总记忆数", str(stats_data.get("total_memories", 0)))
-            table.add_row("存储层", str(stats_data.get("storage_memories", 0)))
-            table.add_row("思维层", str(stats_data.get("thinking_memories", 0)))
-            table.add_row("技能层", str(stats_data.get("skill_memories", 0)))
-            table.add_row("总节点数", str(stats_data.get("total_nodes", 0)))
-            table.add_row("总边数", str(stats_data.get("total_edges", 0)))
+            # 获取三层记忆统计
+            tiered = stats_data.get("tiered_breakdown", {})
+            total_count = stats_data.get("memory_count", 0)
+            
+            table.add_row("总记忆数", str(total_count))
+            table.add_row("存储层", str(tiered.get("storage", 0)))
+            table.add_row("思维层", str(tiered.get("thinking", 0)))
+            table.add_row("技能层", str(tiered.get("skill", 0)))
+            table.add_row("LLM启用", "✅" if stats_data.get("llm_enabled") else "❌")
+            table.add_row("提供商数", str(stats_data.get("providers_count", 0)))
             
             console.print(table)
             

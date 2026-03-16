@@ -18,6 +18,20 @@ import asyncio
 import random
 from sse_starlette.sse import EventSourceResponse
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+    print(f"[SERVER] Loaded environment from {env_path}")
+else:
+    # Try current working directory
+    if os.path.exists(".env"):
+        load_dotenv(".env")
+        print("[SERVER] Loaded environment from .env")
+    else:
+        print("[SERVER] No .env file found, using system environment")
+
 # Create FastAPI app
 app = FastAPI(title="MCP Memory Server", version="1.0.0")
 
@@ -312,7 +326,12 @@ async def get_evolution_status():
         "reflection_interval_seconds": policy["reflection_interval"],
         "scan_batch_size": policy["batch_size"],
         "scan_task_running": bool(EVOLUTION_SCAN_TASK and not EVOLUTION_SCAN_TASK.done()),
-        "reflection_task_running": bool(EVOLUTION_REFLECTION_TASK and not EVOLUTION_REFLECTION_TASK.done())
+        "reflection_task_running": bool(EVOLUTION_REFLECTION_TASK and not EVOLUTION_REFLECTION_TASK.done()),
+        # 兼容CLI的字段名
+        "is_running": status.get("running", False),
+        "evolution_stage": status.get("preferred_provider", "unknown"),
+        "neuron_count": 0,
+        "synapse_count": 0
     })
     return status
 
@@ -989,7 +1008,9 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
         # 记录智能体处理信息
         suggested_type = processed["metadata"].get("suggested_type", "storage")
         log_event(f"🤖 智能体分析: 建议分类为 {suggested_type}")
-        log_event(f"🤖 智能体核心意图: {processed['metadata']['intent_analysis']['core_intent']}")
+        intent_analysis = processed["metadata"].get("intent_analysis", {})
+        core_intent = intent_analysis.get("core_intent", "未分析")
+        log_event(f"🤖 智能体核心意图: {core_intent}")
         
         # project_id: 如果 AI 不传，manager 会使用当前自动检测的 CWD ID
         log_event(f"正在为用户 {req.user_id} 写入记忆 (范围: {req.scope})")
@@ -997,7 +1018,10 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
             req.user_id, 
             req.content,  # 保留原始内容，不压缩
             project_id=req.project_id, 
-            scope=req.scope
+            scope=req.scope,
+            title=req.title,
+            keywords=req.keywords if req.keywords else None,
+            tags=req.tags if req.tags else None
         )
         
         # 在后台触发认知处理 (现在支持无 LLM 模式下的基础分析)
@@ -1014,7 +1038,7 @@ async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: Backg
             "id": result,
             "agent_processed": True,
             "suggested_type": suggested_type,
-            "intent_analysis": processed["metadata"]["intent_analysis"],
+            "intent_analysis": processed["metadata"].get("intent_analysis", {}),
             "capabilities_applied": agent_processor.get_capabilities()
         }
     except Exception as e:

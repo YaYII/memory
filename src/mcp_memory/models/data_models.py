@@ -135,6 +135,8 @@ class WriteMemoryRequest(BaseModel):
     source_memories: List[str] = Field(default_factory=list, description="源记忆ID列表")
     session_id: Optional[str] = Field(None, description="对话会话ID")
     tags: List[str] = Field(default_factory=list, description="标签列表")
+    title: Optional[str] = Field(None, description="记忆标题")
+    keywords: List[str] = Field(default_factory=list, description="关键词列表")
 
 
 class DeleteMemoryRequest(BaseModel):

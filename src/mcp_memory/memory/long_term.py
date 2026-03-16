@@ -1152,7 +1152,10 @@ class MemoryStore:
                             "verified": meta.get("verified") == "True",
                             "skill_type": meta.get("skill_type"),
                             "summary_type": meta.get("summary_type"),
-                            "source_memories": json.loads(meta.get("source_memories", "[]"))
+                            "source_memories": json.loads(meta.get("source_memories", "[]")),
+                            "title": meta.get("title"),
+                            "keywords": json.loads(meta.get("keywords", "[]")),
+                            "tags": json.loads(meta.get("tags", "[]"))
                         })
                 
                 return memories
@@ -1182,7 +1185,10 @@ class MemoryStore:
                     "verified": meta.get("verified") == "True",
                     "skill_type": meta.get("skill_type"),
                     "summary_type": meta.get("summary_type"),
-                    "source_memories": json.loads(meta.get("source_memories", "[]"))
+                    "source_memories": json.loads(meta.get("source_memories", "[]")),
+                    "title": meta.get("title"),
+                    "keywords": json.loads(meta.get("keywords", "[]")),
+                    "tags": json.loads(meta.get("tags", "[]"))
                 })
             
             return memories
