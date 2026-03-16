@@ -42,15 +42,20 @@
     <div class="main-content">
       <div class="content-area" :class="{ 'with-panel': showRightPanel }">
         <template v-if="activeTab === 'overview'">
-          <MemoryGraph 
-            :graph-data="graphData"
-            :is-loading="isLoading"
-            @node-click="handleNodeClick"
-          />
-          <MemoryList 
-            @memory-select="handleMemorySelect"
-          />
-          <LogPanel />
+          <div class="overview-container">
+            <div class="brain-3d-section">
+              <Brain3D :stats="stats" />
+            </div>
+            <MemoryGraph 
+              :graph-data="graphData"
+              :is-loading="isLoading"
+              @node-click="handleNodeClick"
+            />
+            <MemoryList 
+              @memory-select="handleMemorySelect"
+            />
+            <LogPanel />
+          </div>
         </template>
         
         <template v-else-if="activeTab === 'write'">
@@ -176,10 +181,11 @@ import MemoryFeedback from '@/components/MemoryFeedback.vue'
 import MergeChainViewer from '@/components/MergeChainViewer.vue'
 import BrainStatus from '@/components/BrainStatus.vue'
 import BrainInteraction from '@/components/BrainInteraction.vue'
+import Brain3D from '@/components/Brain3D.vue'
 import type { Memory, GraphNode } from '@/types/memory'
 
 const memoryStore = useMemoryStore()
-const { graphData, isLoading, evolutionStatus } = storeToRefs(memoryStore)
+const { graphData, isLoading, evolutionStatus, stats } = storeToRefs(memoryStore)
 
 const tabs = [
   { id: 'overview', label: '概览', icon: '📊' },
@@ -850,5 +856,18 @@ body {
   padding: 20px;
   overflow-y: auto;
   max-height: 100%;
+}
+
+.overview-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.brain-3d-section {
+  height: 400px;
+  min-height: 400px;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
 }
 </style>
