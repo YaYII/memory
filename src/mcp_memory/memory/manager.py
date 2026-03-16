@@ -1,18 +1,22 @@
 """
 记忆管理器：统一存储路径，消除双写
 
-修复记录:
+升级记录（工业化）:
 - [P0] 消除双写：write_memory 只调用 store.save() 一次
 - [P0] read_memory 只从 store.search() 读取，去掉 tiered 合并
 - [P1] _auto_enhance_memory 移到异步方法 enhance_memory_background()
+- [P2] 替换 print() 为结构化 logger
 - [P3] 补充类型注解
 """
 
+import logging
 from mcp_memory.memory.long_term import MemoryStore
 from mcp_memory.models.data_models import MemoryItem
 from typing import Optional, List, Tuple
 from datetime import datetime
 from mcp_memory.core.config import settings
+
+logger = logging.getLogger("mcp-memory.memory.manager")
 
 
 class MemoryManager:
@@ -136,10 +140,18 @@ class MemoryManager:
                 "cognitive_enhanced_at": datetime.now().isoformat(),
             }
             self.store.update_memory_metadata(memory_id, metadata_updates)
-            print(f"[MemoryManager] 后台增强完成: {memory_id[:8]} -> {enhanced['title'][:30]}")
+            logger.info(
+                "Memory enhanced: id=%s title=%s",
+                memory_id[:8], enhanced['title'][:30],
+                extra={"memory_id": memory_id},
+            )
 
         except Exception as e:
-            print(f"[MemoryManager] 后台增强失败 {memory_id[:8]}: {e}")
+            logger.warning(
+                "Memory enhancement failed: id=%s error=%s",
+                memory_id[:8], e,
+                extra={"memory_id": memory_id},
+            )
 
     def read_memory(
         self,

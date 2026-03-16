@@ -12,6 +12,7 @@
 - [P3] 细化异常处理
 """
 
+import logging
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from mcp_memory.models.data_models import MemoryItem
@@ -26,6 +27,9 @@ import networkx as nx
 from rank_bm25 import BM25Okapi
 from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+
+logger = logging.getLogger("mcp-memory.memory.store")
 
 
 class MemoryStore:
@@ -61,7 +65,7 @@ class MemoryStore:
                     loaded = nx.node_link_graph(data)
                     self.graph = loaded if loaded.is_directed() else loaded.to_directed()
             except (json.JSONDecodeError, ValueError) as e:
-                print(f"[MemoryStore] 加载知识图谱失败: {e}")
+                logger.warning(f"[MemoryStore] 加载知识图谱失败: {e}")
                 self.graph = nx.DiGraph()
 
     def _save_graph(self) -> None:
@@ -77,7 +81,7 @@ class MemoryStore:
             os.replace(tmp_path, self.graph_path)
             self._graph_dirty = False
         except (IOError, OSError) as e:
-            print(f"[MemoryStore] 保存知识图谱失败: {e}")
+            logger.warning(f"[MemoryStore] 保存知识图谱失败: {e}")
 
     def flush_graph(self) -> None:
         """手动 flush 图谱（供定时任务调用）"""
@@ -124,9 +128,9 @@ class MemoryStore:
                 self._bm25_index = BM25Okapi(tokenized)
             else:
                 self._bm25_index = None
-            print(f"[MemoryStore] BM25 索引重建完成，文档数: {len(self._bm25_docs)}")
+            logger.info(f"[MemoryStore] BM25 索引重建完成，文档数: {len(self._bm25_docs)}")
         except Exception as e:
-            print(f"[MemoryStore] BM25 索引重建失败: {e}")
+            logger.warning(f"[MemoryStore] BM25 索引重建失败: {e}")
             self._bm25_index = None
 
     def _add_to_bm25_index(self, doc_id: str, doc_text: str) -> None:
@@ -223,11 +227,11 @@ class MemoryStore:
             if duplicates["ids"] and duplicates["distances"][0][0] < 0.05:
                 existing_id = duplicates["ids"][0][0]
                 existing_meta = duplicates["metadatas"][0][0]
-                print(f"[MemoryStore] 重复记忆检测 (dist={duplicates['distances'][0][0]:.4f})，强化 {existing_id[:8]}")
+                logger.debug(f"[MemoryStore] 重复记忆检测 (dist={duplicates['distances'][0][0]:.4f})，强化 {existing_id[:8]}")
                 self._reinforce_memory(existing_id, existing_meta)
                 return existing_id
         except Exception as e:
-            print(f"[MemoryStore] 查重失败: {e}")
+            logger.warning(f"[MemoryStore] 查重失败: {e}")
 
         last_accessed_iso = memory.last_accessed.isoformat() if memory.last_accessed else datetime.now().isoformat()
         char_count = len(memory.content) if memory.content else 0
@@ -265,13 +269,13 @@ class MemoryStore:
                 ids=[memory.memory_id]
             )
         except Exception as e:
-            print(f"[MemoryStore] ChromaDB 保存失败: {e}")
+            logger.warning(f"[MemoryStore] ChromaDB 保存失败: {e}")
             raise
 
         try:
             self._add_to_bm25_index(memory.memory_id, memory.content)
         except Exception as e:
-            print(f"[MemoryStore] BM25 索引更新失败: {e}")
+            logger.warning(f"[MemoryStore] BM25 索引更新失败: {e}")
             try:
                 self.collection.delete(ids=[memory.memory_id])
             except Exception:
@@ -282,7 +286,7 @@ class MemoryStore:
             self._add_memory_to_graph(memory)
             self._save_graph()
         except Exception as e:
-            print(f"[MemoryStore] 图谱操作失败: {e}")
+            logger.warning(f"[MemoryStore] 图谱操作失败: {e}")
 
         return memory.memory_id
 
@@ -308,7 +312,7 @@ class MemoryStore:
                 self.graph.add_edge(category, memory_id, relation="contains")
             self._graph_dirty = True
         except Exception as e:
-            print(f"[MemoryStore] 添加记忆到图谱失败: {e}")
+            logger.warning(f"[MemoryStore] 添加记忆到图谱失败: {e}")
 
     def _reinforce_memory(self, memory_id: str, metadata: dict) -> None:
         """记忆强化：增加 access_count 并更新 last_accessed"""
@@ -323,7 +327,7 @@ class MemoryStore:
                 metadatas=[{**metadata, **updates}]
             )
         except Exception as e:
-            print(f"[MemoryStore] 强化记忆失败 {memory_id[:8]}: {e}")
+            logger.warning(f"[MemoryStore] 强化记忆失败 {memory_id[:8]}: {e}")
 
     def search(self, query: str, user_id: str, project_id: Optional[str] = None,
                limit: int = 10, reinforce: bool = True) -> Tuple[List[dict], List[dict]]:
@@ -368,7 +372,7 @@ class MemoryStore:
             )
         except Exception as e:
             if "Error finding id" in str(e):
-                print(f"[MemoryStore] 数据库索引不一致: {e}")
+                logger.warning(f"[MemoryStore] 数据库索引不一致: {e}")
                 return [], []
             raise
 
@@ -401,7 +405,7 @@ class MemoryStore:
                             results["metadatas"][0].append(graph_results["metadatas"][i])
                             results["distances"][0].append(0.1)
             except Exception as e:
-                print(f"[MemoryStore] 图谱检索错误: {e}")
+                logger.warning(f"[MemoryStore] 图谱检索错误: {e}")
 
         # === Phase 2d: Profile 独立获取 ===
         profiles: List[dict] = []
@@ -417,7 +421,7 @@ class MemoryStore:
                             "metadata": profile_results["metadatas"][i] if i < len(profile_results["metadatas"]) else {},
                         })
         except Exception as e:
-            print(f"[MemoryStore] Profile 获取警告: {e}")
+            logger.warning(f"[MemoryStore] Profile 获取警告: {e}")
 
         # === Phase 3: 混合重排序 ===
         candidates: List[dict] = []
@@ -525,7 +529,7 @@ class MemoryStore:
         except PermissionError:
             raise
         except Exception as e:
-            print(f"[MemoryStore] 删除失败: {e}")
+            logger.warning(f"[MemoryStore] 删除失败: {e}")
             raise
 
     def update_memory_content(self, memory_id: str, user_id: str, content: str) -> bool:
@@ -548,7 +552,7 @@ class MemoryStore:
             self._add_to_bm25_index(memory_id, content)
             return True
         except Exception as e:
-            print(f"[MemoryStore] 更新记忆内容失败: {e}")
+            logger.warning(f"[MemoryStore] 更新记忆内容失败: {e}")
             return False
 
     def update_memory_metadata(self, memory_id: str, metadata: dict) -> bool:
@@ -563,7 +567,7 @@ class MemoryStore:
             self.collection.update(ids=[memory_id], metadatas=[updated_meta])
             return True
         except Exception as e:
-            print(f"[MemoryStore] 更新元数据失败: {e}")
+            logger.warning(f"[MemoryStore] 更新元数据失败: {e}")
             return False
 
     def get_memories(self, user_id: str, project_id: Optional[str] = None, limit: int = 100) -> List[MemoryItem]:
@@ -652,7 +656,7 @@ class MemoryStore:
             
             return memories
         except Exception as e:
-            print(f"[MemoryStore] 获取记忆列表失败: {e}")
+            logger.warning(f"[MemoryStore] 获取记忆列表失败: {e}")
             return []
 
     # ========== 三层记忆兼容接口 ==========
@@ -797,7 +801,7 @@ class MemoryStore:
                     })
             return memories
         except Exception as e:
-            print(f"[MemoryStore] query_by_type 失败: {e}")
+            logger.warning(f"[MemoryStore] query_by_type 失败: {e}")
             return []
 
     def get_tiered_stats(self, user_id: str = None) -> dict:
@@ -814,7 +818,7 @@ class MemoryStore:
                     stats["total_count"] += 1
             return stats
         except Exception as e:
-            print(f"[MemoryStore] get_tiered_stats 失败: {e}")
+            logger.warning(f"[MemoryStore] get_tiered_stats 失败: {e}")
             return {"storage_count": 0, "thinking_count": 0, "skill_count": 0, "total_count": 0}
 
     # ========== 溯源和合并 ==========
@@ -841,7 +845,7 @@ class MemoryStore:
                                 "memory_type": res["metadatas"][0].get("memory_type", "storage") if res.get("metadatas") else "storage"
                             })
         except Exception as e:
-            print(f"[MemoryStore] 图谱溯源失败: {e}")
+            logger.warning(f"[MemoryStore] 图谱溯源失败: {e}")
 
         # 方式2: Metadata fallback
         if not sources:
@@ -874,7 +878,7 @@ class MemoryStore:
                         except Exception:
                             pass
             except Exception as e:
-                print(f"[MemoryStore] metadata 溯源失败: {e}")
+                logger.warning(f"[MemoryStore] metadata 溯源失败: {e}")
 
         return sources
 
@@ -911,7 +915,7 @@ class MemoryStore:
             results.sort(key=lambda x: x.get("merged_at", ""), reverse=True)
             return results[:limit]
         except Exception as e:
-            print(f"[MemoryStore] 查询合并记忆失败: {e}")
+            logger.warning(f"[MemoryStore] 查询合并记忆失败: {e}")
             return []
 
     def get_merge_chain(self, memory_id: str) -> dict:
@@ -964,4 +968,4 @@ class MemoryStore:
 
             return result
         except Exception as e:
-            print(f"[MemoryStore] 获取合并链失败: {e}")
+            logger.warning(f"[MemoryStore] 获取合并链失败: {e}")
