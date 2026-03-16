@@ -34,7 +34,6 @@ sys.path.insert(0, str(project_root))
 
 from mcp_memory.core.config import settings
 from mcp_memory.memory.manager import MemoryManager
-from mcp_memory.memory.tiered_manager import TieredMemoryManager
 from mcp_memory.memory.cognitive import CognitiveProcessor
 
 app = typer.Typer(
@@ -46,7 +45,6 @@ console = Console()
 
 # 全局实例（延迟初始化）
 _memory_manager: Optional[MemoryManager] = None
-_tiered_manager: Optional[TieredMemoryManager] = None
 _cognitive_processor: Optional[CognitiveProcessor] = None
 
 def get_memory_manager() -> MemoryManager:
@@ -57,13 +55,6 @@ def get_memory_manager() -> MemoryManager:
         _memory_manager = MemoryManager()
         console.print("[dim]✅ 记忆系统初始化完成[/dim]")
     return _memory_manager
-
-def get_tiered_manager() -> TieredMemoryManager:
-    """获取三层记忆管理器实例"""
-    global _tiered_manager
-    if _tiered_manager is None:
-        _tiered_manager = TieredMemoryManager()
-    return _tiered_manager
 
 def get_cognitive_processor() -> CognitiveProcessor:
     """获取认知处理器实例"""

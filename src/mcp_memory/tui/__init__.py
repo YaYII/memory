@@ -23,7 +23,6 @@ from textual.timer import Timer
 from textual import events
 
 from mcp_memory.memory.manager import MemoryManager
-from mcp_memory.memory.tiered_manager import TieredMemoryManager
 from mcp_memory.models.data_models import MemoryItem
 from mcp_memory.core.config import settings
 
@@ -126,7 +125,6 @@ class TUIApp(App):
         super().__init__(*args, **kwargs)
         # 延迟初始化以避免启动错误
         self.memory_manager = None
-        self.tiered_manager = None
         self.current_user = "cli_user"
         self.current_project = settings.MCP_PROJECT_ID
         self.memories = []
@@ -140,7 +138,6 @@ class TUIApp(App):
         try:
             # 延迟初始化以避免启动错误
             self.memory_manager = MemoryManager()
-            self.tiered_manager = TieredMemoryManager(data_path=settings.CHROMA_DATA_PATH)
 
             await self.push_screen(LoadingScreen())
             # 模拟加载延迟

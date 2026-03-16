@@ -16,7 +16,6 @@ from textual.message import Message
 from textual.timer import Timer
 
 from mcp_memory.memory.manager import MemoryManager
-from mcp_memory.memory.tiered_manager import TieredMemoryManager
 from mcp_memory.models.data_models import MemoryItem
 from mcp_memory.llm.facade import LLMFacade
 

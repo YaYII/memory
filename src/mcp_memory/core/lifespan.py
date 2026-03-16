@@ -51,7 +51,7 @@ async def _graph_flush_task(state) -> None:
 
 
 async def _evolution_scan_task(state, policy_fn) -> None:
-    """周期性记忆认知扫描。"""
+    """周期性记忆认知扫描 (Cognitive scan)。"""
     while True:
         try:
             policy = policy_fn()
@@ -60,14 +60,31 @@ async def _evolution_scan_task(state, policy_fn) -> None:
                 batch_size=policy["batch_size"]
             )
             logger.info(
-                "Evolution scan complete: processed=%d profile=%s",
+                "Evolution cognitive scan complete: processed=%d profile=%s",
                 processed, policy["profile"],
             )
         except asyncio.CancelledError:
             raise
         except Exception as e:
-            logger.exception("Evolution scan failed: %s", e)
+            logger.exception("Evolution cognitive scan failed: %s", e)
             await asyncio.sleep(60)  # 失败后等待 60s 再重试
+
+
+async def _tiered_evolution_task(state) -> None:
+    """分层记忆进化任务 (Storage -> Thinking -> Skill)。"""
+    while True:
+        try:
+            await asyncio.sleep(120)  # 每2分钟进化一次
+            if state.tiered_evolution:
+                thinkings = await state.tiered_evolution.evolve_storage_to_thinking()
+                skills = await state.tiered_evolution.evolve_thinking_to_skill()
+                if thinkings > 0 or skills > 0:
+                    logger.info("Tiered evolution complete: %d to thinking, %d to skill", thinkings, skills)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.exception("Tiered evolution failed: %s", e)
+            await asyncio.sleep(60)
 
 
 async def _evolution_reflection_task(state, policy_fn) -> None:
@@ -161,11 +178,17 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         cognitive_processor = CognitiveProcessor(memory_manager)
         agent_processor = MemoryAgentProcessor()
-        logger.info("CognitiveProcessor and AgentProcessor initialized")
+        
+        from mcp_memory.memory.tiered_evolution import TieredEvolutionEngine
+        tiered_evolution = TieredEvolutionEngine(memory_manager.store)
+        await tiered_evolution.initialize()
+        
+        logger.info("CognitiveProcessor, AgentProcessor, and TieredEvolutionEngine initialized")
     except Exception as e:
         logger.error("Failed to initialize processors: %s", e, exc_info=True)
         cognitive_processor = None
         agent_processor = None
+        tiered_evolution = None
 
     # ── 初始化 AI Brain（可选组件，失败不影响核心功能）────────────────────────
     ai_brain = None
@@ -193,6 +216,7 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         cognitive_processor=cognitive_processor,
         agent_processor=agent_processor,
         ai_brain=ai_brain,
+        tiered_evolution=tiered_evolution,
     )
     app.state.server = state
     app.state.startup_error = None
@@ -210,6 +234,7 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from mcp_memory.server import resolve_evolution_policy
         _spawn(_evolution_scan_task(state, resolve_evolution_policy), "evolution-scan")
         _spawn(_evolution_reflection_task(state, resolve_evolution_policy), "evolution-reflection")
+        _spawn(_tiered_evolution_task(state), "tiered-evolution")
         logger.info("Evolution scheduler started")
 
     # 预热检查

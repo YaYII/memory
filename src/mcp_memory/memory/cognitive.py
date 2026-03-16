@@ -307,8 +307,8 @@ class CognitiveProcessor:
 
 【语言】必须使用{target_language}，禁止中英文混杂。
 
-【输出格式】JSON（不要 markdown 标记）：
-{{"title": "标题", "description": "描述", "content": "内容", "summary": "总结", "keywords": ["k1", "k2"]}}
+【输出格式】JSON（必须返回绝对的JSON对象，不要 markdown 标记）：
+{"title": "标题", "description": "摘要描述", "content": "详细内容", "summary": "这是一段文字总结，不要使用数组格式返回，必须是纯字符串", "keywords": ["k1", "k2"]}
 """
             response = await self.llm.chat_completion(
                 messages=[{"role": "user", "content": prompt}],

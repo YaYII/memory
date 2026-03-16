@@ -8,6 +8,7 @@ POST /memory/reflect — 触发深度反思
 """
 
 import logging
+from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, Request, HTTPException
 
 from mcp_memory.core.config import settings

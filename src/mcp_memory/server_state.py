@@ -29,6 +29,7 @@ class ServerState:
     cognitive_processor: Optional[object] = None  # CognitiveProcessor
     agent_processor: Optional[object] = None      # MemoryAgentProcessor
     ai_brain: Optional[object] = None             # AIBrain
+    tiered_evolution: Optional[object] = None     # TieredEvolutionEngine
 
     # 进化调度状态
     evolution_profile_override: Optional[str] = None

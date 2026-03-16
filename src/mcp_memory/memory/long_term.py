@@ -643,16 +643,38 @@ class MemoryStore:
                             tags = []
                     
                     summary = meta.get("summary", "")
-                    if isinstance(summary, list):
+                    if isinstance(summary, str) and summary.startswith('[') and summary.endswith(']'):
+                        try:
+                            parsed_summary = json.loads(summary)
+                            if isinstance(parsed_summary, list):
+                                summary = ' '.join(str(s) for s in parsed_summary)
+                            else:
+                                summary = str(parsed_summary)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    elif isinstance(summary, list):
                         summary = ' '.join(str(s) for s in summary)
                     elif summary is None:
                         summary = ""
+                    else:
+                        summary = str(summary)
                     
                     description = meta.get("description", "")
-                    if isinstance(description, list):
+                    if isinstance(description, str) and description.startswith('[') and description.endswith(']'):
+                        try:
+                            parsed_desc = json.loads(description)
+                            if isinstance(parsed_desc, list):
+                                description = ' '.join(str(d) for d in parsed_desc)
+                            else:
+                                description = str(parsed_desc)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+                    elif isinstance(description, list):
                         description = ' '.join(str(d) for d in description)
                     elif description is None:
                         description = ""
+                    else:
+                        description = str(description)
                     
                     # 创建MemoryItem对象
                     memory = MemoryItem(
