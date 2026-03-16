@@ -78,6 +78,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useMemoryStore } from '@/stores/memory'
+import { useAuthStore } from '@/stores/auth'
 import { tieredApi } from '@/api/memory'
 import type { Memory, MemoryType } from '@/types/memory'
 
@@ -86,6 +87,7 @@ const emit = defineEmits<{
 }>()
 
 const memoryStore = useMemoryStore()
+const authStore = useAuthStore()
 
 const tiers = [
   { label: '存储记忆', value: 'storage' as MemoryType, icon: '💾' },
@@ -120,37 +122,39 @@ async function writeMemory() {
     memoryStore.addLog('请输入记忆内容', 'warn')
     return
   }
-  
+
   writing.value = true
   try {
     const keywords = writeForm.value.keywords
       .split(',')
       .map(k => k.trim())
       .filter(k => k)
-    
+
+    const currentUserId = authStore.getCurrentUserId
+
     if (currentTier.value === 'storage') {
       await tieredApi.writeStorage({
         content: writeForm.value.content,
-        user_id: 'yangying',
+        user_id: currentUserId,
         title: writeForm.value.title,
         keywords
       })
     } else if (currentTier.value === 'thinking') {
       await tieredApi.writeThinking({
         content: writeForm.value.content,
-        user_id: 'yangying',
+        user_id: currentUserId,
         title: writeForm.value.title,
         keywords
       })
     } else if (currentTier.value === 'skill') {
       await tieredApi.writeSkill({
         content: writeForm.value.content,
-        user_id: 'yangying',
+        user_id: currentUserId,
         title: writeForm.value.title,
         keywords
       })
     }
-    
+
     memoryStore.addLog(`${currentTierLabel.value}写入成功`, 'success')
     writeForm.value = { title: '', content: '', keywords: '' }
     await memoryStore.fetchStats()
@@ -166,12 +170,12 @@ async function queryMemories() {
     memoryStore.addLog('请输入查询内容', 'warn')
     return
   }
-  
+
   querying.value = true
   try {
     const result = await tieredApi.queryMemories({
       query: queryText.value,
-      user_id: 'yangying',
+      user_id: authStore.getCurrentUserId,
       memory_type: currentTier.value,
       top_k: 10
     })

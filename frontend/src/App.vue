@@ -32,6 +32,7 @@
       
       <div class="sidebar-footer">
         <StatsPanel />
+        <BrainStatus v-if="activeTab === 'brain'" />
       </div>
     </div>
     
@@ -56,7 +57,13 @@
         <template v-else-if="activeTab === 'tiered'">
           <TieredMemoryPanel @memory-select="handleMemorySelect" />
         </template>
-        
+
+        <template v-else-if="activeTab === 'brain'">
+          <div class="brain-container">
+            <BrainInteraction />
+          </div>
+        </template>
+
         <template v-else-if="activeTab === 'llm'">
           <LLMInteractions />
         </template>
@@ -164,6 +171,8 @@ import LLMInteractions from '@/components/LLMInteractions.vue'
 import EvolutionConfig from '@/components/EvolutionConfig.vue'
 import MemoryFeedback from '@/components/MemoryFeedback.vue'
 import MergeChainViewer from '@/components/MergeChainViewer.vue'
+import BrainStatus from '@/components/BrainStatus.vue'
+import BrainInteraction from '@/components/BrainInteraction.vue'
 import type { Memory, GraphNode } from '@/types/memory'
 
 const memoryStore = useMemoryStore()
@@ -173,6 +182,7 @@ const tabs = [
   { id: 'overview', label: '概览', icon: '📊' },
   { id: 'write', label: '写入', icon: '✏️' },
   { id: 'tiered', label: '三层记忆', icon: '🧠' },
+  { id: 'brain', label: 'AI大脑', icon: '🤖' },
   { id: 'llm', label: 'LLM交互', icon: '🤖' },
   { id: 'evolution', label: '进化配置', icon: '⚙️' },
   { id: 'feedback', label: '反馈', icon: '💬' },
@@ -700,35 +710,44 @@ body {
   .sidebar {
     width: 60px;
   }
-  
+
   .logo {
     display: none;
   }
-  
+
   .tab-label {
     display: none;
   }
-  
+
   .nav-tab {
     justify-content: center;
     padding: 15px;
   }
-  
+
   .action-buttons {
     padding: 10px 5px;
   }
-  
+
   .action-btn {
     font-size: 10px;
     padding: 8px;
   }
-  
+
   .right-panel {
     width: 100%;
   }
-  
+
   .content-area.with-panel {
     margin-right: 0;
   }
+}
+
+.brain-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px;
+  overflow-y: auto;
+  max-height: 100%;
 }
 </style>

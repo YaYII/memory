@@ -6,6 +6,7 @@ from mcp_memory.models.data_models import ReadMemoryRequest, WriteMemoryRequest,
 from mcp_memory.core.config import settings
 from mcp_memory.memory.cognitive import CognitiveProcessor
 from mcp_memory.memory.agent_processor import MemoryAgentProcessor
+from mcp_memory.brain.ai_brain import AIBrain
 import uvicorn
 import os
 import sys
@@ -42,6 +43,14 @@ try:
 except Exception as e:
     print(f"❌ 无法初始化记忆管理器: {e}")
     sys.exit(1)
+
+# Initialize AI Brain Controller
+try:
+    ai_brain = AIBrain()
+    print("✅ AI大脑控制器初始化成功")
+except Exception as e:
+    print(f"⚠️ 无法初始化AI大脑控制器: {e}")
+    ai_brain = None
 
 
 async def initialize_services():
@@ -217,7 +226,15 @@ async def startup_event():
     asyncio.create_task(system_heartbeat_task())
 
     await initialize_services()
-    
+
+    # 初始化AI大脑
+    if ai_brain:
+        try:
+            await ai_brain.initialize()
+            log_event("[AI-BRAIN] AI大脑已激活")
+        except Exception as e:
+            log_event(f"[AI-BRAIN] AI大脑激活失败: {e}")
+
     # 初始化三层记忆管理器和自动总结系统
     try:
         if memory_manager.tiered_manager:
@@ -244,17 +261,17 @@ async def dashboard():
 @app.get("/dashboard/stats")
 async def get_stats():
     """
-    Get system stats - 使用统一的 MemoryStore 统计
+    Get system stats - 使用统一的 MemoryStore 统计，添加AI大脑统计
     """
     try:
         # 使用统一的 MemoryStore 统计
         tiered_stats = memory_manager.store.get_tiered_stats()
-        
+
         # 检查是否有任何 LLM 提供商可用
         providers = settings.providers
         llm_enabled = len(providers) > 0
-        
-        return {
+
+        stats_response = {
             "memory_count": tiered_stats["total_count"],
             "traditional_count": tiered_stats["total_count"],
             "tiered_count": tiered_stats["total_count"],
@@ -267,6 +284,19 @@ async def get_stats():
             "providers_count": len(providers),
             "preferred_provider": settings.MCP_LLM_PROVIDER
         }
+
+        # 添加AI大脑统计
+        if ai_brain:
+            brain_status = await ai_brain.get_brain_status()
+            stats_response["brain"] = {
+                "is_active": brain_status["is_active"],
+                "total_cycles": brain_status["total_cycles"],
+                "curiosity_level": brain_status["active_cognition"]["curiosity_level"],
+                "evolution_generation": brain_status["self_awareness"]["evolution_generation"],
+                "total_experiences": brain_status["self_awareness"]["total_experiences"]
+            }
+
+        return stats_response
     except Exception as e:
         return {"error": str(e)}
 
@@ -659,6 +689,288 @@ async def health_check():
     Health check endpoint to verify server is running
     """
     return {"status": "ok", "pid": os.getpid()}
+
+# ============================================================
+# AI Brain API Endpoints
+# ============================================================
+
+@app.get("/brain/status")
+async def get_brain_status():
+    """
+    获取AI大脑完整状态
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        status = await ai_brain.get_brain_status()
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/input")
+async def process_brain_input(req: dict, background_tasks: BackgroundTasks):
+    """
+    处理输入并返回AI大脑处理结果
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        content = req.get("content", "")
+        context = req.get("context", {})
+
+        result = await ai_brain.process_input(content, context)
+
+        # 如果创建了记忆，在后台处理
+        if result.get("memories_created"):
+            log_event(f"[AI-BRAIN] 处理输入: 创建了 {len(result['memories_created'])} 个记忆")
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/retrieve")
+async def brain_retrieve_memory(req: dict):
+    """
+    使用AI大脑检索记忆
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        query = req.get("query", "")
+        context = req.get("context", {})
+
+        result = await ai_brain.retrieve_memory(query, context)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/reflection")
+async def trigger_brain_reflection(background_tasks: BackgroundTasks):
+    """
+    触发自我反思
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        log_event("[AI-BRAIN] 开始自我反思")
+
+        def run_reflection():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(ai_brain.run_self_reflection())
+            log_event(f"[AI-BRAIN] 自我反思完成: {result.get('detected_biases', [])}")
+
+        background_tasks.add_task(run_reflection)
+
+        return {"status": "started", "message": "自我反思已在后台启动"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/hypotheses")
+async def generate_brain_hypotheses(req: dict):
+    """
+    生成假设
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        context = req.get("context", "")
+        hypotheses = await ai_brain.generate_hypotheses(context)
+
+        return {
+            "hypotheses": [h.to_dict() if hasattr(h, 'to_dict') else h for h in hypotheses],
+            "count": len(hypotheses)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/hypotheses/test")
+async def test_brain_hypothesis(req: dict, background_tasks: BackgroundTasks):
+    """
+    测试假设
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        hypothesis = req.get("hypothesis", {})
+        if not hypothesis:
+            raise HTTPException(status_code=400, detail="缺少假设数据")
+
+        # 在后台测试
+        def run_test():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            result = loop.run_until_complete(ai_brain.test_hypothesis(hypothesis))
+            log_event(f"[AI-BRAIN] 假设测试结果: {'成立' if result else '不成立'}")
+            return result
+
+        background_tasks.add_task(run_test)
+
+        return {"status": "started", "message": "假设测试已在后台启动"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/evolve")
+async def evolve_brain(req: dict, background_tasks: BackgroundTasks):
+    """
+    进化AI大脑
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        experiences = req.get("experiences", [])
+
+        if not experiences:
+            raise HTTPException(status_code=400, detail="缺少经验数据")
+
+        def run_evolution():
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(ai_brain.evolve_brain(experiences))
+            log_event("[AI-BRAIN] AI大脑进化完成")
+
+        background_tasks.add_task(run_evolution)
+
+        return {"status": "started", "message": f"AI大脑进化已启动，基于 {len(experiences)} 个经验"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/brain/export")
+async def export_brain():
+    """
+    导出AI大脑状态（用于迁移）
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        # 创建导出数据
+        status = await ai_brain.get_brain_status()
+
+        export_data = {
+            "version": "1.0",
+            "exported_at": datetime.now().isoformat(),
+            "brain_status": status,
+            "metadata": {
+                "system_version": settings.MCP_MEMORY_VERSION if hasattr(settings, 'MCP_MEMORY_VERSION') else "3.0.0",
+                "hardware_info": {
+                    "cpu_count": os.cpu_count(),
+                    "hostname": os.uname().nodename if hasattr(os, 'uname') else "unknown"
+                }
+            }
+        }
+
+        # 使用AI brain自带的保存方法（如果有的话）
+        import tempfile
+        temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+        ai_brain.save_brain_state(temp_file.name)
+
+        # 读取保存的内容并合并到导出数据中
+        with open(temp_file.name, 'r', encoding='utf-8') as f:
+            brain_state = json.load(f)
+            export_data["brain_state"] = brain_state
+
+        # 清理临时文件
+        import os as os_module
+        os_module.unlink(temp_file.name)
+
+        log_event("[AI-BRAIN] AI大脑状态已导出")
+
+        return export_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导出失败: {str(e)}")
+
+
+@app.post("/brain/import")
+async def import_brain(req: dict):
+    """
+    导入AI大脑状态（用于迁移）
+    """
+    if not ai_brain:
+        raise HTTPException(status_code=503, detail="AI大脑未初始化")
+
+    try:
+        import_data = req.get("data", {})
+        brain_state = req.get("brain_state", {})
+
+        if not import_data:
+            raise HTTPException(status_code=400, detail="缺少导入数据")
+
+        # 版本检查
+        version = import_data.get("version", "0.0")
+        if version not in ["1.0"]:
+            log_event(f"[AI-BRAIN] 版本不兼容: {version}")
+
+        # 加载大脑状态
+        if brain_state:
+            import tempfile
+            temp_file = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8')
+            json.dump(brain_state, temp_file, indent=2, ensure_ascii=False)
+            temp_file.close()
+
+            ai_brain.load_brain_state(temp_file.name)
+
+            # 清理临时文件
+            import os as os_module
+            os_module.unlink(temp_file.name)
+
+        log_event("[AI-BRAIN] AI大脑状态已导入")
+
+        return {"status": "success", "message": "AI大脑状态导入成功", "version": version}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+
+
+@app.get("/brain/compatibility")
+async def check_compatibility():
+    """
+    检查硬件和软件兼容性
+    """
+    try:
+        compatibility_info = {
+            "hardware": {
+                "cpu_count": os.cpu_count(),
+                "memory_available": True,  # 简化检查
+                "hostname": os.uname().nodename if hasattr(os, 'uname') else "unknown"
+            },
+            "software": {
+                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+                "brain_active": ai_brain is not None and ai_brain.is_active if ai_brain else False
+            },
+            "capabilities": {
+                "full_brain": ai_brain is not None,
+                "evolution": True,
+                "persistence": True,
+                "migration": True
+            }
+        }
+
+        return compatibility_info
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/memory/write")
 async def write_memory_endpoint(req: WriteMemoryRequest, background_tasks: BackgroundTasks):

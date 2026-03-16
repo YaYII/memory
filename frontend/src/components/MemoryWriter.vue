@@ -93,6 +93,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useMemoryStore } from '@/stores/memory'
+import { useAuthStore } from '@/stores/auth'
 import { memoryApi, tieredApi } from '@/api/memory'
 import type { MemoryType } from '@/types/memory'
 
@@ -101,6 +102,7 @@ const emit = defineEmits<{
 }>()
 
 const memoryStore = useMemoryStore()
+const authStore = useAuthStore()
 
 const writeMode = ref<'normal' | 'tiered'>('normal')
 const writing = ref(false)
@@ -166,10 +168,12 @@ async function writeMemory() {
   try {
     let result: { status: string; id: string }
     
+    const currentUserId = authStore.getCurrentUserId
+    
     if (writeMode.value === 'normal') {
       result = await memoryApi.writeMemory({
         content: form.value.content,
-        user_id: 'yangying',
+        user_id: currentUserId,
         title: form.value.title || undefined,
         scope: form.value.scope,
         keywords: form.value.keywords.length > 0 ? form.value.keywords : undefined,
@@ -179,7 +183,7 @@ async function writeMemory() {
     } else {
       const tierData = {
         content: form.value.content,
-        user_id: 'yangying',
+        user_id: currentUserId,
         title: form.value.title || undefined,
         keywords: form.value.keywords.length > 0 ? form.value.keywords : undefined
       }
