@@ -80,7 +80,7 @@ export const memoryApi = {
   },
 
   async reflectMemory(userId: string): Promise<{ status: string; message: string }> {
-    const response = await api.post('/memory/reflect', { user_id: userId })
+    const response = await api.post('/memory/reflect', null, { params: { user_id: userId } })
     return response.data
   },
 
