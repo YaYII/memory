@@ -1,24 +1,105 @@
 <template>
   <div class="dashboard">
-    <MemoryGraph 
-      :graph-data="graphData"
-      :is-loading="isLoading"
-      @node-click="handleNodeClick"
-    />
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">Memory System</h1>
+        <div class="status-indicator" :class="{ active: isSystemActive }"></div>
+      </div>
+      
+      <nav class="nav-tabs">
+        <button 
+          v-for="tab in tabs" 
+          :key="tab.id"
+          :class="['nav-tab', { active: activeTab === tab.id }]"
+          @click="activeTab = tab.id"
+        >
+          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-label">{{ tab.label }}</span>
+        </button>
+      </nav>
+      
+      <div class="action-buttons">
+        <button class="action-btn" @click="rebuildGraph" :disabled="isRebuilding">
+          {{ isRebuilding ? '重建中...' : '重建图谱' }}
+        </button>
+        <button class="action-btn" @click="triggerReflection" :disabled="isReflecting">
+          {{ isReflecting ? '反思中...' : '触发反思' }}
+        </button>
+        <button class="action-btn" @click="refreshAll">
+          刷新数据
+        </button>
+      </div>
+      
+      <div class="sidebar-footer">
+        <StatsPanel />
+      </div>
+    </div>
     
-    <MemoryList 
-      @memory-select="handleMemorySelect"
-    />
-    
-    <LogPanel />
-    
-    <StatsPanel />
+    <div class="main-content">
+      <div class="content-area" :class="{ 'with-panel': showRightPanel }">
+        <template v-if="activeTab === 'overview'">
+          <MemoryGraph 
+            :graph-data="graphData"
+            :is-loading="isLoading"
+            @node-click="handleNodeClick"
+          />
+          <MemoryList 
+            @memory-select="handleMemorySelect"
+          />
+          <LogPanel />
+        </template>
+        
+        <template v-else-if="activeTab === 'write'">
+          <MemoryWriter @written="handleMemoryWritten" />
+        </template>
+        
+        <template v-else-if="activeTab === 'tiered'">
+          <TieredMemoryPanel @memory-select="handleMemorySelect" />
+        </template>
+        
+        <template v-else-if="activeTab === 'llm'">
+          <LLMInteractions />
+        </template>
+        
+        <template v-else-if="activeTab === 'evolution'">
+          <EvolutionConfig />
+        </template>
+        
+        <template v-else-if="activeTab === 'feedback'">
+          <MemoryFeedback />
+        </template>
+        
+        <template v-else-if="activeTab === 'merge'">
+          <MergeChainViewer 
+            :memory-id="selectedMemoryId"
+            :show-close="!!selectedMemoryId"
+            @close="selectedMemoryId = null"
+            @node-click="handleMergeNodeClick"
+          />
+        </template>
+      </div>
+      
+      <transition name="slide">
+        <div v-if="showRightPanel" class="right-panel">
+          <component 
+            :is="rightPanelComponent" 
+            v-bind="rightPanelProps"
+            @close="closeRightPanel"
+            @saved="handleMemorySaved"
+            @deleted="handleMemoryDeleted"
+          />
+        </div>
+      </transition>
+    </div>
     
     <div v-if="selectedMemory" class="memory-detail-modal" @click="closeDetail">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2>{{ selectedMemory.title }}</h2>
-          <button class="close-btn" @click="closeDetail">×</button>
+          <div class="modal-actions">
+            <button class="edit-btn" @click="openEditor">编辑</button>
+            <button class="close-btn" @click="closeDetail">×</button>
+          </div>
         </div>
         <div class="modal-body">
           <div class="detail-section">
@@ -56,6 +137,11 @@
               </div>
             </div>
           </div>
+          <div class="detail-section">
+            <button class="view-chain-btn" @click="viewMergeChain">
+              查看合并链
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -63,19 +149,48 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed, shallowRef } from 'vue'
 import { useMemoryStore } from '@/stores/memory'
 import { storeToRefs } from 'pinia'
+import { memoryApi } from '@/api/memory'
 import MemoryGraph from '@/components/MemoryGraph.vue'
 import MemoryList from '@/components/MemoryList.vue'
 import LogPanel from '@/components/LogPanel.vue'
 import StatsPanel from '@/components/StatsPanel.vue'
+import MemoryWriter from '@/components/MemoryWriter.vue'
+import MemoryEditor from '@/components/MemoryEditor.vue'
+import TieredMemoryPanel from '@/components/TieredMemoryPanel.vue'
+import LLMInteractions from '@/components/LLMInteractions.vue'
+import EvolutionConfig from '@/components/EvolutionConfig.vue'
+import MemoryFeedback from '@/components/MemoryFeedback.vue'
+import MergeChainViewer from '@/components/MergeChainViewer.vue'
 import type { Memory, GraphNode } from '@/types/memory'
 
 const memoryStore = useMemoryStore()
-const { graphData, isLoading } = storeToRefs(memoryStore)
+const { graphData, isLoading, evolutionStatus } = storeToRefs(memoryStore)
 
+const tabs = [
+  { id: 'overview', label: '概览', icon: '📊' },
+  { id: 'write', label: '写入', icon: '✏️' },
+  { id: 'tiered', label: '三层记忆', icon: '🧠' },
+  { id: 'llm', label: 'LLM交互', icon: '🤖' },
+  { id: 'evolution', label: '进化配置', icon: '⚙️' },
+  { id: 'feedback', label: '反馈', icon: '💬' },
+  { id: 'merge', label: '合并链', icon: '🔗' }
+]
+
+const activeTab = ref('overview')
 const selectedMemory = ref<Memory | null>(null)
+const selectedMemoryId = ref<string | null>(null)
+const isRebuilding = ref(false)
+const isReflecting = ref(false)
+const showRightPanel = ref(false)
+const rightPanelComponent = shallowRef<any>(null)
+const rightPanelProps = ref<Record<string, any>>({})
+
+const isSystemActive = computed(() => {
+  return evolutionStatus.value?.enabled && evolutionStatus.value?.running
+})
 
 onMounted(async () => {
   memoryStore.addLog('初始化系统...', 'info')
@@ -96,6 +211,10 @@ onMounted(async () => {
 
 function handleNodeClick(node: GraphNode) {
   memoryStore.addLog(`点击节点: ${node.label || node.id}`, 'info')
+  selectedMemoryId.value = node.id
+  if (activeTab.value !== 'merge') {
+    activeTab.value = 'merge'
+  }
 }
 
 function handleMemorySelect(memory: Memory) {
@@ -103,8 +222,102 @@ function handleMemorySelect(memory: Memory) {
   memoryStore.addLog(`选择记忆: ${memory.title}`, 'info')
 }
 
+function handleMemoryWritten(memoryId: string) {
+  memoryStore.addLog(`新记忆已写入: ${memoryId}`, 'success')
+  memoryStore.fetchStats()
+  memoryStore.fetchGraph()
+}
+
+function handleMemorySaved() {
+  memoryStore.addLog('记忆已保存', 'success')
+  closeRightPanel()
+  memoryStore.fetchStats()
+  memoryStore.fetchGraph()
+}
+
+function handleMemoryDeleted(memoryId: string) {
+  memoryStore.addLog(`记忆已删除: ${memoryId}`, 'success')
+  closeRightPanel()
+  selectedMemory.value = null
+  memoryStore.fetchStats()
+  memoryStore.fetchGraph()
+}
+
+function handleMergeNodeClick(node: any) {
+  memoryStore.addLog(`点击合并链节点: ${node.title}`, 'info')
+}
+
 function closeDetail() {
   selectedMemory.value = null
+}
+
+function openEditor() {
+  if (!selectedMemory.value) return
+  rightPanelComponent.value = MemoryEditor
+  rightPanelProps.value = {
+    visible: true,
+    memory: selectedMemory.value
+  }
+  showRightPanel.value = true
+}
+
+function closeRightPanel() {
+  showRightPanel.value = false
+  rightPanelComponent.value = null
+  rightPanelProps.value = {}
+}
+
+function viewMergeChain() {
+  if (selectedMemory.value) {
+    selectedMemoryId.value = selectedMemory.value.id
+    activeTab.value = 'merge'
+    closeDetail()
+  }
+}
+
+async function rebuildGraph() {
+  isRebuilding.value = true
+  memoryStore.addLog('开始重建图谱...', 'info')
+  
+  try {
+    await memoryApi.rebuildGraph()
+    await memoryStore.fetchGraph()
+    memoryStore.addLog('图谱重建完成', 'success')
+  } catch (error) {
+    memoryStore.addLog('图谱重建失败: ' + (error as Error).message, 'error')
+  } finally {
+    isRebuilding.value = false
+  }
+}
+
+async function triggerReflection() {
+  isReflecting.value = true
+  memoryStore.addLog('触发反思任务...', 'info')
+  
+  try {
+    await memoryStore.reflectMemory()
+    memoryStore.addLog('反思任务已触发', 'success')
+    await memoryStore.fetchEvolutionStatus()
+  } catch (error) {
+    memoryStore.addLog('触发反思失败: ' + (error as Error).message, 'error')
+  } finally {
+    isReflecting.value = false
+  }
+}
+
+async function refreshAll() {
+  memoryStore.addLog('刷新所有数据...', 'info')
+  
+  try {
+    await Promise.all([
+      memoryStore.fetchStats(),
+      memoryStore.fetchGraph(),
+      memoryStore.fetchEvolutionStatus()
+    ])
+    memoryStore.addLog('数据刷新完成', 'success')
+  } catch (error) {
+    memoryStore.addLog('数据刷新失败: ' + (error as Error).message, 'error')
+  }
 }
 
 function getMemoryTypeLabel(type?: string): string {
@@ -134,8 +347,168 @@ body {
 .dashboard {
   width: 100vw;
   height: 100vh;
-  position: relative;
+  display: flex;
   background: radial-gradient(circle at center, #0a1a0a 0%, #000000 100%);
+}
+
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: rgba(0, 10, 20, 0.9);
+  border-right: 1px solid rgba(0, 255, 65, 0.3);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 20px 15px;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-size: 14px;
+  text-shadow: 0 0 10px #00ff41;
+  letter-spacing: 1px;
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff0000;
+  box-shadow: 0 0 5px #ff0000;
+}
+
+.status-indicator.active {
+  background: #00ff00;
+  box-shadow: 0 0 10px #00ff00;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.nav-tabs {
+  flex: 1;
+  padding: 10px 0;
+  overflow-y: auto;
+}
+
+.nav-tab {
+  width: 100%;
+  padding: 12px 15px;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  color: #008f11;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  transition: all 0.3s;
+  text-align: left;
+}
+
+.nav-tab:hover {
+  background: rgba(0, 255, 65, 0.1);
+  color: #00ff41;
+}
+
+.nav-tab.active {
+  background: rgba(0, 255, 65, 0.15);
+  border-left-color: #00ff41;
+  color: #00ff41;
+}
+
+.tab-icon {
+  font-size: 16px;
+}
+
+.tab-label {
+  flex: 1;
+}
+
+.action-buttons {
+  padding: 15px;
+  border-top: 1px solid rgba(0, 255, 65, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 10px 15px;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: #00ff41;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.action-btn:hover:not(:disabled) {
+  background: rgba(0, 255, 65, 0.2);
+  border-color: #00ff41;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sidebar-footer {
+  padding: 10px;
+  border-top: 1px solid rgba(0, 255, 65, 0.2);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.content-area {
+  flex: 1;
+  position: relative;
+  transition: margin-right 0.3s ease;
+}
+
+.content-area.with-panel {
+  margin-right: 400px;
+}
+
+.right-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100%;
+  background: rgba(0, 10, 20, 0.95);
+  border-left: 1px solid rgba(0, 255, 65, 0.3);
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  transform: translateX(100%);
 }
 
 .panel {
@@ -180,6 +553,26 @@ body {
 .modal-header h2 {
   font-size: 18px;
   text-shadow: 0 0 5px #00ff41;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-btn {
+  padding: 6px 12px;
+  background: rgba(0, 255, 65, 0.2);
+  border: 1px solid rgba(0, 255, 65, 0.5);
+  color: #00ff41;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.edit-btn:hover {
+  background: rgba(0, 255, 65, 0.3);
 }
 
 .close-btn {
@@ -270,5 +663,72 @@ body {
 .meta-value {
   color: #00ff41;
   font-size: 11px;
+}
+
+.view-chain-btn {
+  width: 100%;
+  padding: 10px;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: #00ff41;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.view-chain-btn:hover {
+  background: rgba(0, 255, 65, 0.2);
+  border-color: #00ff41;
+}
+
+@media (max-width: 1200px) {
+  .sidebar {
+    width: 180px;
+  }
+  
+  .right-panel {
+    width: 350px;
+  }
+  
+  .content-area.with-panel {
+    margin-right: 350px;
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 60px;
+  }
+  
+  .logo {
+    display: none;
+  }
+  
+  .tab-label {
+    display: none;
+  }
+  
+  .nav-tab {
+    justify-content: center;
+    padding: 15px;
+  }
+  
+  .action-buttons {
+    padding: 10px 5px;
+  }
+  
+  .action-btn {
+    font-size: 10px;
+    padding: 8px;
+  }
+  
+  .right-panel {
+    width: 100%;
+  }
+  
+  .content-area.with-panel {
+    margin-right: 0;
+  }
 }
 </style>

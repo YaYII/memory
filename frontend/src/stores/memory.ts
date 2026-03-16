@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Memory, GraphData, SystemStats, EvolutionStatus, LogEntry, MemoryType, ViewMode, EvolutionProfile } from '@/types/memory'
-import { memoryApi, evolutionApi } from '@/api/memory'
+import { memoryApi, evolutionApi, tieredApi } from '@/api/memory'
 
 export const useMemoryStore = defineStore('memory', () => {
   const memories = ref<Memory[]>([])
@@ -120,6 +120,129 @@ export const useMemoryStore = defineStore('memory', () => {
     logs.value = []
   }
 
+  async function updateMemory(memoryId: string, content: string, userId: string = 'default') {
+    try {
+      isLoading.value = true
+      const result = await memoryApi.updateMemory(memoryId, content, userId)
+      addLog(`Memory updated: ${memoryId}`, 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to update memory'
+      addLog(`Failed to update memory: ${memoryId}`, 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function deleteMemory(memoryId: string, userId: string = 'default') {
+    try {
+      isLoading.value = true
+      const result = await memoryApi.deleteMemory(memoryId, userId)
+      addLog(`Memory deleted: ${memoryId}`, 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to delete memory'
+      addLog(`Failed to delete memory: ${memoryId}`, 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function writeMemory(data: {
+    content: string
+    user_id: string
+    title?: string
+    scope?: string
+    keywords?: string[]
+    content_type?: string
+  }) {
+    try {
+      isLoading.value = true
+      const result = await memoryApi.writeMemory(data)
+      addLog(`Memory written: ${result.id}`, 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to write memory'
+      addLog('Failed to write memory', 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function reflectMemory(userId: string = 'default') {
+    try {
+      isLoading.value = true
+      const result = await memoryApi.reflectMemory(userId)
+      addLog('Memory reflection completed', 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to reflect memory'
+      addLog('Failed to reflect memory', 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function rebuildGraph() {
+    try {
+      isLoading.value = true
+      const result = await memoryApi.rebuildGraph()
+      addLog('Graph rebuilt successfully', 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to rebuild graph'
+      addLog('Failed to rebuild graph', 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function submitFeedback(memoryId: string, feedback: {
+    rating?: number
+    useful?: boolean
+    comment?: string
+  }) {
+    try {
+      isLoading.value = true
+      const result = await tieredApi.submitFeedback(memoryId, feedback)
+      addLog(`Feedback submitted for: ${memoryId}`, 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to submit feedback'
+      addLog(`Failed to submit feedback for: ${memoryId}`, 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function summarizeMemories(memoryIds: string[]) {
+    try {
+      isLoading.value = true
+      const result = await tieredApi.summarizeMemories(memoryIds)
+      addLog(`Summarized ${memoryIds.length} memories`, 'success')
+      return result
+    } catch (e) {
+      error.value = 'Failed to summarize memories'
+      addLog('Failed to summarize memories', 'error')
+      console.error(e)
+      throw e
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     memories,
     currentMemory,
@@ -144,6 +267,13 @@ export const useMemoryStore = defineStore('memory', () => {
     setMemoryType,
     setViewMode,
     addLog,
-    clearLogs
+    clearLogs,
+    updateMemory,
+    deleteMemory,
+    writeMemory,
+    reflectMemory,
+    rebuildGraph,
+    submitFeedback,
+    summarizeMemories
   }
 })
