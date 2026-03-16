@@ -571,6 +571,13 @@ body {
   flex: 1;
   position: relative;
   transition: margin-right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-area > *:first-child {
+  flex: 1;
+  min-height: 0;
 }
 
 .content-area.with-panel {
