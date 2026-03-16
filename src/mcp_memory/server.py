@@ -347,42 +347,51 @@ async def get_llm_interactions(limit: int = 20):
 async def get_llm_status():
     return cognitive_processor.llm.get_status()
 
-@app.get("/dashboard/memory/{memory_id}")
-async def get_memory_detail(memory_id: str):
-    """
-    Get full details for a specific memory
-    """
-    try:
-        # Use get() with specific ID
-        raw = memory_manager.store.collection.get(ids=[memory_id])
-        if not raw["ids"]:
-            raise HTTPException(status_code=404, detail="Memory not found")
-            
-        content = raw["documents"][0]
-        meta = raw["metadatas"][0]
-        
-        return {
-            "id": memory_id,
-            "content": content,
-            "timestamp": meta.get("timestamp", ""),
-            "scope": meta.get("scope", "project"),
-            "user_id": meta.get("user_id", "")
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.get("/dashboard/memory/search")
-async def dashboard_search_memories(query: str, limit: int = 20):
+async def dashboard_search_memories(query: str = "", limit: int = 20):
     """
     看板搜索：按语义查询记忆，支持混合检索（语义+关键词）
+    当 query 为空时返回所有记忆
     """
     print(f"🔍 [SEARCH] Received query: '{query}'")
     try:
-        if not query.strip():
-            return {"items": []}
-            
         items = []
         seen_ids = set()
+        
+        # 如果查询为空，直接返回所有记忆
+        if not query.strip():
+            try:
+                print(f"🔍 [SEARCH] Empty query, returning all memories...")
+                all_docs = memory_manager.store.collection.get()
+                
+                raw_ids = all_docs.get("ids", [])
+                raw_docs = all_docs.get("documents", [])
+                raw_metas = all_docs.get("metadatas", [])
+                
+                print(f"🔍 [SEARCH] Found {len(raw_ids)} total memories")
+                
+                for i, mid in enumerate(raw_ids):
+                    if len(items) >= limit: break
+                    
+                    content = raw_docs[i] if i < len(raw_docs) else ""
+                    meta = raw_metas[i] if i < len(raw_metas) else {}
+                    first_line = (content or "").splitlines()[0].strip()
+                    title = first_line[:28] + "…" if len(first_line) > 28 else (first_line or f"记忆 {str(mid)[:8]}")
+                    
+                    items.append({
+                        "id": mid,
+                        "title": title,
+                        "content": content,
+                        "timestamp": meta.get("timestamp", ""),
+                        "scope": meta.get("scope", "project"),
+                        "user_id": meta.get("user_id", ""),
+                        "match_type": "all"
+                    })
+                
+                return {"items": items}
+            except Exception as e:
+                print(f"❌ [SEARCH] Failed to get all memories: {e}")
+                return {"items": [], "error": str(e)}
         
         # 1. Semantic Search via Chroma (vector similarity)
         try:
@@ -461,6 +470,30 @@ async def dashboard_search_memories(query: str, limit: int = 20):
     except Exception as e:
         print(f"❌ [SEARCH] Critical error: {e}")
         return {"items": [], "error": str(e)}
+
+@app.get("/dashboard/memory/{memory_id}")
+async def get_memory_detail(memory_id: str):
+    """
+    Get full details for a specific memory
+    """
+    try:
+        # Use get() with specific ID
+        raw = memory_manager.store.collection.get(ids=[memory_id])
+        if not raw["ids"]:
+            raise HTTPException(status_code=404, detail="Memory not found")
+            
+        content = raw["documents"][0]
+        meta = raw["metadatas"][0]
+        
+        return {
+            "id": memory_id,
+            "content": content,
+            "timestamp": meta.get("timestamp", ""),
+            "scope": meta.get("scope", "project"),
+            "user_id": meta.get("user_id", "")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/dashboard/memory/update")
 async def dashboard_update_memory(req: UpdateMemoryRequest, background_tasks: BackgroundTasks):

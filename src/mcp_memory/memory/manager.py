@@ -248,12 +248,26 @@ class MemoryManager:
             mem_id = r["id"]
             if mem_id not in seen_ids:
                 seen_ids.add(mem_id)
+                # 从 metadata 提取完整字段
+                meta = r.get("metadata", {})
                 formatted.append({
                     "content": r["content"],
                     "timestamp": r["timestamp"],
                     "id": mem_id,
                     "source": "traditional",
-                    "score": r.get("score", 0)
+                    "score": r.get("score", 0),
+                    # 添加完整的元数据字段
+                    "title": meta.get("title", "") or "",
+                    "description": meta.get("description", "") or "",
+                    "summary": meta.get("summary", "") or "",
+                    "keywords": meta.get("keywords", []) or [],
+                    "tags": meta.get("tags", []) or [],
+                    "content_type": meta.get("content_type", "note") or "note",
+                    "memory_type": meta.get("memory_type", "storage") or "storage",
+                    "importance": meta.get("importance", 1.0) or 1.0,
+                    "user_id": meta.get("user_id", "") or "",
+                    "scope": meta.get("scope", "project") or "project",
+                    "project_id": meta.get("project_id", "") or ""
                 })
         
         # 再添加三层记忆结果
@@ -267,7 +281,18 @@ class MemoryManager:
                     "id": mem_id,
                     "source": "tiered",
                     "memory_type": m.memory_type,
-                    "score": 0.9  # 三层记忆默认较高分数
+                    "score": 0.9,  # 三层记忆默认较高分数
+                    # 添加完整的元数据字段
+                    "title": m.title,
+                    "keywords": m.keywords if hasattr(m, 'keywords') else [],
+                    "tags": m.tags if hasattr(m, 'tags') else [],
+                    "description": m.description if hasattr(m, 'description') else "",
+                    "summary": m.summary if hasattr(m, 'summary') else "",
+                    "content_type": m.content_type if hasattr(m, 'content_type') else "note",
+                    "importance": m.importance if hasattr(m, 'importance') else 1.0,
+                    "user_id": m.user_id,
+                    "scope": m.scope,
+                    "project_id": m.project_id if hasattr(m, 'project_id') else ""
                 })
         
         # 按分数排序并限制数量

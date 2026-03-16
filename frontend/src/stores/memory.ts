@@ -120,10 +120,10 @@ export const useMemoryStore = defineStore('memory', () => {
     logs.value = []
   }
 
-  async function updateMemory(memoryId: string, content: string, userId: string = 'default') {
+  async function updateMemory(memoryId: string, content: string, userId: string = 'default', title?: string, keywords?: string[]) {
     try {
       isLoading.value = true
-      const result = await memoryApi.updateMemory(memoryId, content, userId)
+      const result = await memoryApi.updateMemory(memoryId, { content, user_id: userId, title, keywords })
       addLog(`Memory updated: ${memoryId}`, 'success')
       return result
     } catch (e) {

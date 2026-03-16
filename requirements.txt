@@ -14,3 +14,6 @@ jieba>=0.42.1
 rank_bm25>=0.2.2
 networkx>=3.1
 sse-starlette>=1.8.0
+textual>=0.47.0
+rich>=13.7.0
+click>=8.1.7

@@ -39,11 +39,18 @@ export const memoryApi = {
     return response.data
   },
 
-  async updateMemory(memoryId: string, content: string, userId: string): Promise<{ status: string; id: string }> {
+  async updateMemory(memoryId: string, data: {
+    content: string
+    user_id: string
+    title?: string
+    keywords?: string[]
+  }): Promise<{ status: string; id: string }> {
     const response = await api.post('/dashboard/memory/update', {
       memory_id: memoryId,
-      content,
-      user_id: userId
+      content: data.content,
+      user_id: data.user_id,
+      title: data.title,
+      keywords: data.keywords
     })
     return response.data
   },

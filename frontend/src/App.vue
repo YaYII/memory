@@ -51,10 +51,15 @@
               :is-loading="isLoading"
               @node-click="handleNodeClick"
             />
+            <LogPanel />
+          </div>
+        </template>
+
+        <template v-else-if="activeTab === 'memory-list'">
+          <div class="memory-list-container">
             <MemoryList 
               @memory-select="handleMemorySelect"
             />
-            <LogPanel />
           </div>
         </template>
         
@@ -189,6 +194,7 @@ const { graphData, isLoading, evolutionStatus, stats } = storeToRefs(memoryStore
 
 const tabs = [
   { id: 'overview', label: '概览', icon: '📊' },
+  { id: 'memory-list', label: '记忆列表', icon: '📋' },
   { id: 'write', label: '写入', icon: '✏️' },
   { id: 'tiered', label: '三层记忆', icon: '🧠' },
   { id: 'brain', label: 'AI大脑', icon: '🤖' },
@@ -869,5 +875,11 @@ body {
   height: 400px;
   min-height: 400px;
   border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.memory-list-container {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
 }
 </style>
