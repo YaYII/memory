@@ -151,15 +151,23 @@ async def read_memory(req: ReadMemoryRequest, request: Request):
                 }]
         except asyncio.TimeoutError:
             logger.warning(
-                "LLM synthesis timed out (30s), returning raw results",
+                "LLM synthesis timed out (30s), using fallback synthesis",
                 extra={"request_id": request_id},
             )
+            # 降级策略：使用简单的关键词提取作为 fallback
+            fallback_result = _fallback_synthesis(req.query, result, profiles)
+            if fallback_result:
+                return fallback_result
         except Exception as e:
             logger.warning(
-                "LLM synthesis failed: %s, returning raw results",
+                "LLM synthesis failed: %s, using fallback synthesis",
                 e,
                 extra={"request_id": request_id},
             )
+            # 降级策略
+            fallback_result = _fallback_synthesis(req.query, result, profiles)
+            if fallback_result:
+                return fallback_result
 
     # 普通返回
     if result:
@@ -169,6 +177,60 @@ async def read_memory(req: ReadMemoryRequest, request: Request):
             result[0]["profile_context"] = [p["content"][:200] for p in profiles]
 
     return result
+
+
+def _fallback_synthesis(
+    query: str,
+    results: List[dict],
+    profiles: List[dict]
+) -> Optional[List[dict]]:
+    """
+    LLM 合成失败时的降级策略
+    
+    策略：
+    1. 提取最相关的记忆片段
+    2. 按相关性排序
+    3. 生成简单的摘要回答
+    """
+    if not results:
+        return None
+    
+    # 提取前3条最相关的记忆
+    top_memories = results[:3]
+    
+    # 构建简单的摘要
+    summary_parts = []
+    for i, mem in enumerate(top_memories, 1):
+        content = mem.get("content", "")[:200]
+        score = mem.get("score", 0)
+        summary_parts.append(f"{i}. {content}... (相关度: {score:.2f})")
+    
+    profile_info = ""
+    if profiles:
+        profile_info = f"\n\n【用户画像参考】\n" + "\n".join(
+            f"- {p['content'][:100]}..." for p in profiles[:2]
+        )
+    
+    fallback_content = f"""【搜索结果摘要】
+查询: {query}
+
+找到 {len(results)} 条相关记忆，以下是前3条最相关的内容：
+
+{chr(10).join(summary_parts)}
+{profile_info}
+
+---
+(注：由于LLM服务暂时不可用，以上为简化摘要)
+"""
+    
+    return [{
+        "content": fallback_content,
+        "timestamp": results[0].get("timestamp", ""),
+        "id": "fallback_synthesis",
+        "agent_processed": True,
+        "profiles_injected": len(profiles),
+        "is_fallback": True,
+    }]
 
 
 @router.post("/delete")

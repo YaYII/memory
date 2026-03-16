@@ -16,7 +16,7 @@ import logging
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from mcp_memory.models.data_models import MemoryItem
-from typing import List, Optional, Dict, Tuple, Set
+from typing import List, Optional, Dict, Tuple, Set, TypedDict
 import os
 import uuid
 import math
@@ -27,6 +27,30 @@ import networkx as nx
 from rank_bm25 import BM25Okapi
 from datetime import datetime
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+
+class SearchResult(TypedDict, total=False):
+    """搜索结果类型定义"""
+    id: str
+    content: str
+    user_id: str
+    score: float
+    timestamp: str
+    scope: str
+    project_id: str
+    memory_type: str
+    importance: float
+    access_count: int
+    agent_processed: bool
+    profiles_injected: int
+    capabilities_applied: List[str]
+
+
+class ProfileResult(TypedDict, total=False):
+    """Profile 结果类型定义"""
+    id: str
+    content: str
+    metadata: Dict
 
 
 logger = logging.getLogger("mcp-memory.memory.store")
@@ -330,14 +354,14 @@ class MemoryStore:
             logger.warning(f"[MemoryStore] 强化记忆失败 {memory_id[:8]}: {e}")
 
     def search(self, query: str, user_id: str, project_id: Optional[str] = None,
-               limit: int = 10, reinforce: bool = True) -> Tuple[List[dict], List[dict]]:
+               limit: int = 10, reinforce: bool = True) -> Tuple[List[SearchResult], List[ProfileResult]]:
         """
         检索记忆：Hybrid Search (Vector + BM25 + Graph)
 
         Score = 0.4 × Vector + 0.25 × Keyword + 0.2 × Recency + 0.1 × Importance + 0.05 × Instinct
 
         Returns:
-            Tuple[List[dict], List[dict]]: (搜索结果, Profile 上下文)
+            Tuple[List[SearchResult], List[ProfileResult]]: (搜索结果, Profile 上下文)
         """
         # === Phase 1: 投名状检查 ===
         is_contributor = False
