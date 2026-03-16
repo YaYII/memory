@@ -26,6 +26,11 @@ if not os.path.exists(static_dir):
     os.makedirs(static_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# Mount Vue static files (if exists)
+vue_static_dir = os.path.join(os.path.dirname(__file__), "static_vue")
+if os.path.exists(vue_static_dir):
+    app.mount("/vue", StaticFiles(directory=vue_static_dir, html=True), name="vue")
+
 # Initialize Memory Manager (The Singleton that holds the DB lock)
 try:
     memory_manager = MemoryManager()
