@@ -204,8 +204,8 @@ class Neuron:
         
         类似生物神经元的动作电位
         """
-        # 检查是否处于不应期
-        if self.in_refractory:
+        # 检查是否处于不应期（基于时间戳检查）
+        if self._is_in_refractory_period():
             return 0.0
         
         # 激活神经元
@@ -218,31 +218,51 @@ class Neuron:
         self.last_fire_time = now
         self.total_activations += 1
         
+        # 进入不应期状态
+        self.in_refractory = True
+        self.state = NeuronState.REFRACTORY
+        
         # 生成输出信号（动作电位）
         output_signal = 1.0  # 全或无
-        
-        # 进入不应期
-        self.enter_refractory()
         
         # 重置膜电位
         self.membrane_potential = self.resting_potential
         
         return output_signal
     
+    def _is_in_refractory_period(self) -> bool:
+        """
+        检查是否处于不应期（基于时间戳）
+        
+        Returns:
+            True if in refractory period, False otherwise
+        """
+        if not self.last_fire_time:
+            return False
+        
+        # 计算距离上次激活的时间
+        time_since_last_fire = (datetime.now() - self.last_fire_time).total_seconds()
+        
+        # 如果时间小于不应期，则处于不应期
+        if time_since_last_fire < self.refractory_period:
+            return True
+        else:
+            # 不应期已过，重置状态
+            self.in_refractory = False
+            self.active = False
+            self.state = NeuronState.RESTING
+            return False
+    
     def enter_refractory(self):
-        """进入不应期"""
+        """进入不应期（已废弃，使用时间戳检查）"""
+        # 此方法已废弃，不应期通过_is_in_refractory_period()检查
+        # 保留此方法以兼容旧代码
         self.in_refractory = True
         self.state = NeuronState.REFRACTORY
-        
-        # 不应期后恢复（简化处理）
-        # 在实际系统中，这应该是一个异步过程
-        import time
-        time.sleep(self.refractory_period)
-        
-        self.exit_refractory()
     
     def exit_refractory(self):
-        """退出不应期"""
+        """退出不应期（已废弃，自动通过时间检查）"""
+        # 此方法已废弃，不应期通过_is_in_refractory_period()自动检查
         self.in_refractory = False
         self.active = False
         self.state = NeuronState.RESTING

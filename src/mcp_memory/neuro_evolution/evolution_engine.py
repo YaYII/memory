@@ -235,8 +235,23 @@ class SelfEvolvingMemorySystem:
         """进化到多细胞阶段"""
         print(f"[进化] {self.current_stage.value} → multi_cell")
         
-        # TODO: 实现多细胞记忆系统
-        # 这里暂时保持单细胞，但标记为多细胞
+        # 保存旧大脑的状态
+        old_brain = self.brain
+        old_memories = old_brain.memory_storage if hasattr(old_brain, 'memory_storage') else []
+        
+        # 创建新的多细胞记忆系统
+        from .cells.multi_cell import MultiCellMemory
+        new_brain = MultiCellMemory(
+            input_size=self.input_size,
+            output_size=self.output_size
+        )
+        
+        # 迁移记忆
+        if old_memories:
+            new_brain.memory_storage = old_memories
+        
+        # 替换大脑
+        self.brain = new_brain
         self.current_stage = EvolutionStage.MULTI_CELL
     
     def _evolve_to_simple_brain(self):
@@ -244,6 +259,7 @@ class SelfEvolvingMemorySystem:
         print(f"[进化] {self.current_stage.value} → simple_brain")
         
         # TODO: 实现简单大脑记忆系统
+        # 当前保持多细胞系统，但标记为简单大脑
         self.current_stage = EvolutionStage.SIMPLE_BRAIN
     
     def _evolve_to_complex_brain(self):
@@ -251,6 +267,7 @@ class SelfEvolvingMemorySystem:
         print(f"[进化] {self.current_stage.value} → complex_brain")
         
         # TODO: 实现复杂大脑记忆系统
+        # 当前保持简单大脑系统，但标记为复杂大脑
         self.current_stage = EvolutionStage.COMPLEX_BRAIN
     
     def _prune_network(self):
@@ -270,10 +287,77 @@ class SelfEvolvingMemorySystem:
                 del synapses[synapse_id]
     
     def _backpropagate(self, error: np.ndarray):
-        """反向传播（简化版）"""
-        # 简化的反向传播
-        # 实际实现应该更复杂
-        pass
+        """
+        反向传播：基于误差调整权重
+        
+        简化版反向传播算法：
+        1. 计算输出层误差
+        2. 调整输出层权重
+        3. 反向传播到隐藏层（如果有）
+        """
+        # 获取所有神经元和突触
+        neurons = self._get_all_neurons()
+        synapses = self._get_all_synapses()
+        
+        if not neurons or not synapses:
+            return
+        
+        # 构建神经元ID到神经元的映射
+        neuron_map = {n.id: n for n in neurons}
+        
+        # 获取运动神经元（输出层）
+        motor_neurons = [n for n in neurons if n.neuron_type == NeuronType.MOTOR]
+        
+        # 1. 计算输出层误差并调整权重
+        for i, motor_neuron in enumerate(motor_neurons):
+            if i < len(error):
+                # 计算该神经元的误差
+                neuron_error = error[i]
+                
+                # 调整输入突触的权重
+                for synapse_id in motor_neuron.input_synapses:
+                    synapse = synapses.get(synapse_id)
+                    if synapse:
+                        # 根据误差调整权重
+                        # 简化版：权重调整 = 学习率 × 误差 × 输入
+                        adjustment = self.plasticity.learning_rate * neuron_error
+                        
+                        if neuron_error > 0:
+                            # 误差为正，增强突触
+                            synapse.strengthen(abs(adjustment))
+                        else:
+                            # 误差为负，减弱突触
+                            synapse.weaken(abs(adjustment))
+        
+        # 2. 反向传播到中间神经元（如果有）
+        interneurons = [n for n in neurons if n.neuron_type == NeuronType.INTERNEURON]
+        
+        for interneuron in interneurons:
+            # 计算隐藏层误差（简化版：基于输出误差的加权和）
+            hidden_error = 0.0
+            
+            for synapse_id in interneuron.output_synapses:
+                synapse = synapses.get(synapse_id)
+                if synapse:
+                    # 找到后神经元
+                    post_neuron = neuron_map.get(synapse.post_neuron_id)
+                    if post_neuron and post_neuron.neuron_type == NeuronType.MOTOR:
+                        # 获取后神经元的索引
+                        motor_idx = motor_neurons.index(post_neuron)
+                        if motor_idx < len(error):
+                            # 隐藏层误差 = 输出误差 × 权重
+                            hidden_error += error[motor_idx] * synapse.strength
+            
+            # 调整隐藏层的输入突触权重
+            for synapse_id in interneuron.input_synapses:
+                synapse = synapses.get(synapse_id)
+                if synapse:
+                    adjustment = self.plasticity.learning_rate * hidden_error
+                    
+                    if hidden_error > 0:
+                        synapse.strengthen(abs(adjustment))
+                    else:
+                        synapse.weaken(abs(adjustment))
     
     def _is_evolution_signal(self, response: np.ndarray) -> bool:
         """检查是否是进化信号"""
