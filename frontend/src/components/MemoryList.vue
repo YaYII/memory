@@ -167,16 +167,20 @@ h1 {
   color: #00ff41;
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
 }
 
 .memory-tab.active {
-  background: rgba(0, 255, 65, 0.3);
+  background: #00ff41;
+  color: #000;
   border-color: #00ff41;
+  box-shadow: 0 0 10px #00ff41;
 }
 
 .memory-tab:hover {
   background: rgba(0, 255, 65, 0.2);
+  border-color: #00ff41;
 }
 
 .tiered-stats {
@@ -204,7 +208,8 @@ h1 {
   display: block;
   font-size: 18px;
   font-weight: bold;
-  color: #00ff41;
+  color: #00ffff;
+  text-shadow: 0 0 5px #00ffff;
 }
 
 .memory-list {
@@ -218,13 +223,21 @@ h1 {
   margin-bottom: 8px;
   background: rgba(0, 255, 65, 0.05);
   border: 1px solid rgba(0, 255, 65, 0.2);
+  border-left: 3px solid transparent;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  animation: fadeIn 0.5s ease;
 }
 
 .memory-item:hover {
   background: rgba(0, 255, 65, 0.15);
   border-color: #00ff41;
+  transform: translateX(5px);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
 .memory-title {

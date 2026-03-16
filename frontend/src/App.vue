@@ -1,5 +1,8 @@
 <template>
   <div class="dashboard">
+    <!-- 扫描线效果 -->
+    <div class="scanline"></div>
+    
     <div class="sidebar">
       <div class="sidebar-header">
         <h1 class="logo">Memory System</h1>
@@ -404,6 +407,77 @@ body {
   50% { opacity: 0.5; }
 }
 
+/* 扫描线效果 */
+.scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(255,255,255,0),
+    rgba(255,255,255,0) 50%,
+    rgba(0,0,0,0.1) 50%,
+    rgba(0,0,0,0.1)
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* fadeIn 动画 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease;
+}
+
+/* 发光文字效果 */
+.glow-text {
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* 按钮发光悬停效果 */
+.glow-hover {
+  transition: all 0.3s ease;
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 15px currentColor;
+}
+
+/* 记忆项悬停滑动效果 */
+.memory-item-hover {
+  transition: all 0.3s ease;
+}
+
+.memory-item-hover:hover {
+  transform: translateX(5px);
+  background: rgba(0, 255, 65, 0.15);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 255, 65, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 65, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 65, 0.5);
+}
+
 .nav-tabs {
   flex: 1;
   padding: 10px 0;
@@ -423,19 +497,21 @@ body {
   gap: 10px;
   font-family: inherit;
   font-size: 13px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   text-align: left;
 }
 
 .nav-tab:hover {
   background: rgba(0, 255, 65, 0.1);
   color: #00ff41;
+  text-shadow: 0 0 5px #00ff41;
 }
 
 .nav-tab.active {
   background: rgba(0, 255, 65, 0.15);
   border-left-color: #00ff41;
   color: #00ff41;
+  text-shadow: 0 0 5px #00ff41;
 }
 
 .tab-icon {
@@ -462,12 +538,14 @@ body {
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
 }
 
 .action-btn:hover:not(:disabled) {
-  background: rgba(0, 255, 65, 0.2);
+  background: rgba(0, 255, 65, 0.3);
   border-color: #00ff41;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
 }
 
 .action-btn:disabled {
@@ -528,6 +606,13 @@ body {
   backdrop-filter: blur(8px);
   padding: 15px;
   color: #00ff41;
+  transition: all 0.3s ease;
+}
+
+.panel:hover {
+  background: rgba(0, 10, 20, 0.85);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+  border-color: #00ff41;
 }
 
 .memory-detail-modal {
@@ -578,11 +663,12 @@ body {
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
 }
 
 .edit-btn:hover {
-  background: rgba(0, 255, 65, 0.3);
+  background: rgba(0, 255, 65, 0.4);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 
 .close-btn {
@@ -593,6 +679,12 @@ body {
   color: #ff0000;
   font-size: 20px;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 0, 0, 0.4);
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
 }
 
 .modal-body {
@@ -684,12 +776,14 @@ body {
   cursor: pointer;
   font-family: inherit;
   font-size: 12px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
 }
 
 .view-chain-btn:hover {
-  background: rgba(0, 255, 65, 0.2);
+  background: rgba(0, 255, 65, 0.3);
   border-color: #00ff41;
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
 }
 
 @media (max-width: 1200px) {
