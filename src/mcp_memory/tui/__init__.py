@@ -111,7 +111,7 @@ class MemoryListWidget(ListView):
 class TUIApp(App):
     """TUI主应用"""
 
-    CSS_PATH = Path(__file__).parent / "tui_style.css"
+    # CSS_PATH = Path(__file__).parent / "minimal_style.css"  # 暂时禁用CSS
 
     BINDINGS = [
         Binding("q", "quit", "退出"),
@@ -124,11 +124,9 @@ class TUIApp(App):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.memory_manager = MemoryManager()
-        self.tiered_manager = TieredMemoryManager(
-            memory_store=self.memory_manager.store,
-            data_path=settings.CHROMA_DATA_PATH
-        )
+        # 延迟初始化以避免启动错误
+        self.memory_manager = None
+        self.tiered_manager = None
         self.current_user = "cli_user"
         self.current_project = settings.MCP_PROJECT_ID
         self.memories = []
@@ -139,10 +137,19 @@ class TUIApp(App):
 
     async def on_mount(self) -> None:
         """应用启动时初始化"""
-        await self.push_screen(LoadingScreen())
-        # 模拟加载延迟
-        await asyncio.sleep(1)
-        await self.refresh_memory_list()
+        try:
+            # 延迟初始化以避免启动错误
+            self.memory_manager = MemoryManager()
+            self.tiered_manager = TieredMemoryManager(data_path=settings.CHROMA_DATA_PATH)
+
+            await self.push_screen(LoadingScreen())
+            # 模拟加载延迟
+            await asyncio.sleep(1)
+            await self.refresh_memory_list()
+        except Exception as e:
+            logger.error(f"初始化失败: {e}")
+            # 显示错误信息但继续运行
+            self.notify(f"初始化失败: {e}", severity="error")
 
     async def refresh_memory_list(self) -> None:
         """刷新记忆列表"""
@@ -238,6 +245,11 @@ class TUIApp(App):
             self.action_refresh()
         elif event.button.id == "help-btn":
             self.action_help()
+
+    def notify(self, message: str, severity: str = "information") -> None:
+        """显示通知"""
+        # 这里可以添加更好的通知显示逻辑
+        print(f"[{severity.upper()}] {message}")
 
 
 class NewMemoryScreen(Screen):

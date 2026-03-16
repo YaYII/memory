@@ -547,5 +547,47 @@ def tiered(
     asyncio.run(_tiered())
 
 
+@app.command()
+def tui(
+    user: str = typer.Option(DEFAULT_USER, "--user", "-u", help="用户ID"),
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="项目ID"),
+    fullscreen: bool = typer.Option(False, "--fullscreen", "-f", help="全屏模式"),
+    debug: bool = typer.Option(False, "--debug", "-d", help="调试模式")
+):
+    """🖥️ 启动TUI交互界面"""
+    import os
+    import sys
+    
+    # 设置环境变量
+    os.environ["MCP_MEMORY_USER"] = user
+    if project:
+        os.environ["MCP_MEMORY_PROJECT_ID"] = project
+    
+    # 配置日志级别
+    if debug:
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+    
+    try:
+        # 导入并启动TUI
+        from mcp_memory.tui import main
+        console.print("[cyan]🚀 启动TUI界面...[/cyan]")
+        console.print("[dim]按 'q' 退出，按 'h' 查看帮助[/dim]")
+        console.print()
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]感谢使用记忆系统！[/yellow]")
+    except ImportError as e:
+        console.print(f"[red]❌ TUI依赖缺失: {e}[/red]")
+        console.print("[yellow]请安装依赖: pip install textual[/yellow]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]❌ 启动TUI失败: {e}[/red]")
+        if debug:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     app()

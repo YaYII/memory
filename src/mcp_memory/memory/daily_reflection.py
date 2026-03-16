@@ -98,6 +98,14 @@ class DailyReflectionScheduler:
         """
         执行每日深度思考
         分析所有记忆，识别重复和关联，生成全局洞察
+        
+        人类思考模式：
+        1. 做对了什么 - 成功经验总结
+        2. 做错了什么 - 失败教训记录
+        3. 需要改进什么 - 改进方向识别
+        4. 总结的经验 - 可复用知识提取
+        5. 下次应该这样思考 - 思维模式优化
+        6. 下次应该怎么做 - 行动指南生成
         """
         await self._emit("[DAILY_REFLECTION] ====== 开始每日深度思考 ======")
         start_time = datetime.now()
@@ -132,38 +140,43 @@ class DailyReflectionScheduler:
             if duplicates:
                 await self._emit("[DAILY_REFLECTION] 正在合并重复记忆...")
                 merged_groups = await self._merge_duplicate_memories(duplicates, ids, docs, metas)
-                await self._emit(f"[DAILY_REFLECTION] 已完成 {merged_groups} 组记忆的合并")
+                await self._emit(f"[DAILY_REFLECTION] 已合并 {merged_groups} 组记忆")
             
-            # 5. 生成全局洞察
-            if len(settings.providers) > 0 and total_memories >= 10:
+            # 5. 人类思考模式深度分析
+            await self._emit("[DAILY_REFLECTION] 正在进行人类思考模式分析...")
+            human_insights = await self._human_thinking_analysis(docs, metas)
+            
+            # 6. 生成全局洞察
+            if len(settings.providers) > 0:
                 await self._emit("[DAILY_REFLECTION] 正在生成全局洞察...")
                 insights = await self._generate_global_insights(docs, metas)
                 if insights:
                     await self._emit(f"[DAILY_REFLECTION] 全局洞察: {insights[:200]}...")
-                    # 保存全局洞察到记忆
-                    self.memory_manager.write_memory(
-                        user_id=settings.MCP_EVOLUTION_REFLECTION_USER_ID,
-                        content=f"【每日深度思考 - {datetime.now().strftime('%Y-%m-%d')}】\n\n{insights}",
-                        scope="global"
-                    )
             
-            # 5. 更新全局知识图谱
+            # 7. 保存每日深度思考报告
+            reflection_report = self._create_reflection_report(memory_stats, human_insights, insights if len(settings.providers) > 0 else "")
+            self.memory_manager.write_memory(
+                user_id=settings.MCP_EVOLUTION_REFLECTION_USER_ID,
+                content=reflection_report,
+                title=f"每日深度思考报告 - {datetime.now().strftime('%Y-%m-%d')}",
+                scope="global",
+                memory_type="thinking"
+            )
+            await self._emit("[DAILY_REFLECTION] 深度思考报告已保存")
+            
+            # 8. 更新全局知识图谱
             await self._emit("[DAILY_REFLECTION] 正在更新全局知识图谱...")
             await self._update_global_graph(ids, docs, metas)
             
-            # 6. 标记已分析的记忆
+            # 9. 标记已分析的记忆
             processed_count = await self._mark_memories_as_daily_reflected(ids)
             await self._emit(f"[DAILY_REFLECTION] 已标记 {processed_count} 条记忆为已深度思考")
             
             # 更新统计
+            duration = (datetime.now() - start_time).total_seconds()
             self.last_daily_reflection_time = datetime.now()
             self.total_daily_reflections += 1
-            duration = (datetime.now() - start_time).total_seconds()
-            self.last_daily_reflection_note = (
-                f"分析了 {total_memories} 条记忆，"
-                f"发现 {len(duplicates)} 组重复，"
-                f"耗时 {duration:.1f} 秒"
-            )
+            self.last_daily_reflection_note = f"分析了 {total_memories} 条记忆，耗时 {duration:.1f} 秒"
             
             await self._emit(f"[DAILY_REFLECTION] ====== 每日深度思考完成 ======")
             await self._emit(f"[DAILY_REFLECTION] {self.last_daily_reflection_note}")
@@ -173,6 +186,155 @@ class DailyReflectionScheduler:
             self.last_daily_reflection_note = f"失败: {str(e)[:100]}"
             import traceback
             traceback.print_exc()
+    
+    async def _human_thinking_analysis(self, docs: List[str], metas: List[Dict]) -> Dict[str, Any]:
+        """
+        人类思考模式分析
+        
+        分析维度：
+        1. 做对了什么 - 识别成功模式
+        2. 做错了什么 - 识别失败模式
+        3. 需要改进什么 - 识别改进点
+        4. 总结的经验 - 提取可复用知识
+        5. 下次应该这样思考 - 思维模式建议
+        6. 下次应该怎么做 - 行动建议
+        """
+        insights = {
+            "success_patterns": [],      # 做对了什么
+            "failure_patterns": [],      # 做错了什么
+            "improvement_areas": [],     # 需要改进什么
+            "lessons_learned": [],       # 总结的经验
+            "thinking_suggestions": [],  # 下次应该这样思考
+            "action_suggestions": []     # 下次应该怎么做
+        }
+        
+        # 成功关键词
+        success_keywords = ["成功", "完成", "解决", "正确", "有效", "最佳", "优化", "提升"]
+        # 失败关键词
+        failure_keywords = ["失败", "错误", "问题", "异常", "失败", "bug", "错误", "失败"]
+        # 改进关键词
+        improvement_keywords = ["改进", "优化", "建议", "应该", "需要", "待", "TODO", "FIXME"]
+        
+        for i, doc in enumerate(docs[:100]):  # 分析前100条
+            meta = metas[i] if i < len(metas) else {}
+            content_lower = doc.lower() if doc else ""
+            
+            # 检测成功模式
+            if any(kw in content_lower for kw in success_keywords):
+                # 提取成功经验
+                success_item = {
+                    "content": doc[:200],
+                    "source": meta.get("user_id", "unknown"),
+                    "time": meta.get("timestamp", "")
+                }
+                insights["success_patterns"].append(success_item)
+            
+            # 检测失败模式
+            if any(kw in content_lower for kw in failure_keywords):
+                failure_item = {
+                    "content": doc[:200],
+                    "source": meta.get("user_id", "unknown"),
+                    "time": meta.get("timestamp", "")
+                }
+                insights["failure_patterns"].append(failure_item)
+            
+            # 检测改进点
+            if any(kw in content_lower for kw in improvement_keywords):
+                improvement_item = {
+                    "content": doc[:200],
+                    "source": meta.get("user_id", "unknown"),
+                    "time": meta.get("timestamp", "")
+                }
+                insights["improvement_areas"].append(improvement_item)
+        
+        # 使用LLM生成更深层的分析
+        if len(settings.providers) > 0 and len(docs) > 0:
+            try:
+                sample_docs = "\n\n---\n\n".join(docs[:10])
+                
+                prompt = f"""
+请对以下记忆内容进行人类思考模式分析：
+
+【记忆样本】
+{sample_docs[:3000]}
+
+请从以下维度进行分析，每个维度给出3-5条具体内容：
+
+1. **做对了什么**：识别成功的行为和决策
+2. **做错了什么**：识别失败的行为和决策
+3. **需要改进什么**：识别可以改进的地方
+4. **总结的经验**：提取可复用的经验教训
+5. **下次应该这样思考**：思维模式建议
+6. **下次应该怎么做**：具体行动建议
+
+请用中文输出，格式清晰：
+"""
+                
+                llm_insights = await self.llm.chat_completion(
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=1000
+                )
+                
+                if llm_insights:
+                    insights["llm_analysis"] = llm_insights
+                    
+            except Exception as e:
+                await self._emit(f"[DAILY_REFLECTION] LLM分析失败: {e}")
+        
+        return insights
+    
+    def _create_reflection_report(self, stats: Dict, human_insights: Dict, llm_insights: str) -> str:
+        """创建每日深度思考报告"""
+        report_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        report = f"""# 每日深度思考报告
+生成时间: {report_time}
+
+## 记忆统计
+- 总记忆数: {stats.get('total', 0)}
+- 按类型分布: {stats.get('by_type', {})}
+- 按范围分布: {stats.get('by_scope', {})}
+
+## 一、做对了什么（成功经验）
+{self._format_insights(human_insights.get('success_patterns', [])[:5])}
+
+## 二、做错了什么（失败教训）
+{self._format_insights(human_insights.get('failure_patterns', [])[:5])}
+
+## 三、需要改进什么
+{self._format_insights(human_insights.get('improvement_areas', [])[:5])}
+
+## 四、总结的经验
+{human_insights.get('llm_analysis', '暂无LLM分析') if human_insights.get('llm_analysis') else '暂无分析'}
+
+## 五、下次应该这样思考
+基于今日分析，建议采用以下思维模式：
+1. 遇到类似问题时，先回顾成功经验
+2. 注意避免已识别的失败模式
+3. 关注需要改进的领域
+
+## 六、下次应该怎么做
+具体行动建议：
+1. 复用已验证的成功方法
+2. 避免重复已知的错误
+3. 持续改进已识别的薄弱环节
+
+---
+此报告由AI记忆系统自动生成，基于人类思考模式进行分析。
+"""
+        return report
+    
+    def _format_insights(self, items: List[Dict]) -> str:
+        """格式化洞察列表"""
+        if not items:
+            return "暂无数据"
+        
+        formatted = []
+        for i, item in enumerate(items, 1):
+            content = item.get('content', '')[:100]
+            formatted.append(f"{i}. {content}...")
+        return "\n".join(formatted)
     
     def _analyze_memory_distribution(self, metas: List[Dict]) -> Dict[str, int]:
         """分析记忆分布统计"""

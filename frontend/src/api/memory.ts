@@ -94,6 +94,11 @@ export const memoryApi = {
   async rebuildGraph(): Promise<{ status: string }> {
     const response = await api.post('/dashboard/rebuild_graph')
     return response.data
+  },
+
+  async getLogs(): Promise<{ logs: Array<{ time: string; message: string; type: string }> }> {
+    const response = await api.get('/dashboard/logs')
+    return response.data
   }
 }
 

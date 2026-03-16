@@ -35,7 +35,6 @@
       
       <div class="sidebar-footer">
         <StatsPanel />
-        <BrainStatus v-if="activeTab === 'brain'" />
       </div>
     </div>
     
@@ -72,8 +71,13 @@
         </template>
 
         <template v-else-if="activeTab === 'brain'">
-          <div class="brain-container">
-            <BrainInteraction />
+          <div class="brain-page-container">
+            <div class="brain-status-section">
+              <BrainStatus />
+            </div>
+            <div class="brain-interaction-section">
+              <BrainInteraction />
+            </div>
           </div>
         </template>
 
@@ -855,15 +859,6 @@ body {
   }
 }
 
-.brain-container {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  padding: 20px;
-  overflow-y: auto;
-  max-height: 100%;
-}
-
 .overview-container {
   display: flex;
   flex-direction: column;
@@ -881,5 +876,21 @@ body {
   height: 100%;
   overflow-y: auto;
   padding: 20px;
+}
+
+.brain-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.brain-status-section {
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.brain-interaction-section {
+  flex: 1;
+  overflow-y: auto;
 }
 </style>

@@ -51,15 +51,13 @@ let renderer: THREE.WebGLRenderer | null = null
 let brainGroup: THREE.Group | null = null
 let animationId: number | null = null
 let particles: THREE.Points | null = null
-let connections: THREE.LineSegments | null = null
 
-// 大脑区域颜色
 const REGION_COLORS = {
-  storage: 0x4A90E2,   // 蓝色 - 存储记忆
-  thinking: 0xF5A623,  // 橙色 - 思维记忆
-  skill: 0x7ED321,     // 绿色 - 技能记忆
-  core: 0x00ff41,      // 绿色 - 核心
-  inactive: 0x333333   // 灰色 - 未激活
+  storage: 0x4A90E2,
+  thinking: 0xF5A623,
+  skill: 0x7ED321,
+  core: 0x00ff41,
+  inactive: 0x333333
 }
 
 onMounted(() => {
@@ -83,41 +81,29 @@ function initBrain() {
   const width = container.clientWidth
   const height = container.clientHeight
 
-  // 场景
   scene = new THREE.Scene()
   scene.background = new THREE.Color(0x000510)
-  scene.fog = new THREE.FogExp2(0x000510, 0.02)
 
-  // 相机
   camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000)
-  camera.position.z = 30
+  camera.position.z = 40
 
-  // 渲染器
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  renderer = new THREE.WebGLRenderer({ 
+    antialias: true,
+    alpha: true,
+    powerPreference: 'high-performance'
+  })
   renderer.setSize(width, height)
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
   container.appendChild(renderer.domElement)
 
-  // 大脑组
   brainGroup = new THREE.Group()
   scene.add(brainGroup)
 
-  // 创建大脑模型
   createBrainModel()
-
-  // 创建神经粒子
   createNeuralParticles()
-
-  // 创建突触连接
   createSynapseConnections()
 
-  // 添加光源
-  addLights()
-
-  // 开始动画
   animate()
-
-  // 响应式调整
   window.addEventListener('resize', handleResize)
 
   isLoading.value = false
@@ -126,84 +112,83 @@ function initBrain() {
 function createBrainModel() {
   if (!brainGroup) return
 
-  // 创建大脑核心 - 使用多个球体模拟大脑结构
-  const coreGeometry = new THREE.IcosahedronGeometry(8, 2)
-  const coreMaterial = new THREE.MeshPhongMaterial({
-    color: 0x001a0a,
-    emissive: 0x00ff41,
-    emissiveIntensity: 0.1,
+  const coreGeometry = new THREE.IcosahedronGeometry(6, 1)
+  const coreMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff41,
+    wireframe: true,
     transparent: true,
-    opacity: 0.8,
-    wireframe: true
+    opacity: 0.3
   })
   const core = new THREE.Mesh(coreGeometry, coreMaterial)
   brainGroup.add(core)
 
-  // 创建内部发光核心
-  const innerGeometry = new THREE.IcosahedronGeometry(5, 1)
-  const innerMaterial = new THREE.MeshPhongMaterial({
+  const innerGeometry = new THREE.IcosahedronGeometry(4, 1)
+  const innerMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff41,
-    emissive: 0x00ff41,
-    emissiveIntensity: 0.5,
     transparent: true,
-    opacity: 0.3
+    opacity: 0.5
   })
   const innerCore = new THREE.Mesh(innerGeometry, innerMaterial)
   brainGroup.add(innerCore)
 
-  // 创建记忆区域球体
+  const centerGeometry = new THREE.SphereGeometry(1.5, 16, 16)
+  const centerMaterial = new THREE.MeshBasicMaterial({
+    color: 0x00ff41,
+    transparent: true,
+    opacity: 0.8
+  })
+  const center = new THREE.Mesh(centerGeometry, centerMaterial)
+  brainGroup.add(center)
+
   const regions = [
-    { name: 'storage', position: [-6, 3, 0], color: REGION_COLORS.storage },
-    { name: 'thinking', position: [6, 3, 0], color: REGION_COLORS.thinking },
-    { name: 'skill', position: [0, -5, 3], color: REGION_COLORS.skill }
+    { name: 'storage', position: [-5, 2, 0], color: REGION_COLORS.storage },
+    { name: 'thinking', position: [5, 2, 0], color: REGION_COLORS.thinking },
+    { name: 'skill', position: [0, -4, 2], color: REGION_COLORS.skill }
   ]
 
   regions.forEach(region => {
-    const geometry = new THREE.SphereGeometry(2.5, 32, 32)
-    const material = new THREE.MeshPhongMaterial({
+    const geometry = new THREE.SphereGeometry(1.2, 12, 12)
+    const material = new THREE.MeshBasicMaterial({
       color: region.color,
-      emissive: region.color,
-      emissiveIntensity: 0.3,
       transparent: true,
-      opacity: 0.6
+      opacity: 0.7
     })
     const sphere = new THREE.Mesh(geometry, material)
     sphere.position.set(region.position[0], region.position[1], region.position[2])
     sphere.userData = { region: region.name }
     brainGroup!.add(sphere)
 
-    // 添加区域光晕
-    const glowGeometry = new THREE.SphereGeometry(3, 32, 32)
-    const glowMaterial = new THREE.MeshBasicMaterial({
+    const ringGeometry = new THREE.RingGeometry(1.5, 1.8, 32)
+    const ringMaterial = new THREE.MeshBasicMaterial({
       color: region.color,
       transparent: true,
-      opacity: 0.1
+      opacity: 0.3,
+      side: THREE.DoubleSide
     })
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial)
-    glow.position.copy(sphere.position)
-    brainGroup!.add(glow)
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial)
+    ring.position.set(region.position[0], region.position[1], region.position[2] + 0.1)
+    brainGroup!.add(ring)
   })
 }
 
 function createNeuralParticles() {
   if (!brainGroup) return
 
-  const particleCount = 500
+  const particleCount = 150
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(particleCount * 3)
   const colors = new Float32Array(particleCount * 3)
+  const sizes = new Float32Array(particleCount)
 
   for (let i = 0; i < particleCount; i++) {
-    // 在大脑周围随机分布
     const theta = Math.random() * Math.PI * 2
     const phi = Math.acos(2 * Math.random() - 1)
-    const radius = 8 + Math.random() * 6
+    const radius = 5 + Math.random() * 4
 
     positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
     positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
     positions[i * 3 + 2] = radius * Math.cos(phi)
 
-    // 颜色
     const colorType = Math.random()
     let color
     if (colorType < 0.33) {
@@ -217,17 +202,47 @@ function createNeuralParticles() {
     colors[i * 3] = color.r
     colors[i * 3 + 1] = color.g
     colors[i * 3 + 2] = color.b
+
+    sizes[i] = 0.5 + Math.random() * 1.5
   }
 
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
 
-  const material = new THREE.PointsMaterial({
-    size: 0.15,
-    vertexColors: true,
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 }
+    },
+    vertexShader: `
+      attribute float size;
+      uniform float uTime;
+      varying vec3 vColor;
+      
+      void main() {
+        vColor = color;
+        vec3 pos = position;
+        float pulse = sin(uTime * 2.0 + position.x * 0.5 + position.y * 0.3) * 0.3;
+        pos += normalize(position) * pulse;
+        vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+        gl_PointSize = size * (200.0 / -mvPosition.z);
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vColor;
+      
+      void main() {
+        float dist = length(gl_PointCoord - vec2(0.5));
+        if (dist > 0.5) discard;
+        float alpha = 1.0 - smoothstep(0.0, 0.5, dist);
+        gl_FragColor = vec4(vColor, alpha);
+      }
+    `,
     transparent: true,
-    opacity: 0.8,
-    blending: THREE.AdditiveBlending
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
   })
 
   particles = new THREE.Points(geometry, material)
@@ -239,97 +254,78 @@ function createNeuralParticles() {
 function createSynapseConnections() {
   if (!brainGroup) return
 
-  const connectionCount = 200
-  const geometry = new THREE.BufferGeometry()
-  const positions = new Float32Array(connectionCount * 6)
+  const connectionCount = 60
+  const allPoints: THREE.Vector3[] = []
 
   for (let i = 0; i < connectionCount; i++) {
-    // 随机起点和终点
     const startTheta = Math.random() * Math.PI * 2
     const startPhi = Math.acos(2 * Math.random() - 1)
-    const startRadius = 8 + Math.random() * 4
+    const startRadius = 5 + Math.random() * 3
+
+    const startPoint = new THREE.Vector3(
+      startRadius * Math.sin(startPhi) * Math.cos(startTheta),
+      startRadius * Math.sin(startPhi) * Math.sin(startTheta),
+      startRadius * Math.cos(startPhi)
+    )
+
+    const midPoint = startPoint.clone().multiplyScalar(0.5 + Math.random() * 0.3)
 
     const endTheta = Math.random() * Math.PI * 2
     const endPhi = Math.acos(2 * Math.random() - 1)
-    const endRadius = 8 + Math.random() * 4
+    const endRadius = 5 + Math.random() * 3
 
-    positions[i * 6] = startRadius * Math.sin(startPhi) * Math.cos(startTheta)
-    positions[i * 6 + 1] = startRadius * Math.sin(startPhi) * Math.sin(startTheta)
-    positions[i * 6 + 2] = startRadius * Math.cos(startPhi)
+    const endPoint = new THREE.Vector3(
+      endRadius * Math.sin(endPhi) * Math.cos(endTheta),
+      endRadius * Math.sin(endPhi) * Math.sin(endTheta),
+      endRadius * Math.cos(endPhi)
+    )
 
-    positions[i * 6 + 3] = endRadius * Math.sin(endPhi) * Math.cos(endTheta)
-    positions[i * 6 + 4] = endRadius * Math.sin(endPhi) * Math.sin(endTheta)
-    positions[i * 6 + 5] = endRadius * Math.cos(endPhi)
+    const curve = new THREE.QuadraticBezierCurve3(startPoint, midPoint, endPoint)
+    const curvePoints = curve.getPoints(8)
+    allPoints.push(...curvePoints)
   }
 
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-
+  const geometry = new THREE.BufferGeometry().setFromPoints(allPoints)
   const material = new THREE.LineBasicMaterial({
     color: 0x00ff41,
     transparent: true,
     opacity: 0.15
   })
 
-  connections = new THREE.LineSegments(geometry, material)
-  brainGroup.add(connections)
+  const lines = new THREE.LineSegments(geometry, material)
+  lines.userData.isSynapse = true
+  brainGroup.add(lines)
 
   synapseCount.value = connectionCount
   activeRegions.value = 3
 }
 
-function addLights() {
-  if (!scene) return
-
-  // 环境光
-  const ambientLight = new THREE.AmbientLight(0x404040, 2)
-  scene.add(ambientLight)
-
-  // 点光源 - 核心发光
-  const coreLight = new THREE.PointLight(0x00ff41, 2, 50)
-  coreLight.position.set(0, 0, 0)
-  scene.add(coreLight)
-
-  // 区域光源
-  const storageLight = new THREE.PointLight(REGION_COLORS.storage, 1, 20)
-  storageLight.position.set(-6, 3, 0)
-  scene.add(storageLight)
-
-  const thinkingLight = new THREE.PointLight(REGION_COLORS.thinking, 1, 20)
-  thinkingLight.position.set(6, 3, 0)
-  scene.add(thinkingLight)
-
-  const skillLight = new THREE.PointLight(REGION_COLORS.skill, 1, 20)
-  skillLight.position.set(0, -5, 3)
-  scene.add(skillLight)
-}
-
 function updateBrainActivity(stats: any) {
-  if (!brainGroup) return
+  if (!brainGroup || !particles) return
 
   const total = stats.memory_count || 0
   const storage = stats.tiered_breakdown?.storage || 0
   const thinking = stats.tiered_breakdown?.thinking || 0
   const skill = stats.tiered_breakdown?.skill || 0
 
-  // 根据统计数据调整区域亮度
   brainGroup.children.forEach(child => {
-    if (child.userData.region) {
-      const material = (child as THREE.Mesh).material as THREE.MeshPhongMaterial
-      let intensity = 0.3
+    if (child.userData.region && child instanceof THREE.Mesh) {
+      const material = child.material as THREE.MeshBasicMaterial
+      let opacity = 0.5
 
       switch (child.userData.region) {
         case 'storage':
-          intensity = 0.3 + (storage / Math.max(total, 1)) * 0.7
+          opacity = 0.3 + (storage / Math.max(total, 1)) * 0.7
           break
         case 'thinking':
-          intensity = 0.3 + (thinking / Math.max(total, 1)) * 0.7
+          opacity = 0.3 + (thinking / Math.max(total, 1)) * 0.7
           break
         case 'skill':
-          intensity = 0.3 + (skill / Math.max(total, 1)) * 0.7
+          opacity = 0.3 + (skill / Math.max(total, 1)) * 0.7
           break
       }
 
-      material.emissiveIntensity = intensity
+      material.opacity = opacity
     }
   })
 }
@@ -339,21 +335,13 @@ function animate() {
 
   animationId = requestAnimationFrame(animate)
 
-  // 旋转大脑
-  brainGroup.rotation.y += 0.002
-  brainGroup.rotation.x = Math.sin(Date.now() * 0.0005) * 0.1
+  const time = performance.now() * 0.001
 
-  // 粒子脉冲效果
-  if (particles) {
-    const positions = particles.geometry.attributes.position.array as Float32Array
-    const time = Date.now() * 0.001
+  brainGroup.rotation.y = time * 0.15
+  brainGroup.rotation.x = Math.sin(time * 0.3) * 0.1
 
-    for (let i = 0; i < positions.length; i += 3) {
-      const idx = i / 3
-      const offset = Math.sin(time + idx * 0.1) * 0.5
-      positions[i + 2] += offset * 0.01
-    }
-    particles.geometry.attributes.position.needsUpdate = true
+  if (particles && particles.material instanceof THREE.ShaderMaterial) {
+    particles.material.uniforms.uTime.value = time
   }
 
   renderer.render(scene, camera)
@@ -373,12 +361,34 @@ function handleResize() {
 function cleanup() {
   if (animationId) {
     cancelAnimationFrame(animationId)
+    animationId = null
   }
 
   window.removeEventListener('resize', handleResize)
 
+  if (brainGroup) {
+    brainGroup.traverse((child) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.Points || child instanceof THREE.Line) {
+        if (child.geometry) {
+          child.geometry.dispose()
+        }
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => m.dispose())
+          } else {
+            child.material.dispose()
+          }
+        }
+      }
+    })
+    if (scene) {
+      scene.remove(brainGroup)
+    }
+  }
+
   if (renderer) {
     renderer.dispose()
+    renderer.forceContextLoss()
     if (canvasRef.value && renderer.domElement.parentNode === canvasRef.value) {
       canvasRef.value.removeChild(renderer.domElement)
     }
@@ -389,7 +399,6 @@ function cleanup() {
   renderer = null
   brainGroup = null
   particles = null
-  connections = null
 }
 </script>
 

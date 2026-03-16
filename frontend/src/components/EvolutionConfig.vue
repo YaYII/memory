@@ -207,6 +207,9 @@ onMounted(() => {
 .evolution-config {
   padding: 15px;
   min-width: 300px;
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 h3 {

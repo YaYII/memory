@@ -1,0 +1,346 @@
+/* 简化的TUI样式文件 - 使用标准CSS变量 */
+
+/* 全局样式 */
+* {
+    box-sizing: border-box;
+}
+
+/* 主应用容器 */
+#main-container {
+    height: 100%;
+    width: 100%;
+}
+
+/* 侧边栏 */
+.sidebar {
+    width: 25%;
+    height: 100%;
+    background: #1e1e1e;
+    border-right: 1px solid #00d4ff;
+    padding: 1rem;
+    color: #ffffff;
+}
+
+#logo {
+      text-align: center;
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+      font-weight: bold;
+      color: #00d4ff;
+      font-size: 1.2em;
+ }
+
+#user-info, #project-info {
+    text-align: center;
+    margin: 1 0;
+    color: #b0b0b0;
+}
+
+.stats {
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 1px solid #404040;
+    background: #2d2d2d;
+}
+
+.section-title {
+     font-weight: bold;
+     color: #00d4ff;
+     margin-bottom: 1rem;
+ }
+
+/* 主内容区 */
+#content-area {
+    width: 75%;
+    height: 100%;
+    padding: 1rem;
+}
+
+#list-title {
+     font-weight: bold;
+     color: #00d4ff;
+     margin-bottom: 1rem;
+ }
+
+/* 按钮样式 */
+button {
+    margin: 0.5rem;
+    padding: 1rem 2rem;
+    background: #00d4ff;
+    color: #1e1e1e;
+    border: none;
+    border-radius: 4;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: #00b8e6;
+    transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button.variant-secondary {
+    background: #ff6b6b;
+}
+
+button.variant-error {
+    background: #ff4757;
+}
+
+button:disabled {
+    background: #404040;
+    color: #b0b0b0;
+    cursor: not-allowed;
+}
+
+.button-group {
+    height: auto;
+    width: 100%;
+    margin-top: 1;
+}
+
+/* 列表样式 */
+MemoryListWidget {
+    height: 60%;
+    border: 1px solid #404040;
+    margin: 1 0;
+}
+
+ListItem {
+    padding: 1rem;
+    border-bottom: 1px solid #404040;
+}
+
+ListItem:hover {
+    background: #3a3a3a;
+}
+
+ListItem:focus {
+    background: #4a4a4a;
+}
+
+/* 输入框样式 */
+input, textarea, select {
+    margin: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #2d2d2d;
+    color: #ffffff;
+    border: 1px solid #404040;
+    border-radius: 4;
+    width: 100%;
+}
+
+input:focus, textarea:focus, select:focus {
+    border-color: #00d4ff;
+    outline: 2px solid #00d4ff;
+}
+
+input:disabled, textarea:disabled, select:disabled {
+    background: #404040;
+    color: #b0b0b0;
+    cursor: not-allowed;
+}
+
+/* 标签页样式 */
+#content-tabs {
+    height: 20%;
+    margin-top: 1;
+}
+
+/* 记忆详情样式 */
+#memory-details {
+    height: 100%;
+    width: 100%;
+    padding: 1rem;
+}
+
+#memory-details .title {
+     text-align: center;
+     font-weight: bold;
+     color: #00d4ff;
+     margin-bottom: 2rem;
+ }
+
+.form-group {
+    margin: 1 0;
+}
+
+.form-label {
+     font-weight: bold;
+     margin-bottom: 0.5rem;
+ }
+
+#memory-content {
+    height: 40%;
+    margin: 1 0;
+}
+
+/* 搜索屏幕样式 */
+#search-container {
+    height: 100%;
+    width: 100%;
+    padding: 1rem;
+}
+
+#search-results {
+    height: 60%;
+    margin: 1 0;
+    border: 1px solid #404040;
+}
+
+/* 新建记忆屏幕样式 */
+#new-memory-container {
+    height: 100%;
+    width: 100%;
+    padding: 1rem;
+}
+
+#new-memory-container .title {
+     text-align: center;
+     font-weight: bold;
+     color: #00d4ff;
+     margin-bottom: 2rem;
+ }
+
+/* 加载屏幕样式 */
+#loading-text {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+/* 通知样式 */
+.notification {
+    position: fixed;
+    bottom: 2;
+    right: 2;
+    padding: 1 2;
+    background: #00d4ff;
+    color: #1e1e1e;
+    border-radius: 4;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease;
+}
+
+.notification.success {
+    background: #51cf66;
+}
+
+.notification.error {
+    background: #ff4757;
+}
+
+.notification.warning {
+    background: #ffd93d;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    #main-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 20%;
+    }
+
+    #content-area {
+        width: 100%;
+        height: 80%;
+    }
+}
+
+/* 动画效果 */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* 特殊效果 */
+.glow {
+    text-effect: outline 1px #00d4ff;
+    text-outline-color: transparent;
+}
+
+.scanline {
+    background: linear-gradient(
+        to bottom,
+        transparent 0%,
+        rgba(0, 212, 255, 0.1) 50%,
+        transparent 100%
+    );
+    background-size: 100% 4px;
+    animation: scanline 3s linear infinite;
+}
+
+@keyframes scanline {
+    0% {
+        background-position: 0 -100%;
+    }
+    100% {
+        background-position: 0 200%;
+    }
+}
+
+/* 代码块样式 */
+code {
+    background: #2d2d2d;
+    padding: 0.2 0.5;
+    border-radius: 3;
+    font-family: monospace;
+    border: 1px solid #404040;
+}
+
+/* 链接样式 */
+a {
+    color: #00d4ff;
+    text-decoration: underline;
+}
+
+a:hover {
+    color: #00b8e6;
+}
+
+/* 表格样式 */
+DataTable {
+    margin: 1 0;
+    border: 1px solid #404040;
+}
+
+DataTable:focus {
+    border-color: #00d4ff;
+}
+
+/* 日志面板样式 */
+Log {
+    background: #2d2d2d;
+    border: 1px solid #404040;
+    height: 30%;
+    overflow-y: auto;
+}

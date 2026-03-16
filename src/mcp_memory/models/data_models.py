@@ -17,7 +17,7 @@ class MemoryItem(BaseModel):
     memory_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="记忆唯一ID")
     
     # ========== 新增：标题和元信息 ==========
-    title: str = Field(..., description="记忆标题", max_length=200)
+    title: str = Field("", description="记忆标题", max_length=200)
     content: str = Field(..., description="记忆完整内容")
     description: Optional[str] = Field(None, description="任务描述/内容摘要")
     summary: Optional[str] = Field(None, description="任务总结")

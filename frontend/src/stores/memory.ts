@@ -243,6 +243,21 @@ export const useMemoryStore = defineStore('memory', () => {
     }
   }
 
+  async function fetchLogs() {
+    try {
+      const result = await memoryApi.getLogs()
+      if (result.logs && result.logs.length > 0) {
+        logs.value = result.logs.slice(0, 50).map(log => ({
+          time: log.time,
+          message: log.message,
+          type: (['info', 'success', 'error', 'warn'].includes(log.type) ? log.type : 'info') as 'info' | 'success' | 'error' | 'warn'
+        }))
+      }
+    } catch (e) {
+      console.error('Failed to fetch logs:', e)
+    }
+  }
+
   return {
     memories,
     currentMemory,
@@ -274,6 +289,7 @@ export const useMemoryStore = defineStore('memory', () => {
     reflectMemory,
     rebuildGraph,
     submitFeedback,
-    summarizeMemories
+    summarizeMemories,
+    fetchLogs
   }
 })

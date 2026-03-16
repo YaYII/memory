@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useMemoryStore } from '@/stores/memory'
 import { storeToRefs } from 'pinia'
 
@@ -29,6 +29,20 @@ const memoryStore = useMemoryStore()
 const { logs } = storeToRefs(memoryStore)
 
 const logContentRef = ref<HTMLDivElement>()
+let logRefreshInterval: number | null = null
+
+onMounted(() => {
+  memoryStore.fetchLogs()
+  logRefreshInterval = window.setInterval(() => {
+    memoryStore.fetchLogs()
+  }, 3000)
+})
+
+onBeforeUnmount(() => {
+  if (logRefreshInterval) {
+    clearInterval(logRefreshInterval)
+  }
+})
 
 watch(logs, () => {
   nextTick(() => {
