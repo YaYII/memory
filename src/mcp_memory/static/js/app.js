@@ -62,8 +62,15 @@ function addLog(msg, type = 'info') {
         const entry = document.createElement('div');
         entry.className = `log-entry ${type}`;
         entry.innerText = `[${timestamp}] ${msg}`;
+        
+        // Use a simple check to avoid unnecessary scroll calculations if the element is not visible
+        const isScrolledToBottom = logContent.scrollHeight - logContent.clientHeight <= logContent.scrollTop + 1;
+        
         logContent.appendChild(entry);
-        logContent.scrollTop = logContent.scrollHeight;
+        
+        if (isScrolledToBottom) {
+            logContent.scrollTop = logContent.scrollHeight;
+        }
     }
 }
 

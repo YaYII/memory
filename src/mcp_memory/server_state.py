@@ -27,6 +27,8 @@ class ServerState:
     # 核心组件（由 lifespan 初始化）
     memory_manager: Optional[object] = None       # MemoryManager
     tiered_evolution: Optional[object] = None     # TieredEvolutionEngine
+    ai_brain: Optional[object] = None             # AIBrain (可选)
+    cognitive_processor: Optional[object] = None  # CognitiveProcessor (可选)
 
     # 进化调度状态
     evolution_profile_override: Optional[str] = None

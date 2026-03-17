@@ -80,18 +80,18 @@ function initGraph() {
             })
             .nodeVal(node => node.type === 'category' ? 6 : (node.type === 'memory' ? 4 : 2))
             .nodeLabel('label')
-            .nodeResolution(16)
+            .nodeResolution(8) // Reduced from 16
             .linkWidth(0.5)
             .linkColor(() => 'rgba(0, 255, 65, 0.15)')
             .linkDirectionalArrowLength(0)
             .linkDirectionalArrowRelPos(1)
-            .linkCurvature(0.1)
+            .linkCurvature(0) // Reduced from 0.1 - straight lines are much faster
             .linkOpacity(0.4)
             .dagMode(null)
             .dagLevelDistance(0)
             .numDimensions(3)
-            .warmupTicks(100)
-            .cooldownTicks(50)
+            .warmupTicks(50) // Reduced from 100
+            .cooldownTicks(20) // Reduced from 50
             .onNodeHover(node => {
                 if (node && node.type !== 'category') {
                     stopAutoRotate();

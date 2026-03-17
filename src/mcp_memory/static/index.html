@@ -16,108 +16,125 @@
     <meta http-equiv="Expires" content="0">
 </head>
 <body>
-    <div class="scanline"></div>
-    <div id="canvas-container"></div>
-    <div id="graph-placeholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; text-align: center; display: none;">
-        <h2 style="color: #00ff41; font-size: 24px; text-shadow: 0 0 10px #00ff41;">暂无认知数据</h2>
-        <p style="color: #008f11; max-width: 400px;">当前记忆库尚未经过认知分析，图谱与技能树暂时无法显示。<br><br><b>提示：</b>需要配置 LLM API Key (GLM/DeepSeek) 以开启后台认知处理，或手动触发记忆扫描。</p>
-        <button id="rebuild-btn" class="view-btn" style="margin-top: 15px; width: auto; padding: 10px 20px;">手动扫描现有记忆 (Scan Memories)</button>
-    </div>
-    
-    <div id="ui-layer">
-        <!-- 三层记忆系统图例面板 (左上角) -->
-        <div class="panel legend-panel">
-            <h1>三层记忆系统 </h1>
-            
-            <!-- 记忆类型切换 -->
-            <div class="memory-type-tabs">
-                <button class="memory-tab active" data-type="all">全部</button>
-                <button class="memory-tab" data-type="skill">技能记忆</button>
-                <button class="memory-tab" data-type="thinking">思维记忆</button>
-                <button class="memory-tab" data-type="storage">存储记忆</button>
-            </div>
-            
-            <!-- 统计信息 -->
-            <div class="tiered-stats">
-                <div class="stat-item">
-                    <span class="stat-label">技能</span>
-                    <span class="stat-value" id="skill-count">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">思维</span>
-                    <span class="stat-value" id="thinking-count">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">存储</span>
-                    <span class="stat-value" id="storage-count">0</span>
+    <div id="app-container">
+        <!-- 左侧导航侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-text">MEMORY<span>SYSTEM</span></div>
+                <div class="system-status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="sidebar-status-text">系统就绪</span>
                 </div>
             </div>
             
-            <!-- 记忆列表 -->
-            <div class="memory-list" id="memory-list">
-                <div class="memory-item-placeholder">加载中...</div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-view="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-text">概览 Dashboard</span>
+                </div>
+                <div class="nav-item" data-view="list">
+                    <span class="nav-icon">📋</span>
+                    <span class="nav-text">记忆列表 List</span>
+                </div>
+                <div class="nav-item" data-view="write">
+                    <span class="nav-icon">✏️</span>
+                    <span class="nav-text">手动写入 Write</span>
+                </div>
+                <div class="nav-item" data-view="tiered">
+                    <span class="nav-icon">🧠</span>
+                    <span class="nav-text">三层记忆 Tiered</span>
+                </div>
+                <div class="nav-item" data-view="brain">
+                    <span class="nav-icon">🧬</span>
+                    <span class="nav-text">AI 大脑 Brain</span>
+                </div>
+                <div class="nav-item-divider"></div>
+                <div class="nav-item" data-view="evolution">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">进化配置 Evolution</span>
+                </div>
+                <div class="nav-item" data-view="feedback">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-text">系统反馈 Feedback</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="rebuild-btn-side" class="side-btn">重建图谱 (Rebuild)</button>
+                <button id="reflect-btn-side" class="side-btn">触发反思 (Reflect)</button>
+                <button id="refresh-btn-side" class="side-btn">刷新数据 (Sync)</button>
             </div>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 3D 背景容器 -->
+            <div id="canvas-container"></div>
             
-            <!-- 搜索框 -->
-            <div class="memory-search-box">
-                <input type="text" id="tiered-search-input" placeholder="搜索三层记忆...">
-                <button id="tiered-search-btn">搜索</button>
+            <div id="ui-layer">
+                <!-- 顶部状态栏 -->
+                <header class="top-bar">
+                    <div class="breadcrumb">Cognitive Center / <span id="current-view-name">Overview</span></div>
+                    <div class="llm-indicator">
+                        <span id="llm-state-chip">LLM: 未就绪</span>
+                        <span id="evolution-chip">策略: 标准</span>
+                    </div>
+                </header>
+
+                <!-- 仪表盘面板容器 (Grid) -->
+                <div class="dashboard-grid">
+                    <!-- 核心统计面板 -->
+                    <div class="panel stat-panel">
+                        <div class="panel-header">核心指标 Metrics</div>
+                        <div class="stats-grid">
+                            <div class="mini-stat">
+                                <div class="mini-label">记忆总量</div>
+                                <div class="mini-value" id="mem-count">0</div>
+                            </div>
+                            <div class="mini-stat">
+                                <div class="mini-label">知识实体</div>
+                                <div class="mini-value" id="entity-count">0</div>
+                            </div>
+                            <div class="mini-stat">
+                                <div class="mini-label">活跃区域</div>
+                                <div class="mini-value" id="activity-level">3</div>
+                            </div>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="tiered-pills">
+                            <div class="pill skill"><span class="pill-label">技能</span> <span id="skill-count">0</span></div>
+                            <div class="pill thinking"><span class="pill-label">思维</span> <span id="thinking-count">0</span></div>
+                            <div class="pill storage"><span class="pill-label">存储</span> <span id="storage-count">0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- LLM 思考面板 -->
+                    <div class="panel thinking-panel">
+                        <div class="panel-header">深度思考 Thinking</div>
+                        <div id="interaction-content">
+                            <div class="thinking-placeholder">等待思维信号...</div>
+                        </div>
+                    </div>
+
+                    <!-- 每日进化面板 -->
+                    <div class="panel evolution-panel">
+                        <div class="panel-header">每日异步进化 Daily Reflection</div>
+                        <div class="daily-stats">
+                            <div class="stat-row"><span>下次执行</span><span class="stat-val" id="daily-next">--:--</span></div>
+                            <div class="stat-row"><span>上次执行</span><span class="stat-val" id="daily-last">从未</span></div>
+                            <div class="stat-row"><span>已处理组</span><span class="stat-val" id="daily-merged">0 组</span></div>
+                            <div id="daily-status" class="status-text">就绪</div>
+                        </div>
+                    </div>
+
+                    <!-- 神经日志流面板 -->
+                    <div class="panel logs-panel">
+                        <div class="panel-header">神经日志流 Logs <button id="clear-logs" class="icon-btn">清空</button></div>
+                        <div id="log-content"></div>
+                    </div>
+                </div>
             </div>
-           
-        </div>
-
-        <!-- LLM Interaction Panel -->
-        <div class="panel interaction-panel" id="interaction-panel">
-            <h1 id="thinking-title">深度思考</h1>
-            <div id="interaction-content">
-                <div class="thinking-placeholder">等待思维信号...</div>
-            </div>
-        </div>
-
-        <div class="panel stat-card">
-            <h1>系统状态监控</h1>
-            <div class="stat-row"><span>记忆总量 </span><span class="stat-val" id="mem-count">0</span></div>
-            <div class="stat-row"><span>知识实体 </span><span class="stat-val" id="entity-count">0</span></div>
-            <div class="stat-row"><span>服务状态 </span><span class="stat-val" id="status" style="color: #00ff41;">运行中</span></div>
-            <div class="stat-row"><span>大脑活动 </span><span class="stat-val" id="activity">待机</span></div>
-            <div class="stat-row"><span>进化策略 </span><span class="stat-val" id="evolution-profile">标准</span></div>
-            <div class="stat-row"><span>深度思考 </span><span class="stat-val" id="llm-state">未知</span></div>
-            
-            <!-- 每日深度思考状态 -->
-            <div style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 12px;">
-                <h3 style="color: #00ff41; font-size: 13px; margin-bottom: 8px;">📅 每日深度思考</h3>
-                <div class="stat-row"><span>下次执行 </span><span class="stat-val" id="daily-next">--:--</span></div>
-                <div class="stat-row"><span>上次执行 </span><span class="stat-val" id="daily-last">从未</span></div>
-                <div class="stat-row"><span>执行次数 </span><span class="stat-val" id="daily-count">0</span></div>
-                <div class="stat-row"><span>合并记忆 </span><span class="stat-val" id="daily-merged">0 组</span></div>
-                <div id="daily-status" style="margin-top: 5px; font-size: 11px; color: #008f11;">等待调度...</div>
-            </div>
-            
-            <div class="view-switcher" style="margin-top: 15px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 15px;">
-                <button id="view-neural" class="view-btn active">神经图谱</button>
-                <button id="view-skill" class="view-btn">技能树 </button>
-            </div>
-
-            <div class="view-switcher" style="margin-top: 10px;">
-                <button id="profile-light" class="view-btn">轻量</button>
-                <button id="profile-standard" class="view-btn active">标准</button>
-                <button id="profile-aggressive" class="view-btn">激进</button>
-            </div>
-
-            <div class="view-switcher" style="margin-top: 10px; border-top: 1px solid rgba(0,255,65,0.3); padding-top: 12px;">
-                <input id="memory-search-input" type="text" placeholder="搜索记忆关键词" style="flex: 1; background: rgba(0,255,65,0.08); border: 1px solid #00ff41; color: #00ff41; padding: 8px 10px; font-family: inherit; font-size: 12px;">
-                <button id="memory-search-btn" class="view-btn" style="max-width: 80px;">搜索</button>
-            </div>
-            <div id="memory-search-results" style="margin-top: 8px; max-height: 130px; overflow-y: auto; font-size: 12px;"></div>
-        </div>
-
-      
-
-        <div class="panel log-panel">
-            <h1>神经日志流</h1>
-            <div id="log-content"></div>
-        </div>
-
+        </main>
     </div>
 
     <!-- 记忆详情模态框 -->

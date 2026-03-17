@@ -260,6 +260,12 @@ class MemoryStore:
         last_accessed_iso = memory.last_accessed.isoformat() if memory.last_accessed else datetime.now().isoformat()
         char_count = len(memory.content) if memory.content else 0
 
+        # 严格确保 summary 和 description 是字符串，防止 Pydantic 校验失败
+        def _to_str(val) -> str:
+            if val is None: return ""
+            if isinstance(val, (list, dict)): return json.dumps(val, ensure_ascii=False)
+            return str(val)
+
         metadata = {
             "user_id": memory.user_id,
             "scope": memory.scope,
@@ -276,9 +282,9 @@ class MemoryStore:
             "skill_type": memory.skill_type or "",
             "verified": str(memory.verified) if memory.verified is not None else "False",
             "confidence": memory.confidence or 1.0,
-            "title": memory.title or "",
-            "description": memory.description or "",
-            "summary": memory.summary or "",
+            "title": _to_str(memory.title),
+            "description": _to_str(memory.description),
+            "summary": _to_str(memory.summary),
             "content_type": memory.content_type or "note",
             "keywords": json.dumps(memory.keywords or [], ensure_ascii=False),
             "tags": json.dumps(memory.tags or [], ensure_ascii=False),
@@ -682,7 +688,7 @@ class MemoryStore:
                     
                     # 创建MemoryItem对象
                     memory = MemoryItem(
-                        id=mem_id,
+                        memory_id=mem_id,
                         content=doc,
                         title=meta.get("title", doc[:50] + "..." if len(doc) > 50 else doc),
                         description=description,

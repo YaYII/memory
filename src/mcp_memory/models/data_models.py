@@ -60,7 +60,7 @@ class MemoryItem(BaseModel):
     # ========== 三层记忆关联字段 ==========
     source_memories: List[str] = Field(default_factory=list, description="源记忆ID列表（用于链接）")
     session_id: Optional[str] = Field(None, description="对话会话ID（仅storage类型使用）")
-    summary_type: Optional[Literal["session", "daily", "weekly", "manual"]] = Field(
+    summary_type: Optional[Literal["session", "daily", "weekly", "manual", "auto_distillation"]] = Field(
         None, 
         description="总结类型（仅thinking类型使用）"
     )
@@ -72,6 +72,19 @@ class MemoryItem(BaseModel):
     version: int = Field(1, description="版本号")
     verified: bool = Field(False, description="是否已验证")
     
+    from pydantic import validator
+
+    @validator("summary", "description", "title", pre=True)
+    def ensure_string(cls, v):
+        if v is None:
+            return ""
+        if isinstance(v, list):
+            return " ".join(str(i) for i in v)
+        if isinstance(v, dict):
+            import json
+            return json.dumps(v, ensure_ascii=False)
+        return str(v)
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -188,7 +201,7 @@ class ThinkingMemoryCreate(BaseModel):
     content: str = Field(..., description="总结内容")
     user_id: str = Field(..., description="用户ID")
     source_memories: List[str] = Field(..., description="源存储记忆ID列表")
-    summary_type: Literal["session", "daily", "weekly", "manual"] = Field("session", description="总结类型")
+    summary_type: Literal["session", "daily", "weekly", "manual", "auto_distillation"] = Field("session", description="总结类型")
     key_points: List[str] = Field(default_factory=list, description="关键要点")
     project_id: Optional[str] = Field(None, description="项目ID")
     scope: Literal["project", "global"] = Field("project", description="作用域")
