@@ -34,7 +34,6 @@ sys.path.insert(0, str(project_root))
 
 from mcp_memory.core.config import settings
 from mcp_memory.memory.manager import MemoryManager
-from mcp_memory.memory.cognitive import CognitiveProcessor
 
 app = typer.Typer(
     name="mcp-memory-local",
@@ -42,10 +41,8 @@ app = typer.Typer(
     add_completion=False
 )
 console = Console()
-
 # 全局实例（延迟初始化）
 _memory_manager: Optional[MemoryManager] = None
-_cognitive_processor: Optional[CognitiveProcessor] = None
 
 def get_memory_manager() -> MemoryManager:
     """获取记忆管理器实例（单例模式）"""
@@ -55,13 +52,6 @@ def get_memory_manager() -> MemoryManager:
         _memory_manager = MemoryManager()
         console.print("[dim]✅ 记忆系统初始化完成[/dim]")
     return _memory_manager
-
-def get_cognitive_processor() -> CognitiveProcessor:
-    """获取认知处理器实例"""
-    global _cognitive_processor
-    if _cognitive_processor is None:
-        _cognitive_processor = CognitiveProcessor()
-    return _cognitive_processor
 
 
 @app.command()
@@ -279,22 +269,6 @@ def stats():
         console.print(f"[red]❌ 获取统计失败: {e}[/red]")
 
 
-@app.command()
-def reflect(
-    user_id: str = typer.Option("default_user", "--user", "-u", help="用户ID"),
-):
-    """🤔 触发深度反思（本地直接操作）"""
-    try:
-        cognitive = get_cognitive_processor()
-        
-        console.print("[yellow]🤔 正在触发深度反思...[/yellow]")
-        
-        # 直接调用本地反思方法
-        # Note: 这里需要实现具体的反思逻辑
-        console.print("[green]✅ 反思任务已触发[/green]")
-        
-    except Exception as e:
-        console.print(f"[red]❌ 触发失败: {e}[/red]")
 
 
 @app.command()

@@ -88,8 +88,8 @@ class MemoryStore:
                     data = json.load(f)
                     loaded = nx.node_link_graph(data)
                     self.graph = loaded if loaded.is_directed() else loaded.to_directed()
-            except (json.JSONDecodeError, ValueError) as e:
-                logger.warning(f"[MemoryStore] 加载知识图谱失败: {e}")
+            except Exception as e:
+                logger.warning(f"[MemoryStore] 加载知识图谱失败 (可能格式不兼容): {e}")
                 self.graph = nx.DiGraph()
 
     def _save_graph(self) -> None:
@@ -505,6 +505,10 @@ class MemoryStore:
                     0.10 * importance_score +
                     0.05 * instinct_score
                 )
+
+                # 7. Procedural (Skill) Boost - 优先召回技能和规则
+                if meta.get("memory_type") == "skill":
+                    final_score += 0.2  # 显著提升技能权重
 
                 candidates.append({
                     "content": doc,

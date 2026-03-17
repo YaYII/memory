@@ -50,26 +50,6 @@ async def _graph_flush_task(state) -> None:
             logger.exception("Graph flush failed: %s", e)
 
 
-async def _evolution_scan_task(state, policy_fn) -> None:
-    """周期性记忆认知扫描 (Cognitive scan)。"""
-    while True:
-        try:
-            policy = policy_fn()
-            await asyncio.sleep(policy["scan_interval"])
-            processed = await state.cognitive_processor.periodic_scan_once(
-                batch_size=policy["batch_size"]
-            )
-            logger.info(
-                "Evolution cognitive scan complete: processed=%d profile=%s",
-                processed, policy["profile"],
-            )
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            logger.exception("Evolution cognitive scan failed: %s", e)
-            await asyncio.sleep(60)  # 失败后等待 60s 再重试
-
-
 async def _tiered_evolution_task(state) -> None:
     """分层记忆进化任务 (Storage -> Thinking -> Skill)。"""
     while True:
@@ -85,37 +65,6 @@ async def _tiered_evolution_task(state) -> None:
         except Exception as e:
             logger.exception("Tiered evolution failed: %s", e)
             await asyncio.sleep(60)
-
-
-async def _evolution_reflection_task(state, policy_fn) -> None:
-    """周期性记忆深度反思。"""
-    while True:
-        try:
-            policy = policy_fn()
-            await asyncio.sleep(policy["reflection_interval"])
-            await state.cognitive_processor.run_reflection(
-                settings.MCP_EVOLUTION_REFLECTION_USER_ID
-            )
-            logger.info("Evolution reflection complete: profile=%s", policy["profile"])
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            logger.exception("Evolution reflection failed: %s", e)
-            await asyncio.sleep(120)
-
-
-async def _memory_purification_task(state) -> None:
-    """每 5 分钟执行 AI 大脑记忆维护。"""
-    while True:
-        try:
-            await asyncio.sleep(300)
-            if state.ai_brain:
-                actions = await state.ai_brain._perform_memory_maintenance()
-                logger.info("Memory purification done: %s", ", ".join(actions))
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            logger.exception("Memory purification failed: %s", e)
 
 
 async def _health_check_warmup(state) -> None:
@@ -160,8 +109,7 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # 延迟导入（避免循环导入）
     from mcp_memory.memory.manager import MemoryManager
-    from mcp_memory.memory.cognitive import CognitiveProcessor
-    from mcp_memory.memory.agent_processor import MemoryAgentProcessor
+    from mcp_memory.memory.tiered_evolution import TieredEvolutionEngine
 
     # ── 初始化核心组件 ────────────────────────────────────────────────────────
     try:
@@ -169,73 +117,33 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("MemoryManager initialized")
     except Exception as e:
         logger.critical("FATAL: Failed to initialize MemoryManager: %s", e, exc_info=True)
-        # 不调用 sys.exit()，而是让 FastAPI 正常启动并在 /health/ready 返回 503
-        # 这样 Kubernetes 可以检测到 not-ready 状态并重启 Pod
         app.state.startup_error = str(e)
         yield
         return
 
     try:
-        cognitive_processor = CognitiveProcessor(memory_manager)
-        agent_processor = MemoryAgentProcessor()
-        
-        from mcp_memory.memory.tiered_evolution import TieredEvolutionEngine
         tiered_evolution = TieredEvolutionEngine(memory_manager.store)
         await tiered_evolution.initialize()
-        
-        logger.info("CognitiveProcessor, AgentProcessor, and TieredEvolutionEngine initialized")
+        logger.info("TieredEvolutionEngine initialized")
     except Exception as e:
-        logger.error("Failed to initialize processors: %s", e, exc_info=True)
-        cognitive_processor = None
-        agent_processor = None
+        logger.error("Failed to initialize TieredEvolutionEngine: %s", e, exc_info=True)
         tiered_evolution = None
-
-    # ── 初始化 AI Brain（可选组件，失败不影响核心功能）────────────────────────
-    ai_brain = None
-    try:
-        from mcp_memory.brain.ai_brain import AIBrain
-        ai_brain = AIBrain(memory_store=memory_manager.store)
-        await ai_brain.initialize()
-        logger.info("AI Brain initialized")
-    except Exception as e:
-        logger.warning("AI Brain initialization failed (non-critical): %s", e)
-
-    # ── 初始化 LLM 服务 ───────────────────────────────────────────────────────
-    if cognitive_processor:
-        try:
-            await cognitive_processor.initialize()
-            cognitive_processor.is_running = True
-            logger.info("LLM service initialized")
-        except Exception as e:
-            logger.warning("LLM service initialization failed: %s", e)
 
     # ── 挂载到 app.state（供路由访问）──────────────────────────────────────────
     from mcp_memory.server_state import ServerState
     state = ServerState(
         memory_manager=memory_manager,
-        cognitive_processor=cognitive_processor,
-        agent_processor=agent_processor,
-        ai_brain=ai_brain,
         tiered_evolution=tiered_evolution,
     )
     app.state.server = state
     app.state.startup_error = None
 
     # ── 启动后台任务 ───────────────────────────────────────────────────────────
-    if cognitive_processor:
-        cognitive_processor.set_logger(
-            lambda msg: logger.info("[EVOLUTION] %s", msg)
-        )
-
     _spawn(_graph_flush_task(state), "graph-flush")
-    _spawn(_memory_purification_task(state), "memory-purification")
 
-    if settings.MCP_EVOLUTION_ENABLED and cognitive_processor:
-        from mcp_memory.server import resolve_evolution_policy
-        _spawn(_evolution_scan_task(state, resolve_evolution_policy), "evolution-scan")
-        _spawn(_evolution_reflection_task(state, resolve_evolution_policy), "evolution-reflection")
+    if settings.MCP_EVOLUTION_ENABLED:
         _spawn(_tiered_evolution_task(state), "tiered-evolution")
-        logger.info("Evolution scheduler started")
+        logger.info("Evolution scheduler (Tiered) started")
 
     # 预热检查
     await _health_check_warmup(state)

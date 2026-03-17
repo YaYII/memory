@@ -18,6 +18,12 @@ class LLMFacade:
         self.router = LLMRouter(self.token_pool)
         self._initialized = False
 
+    def is_available(self) -> bool:
+        """检查是否有可用的 LLM 提供商"""
+        if not self._initialized:
+            return False
+        return len(self.router.get_sorted_providers()) > 0
+
     async def initialize(self):
         """初始化路由器并注册所有模型客户端"""
         if self._initialized:
