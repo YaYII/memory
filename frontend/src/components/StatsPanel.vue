@@ -29,6 +29,11 @@
         <span class="stat-value provider">{{ stats.preferred_provider || '无' }}</span>
         <span class="stat-label">模型</span>
       </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item data-path-item" :title="stats.data_path || '未知'">
+        <span class="stat-value data-path">{{ formatDataPath(stats.data_path) }}</span>
+        <span class="stat-label">数据</span>
+      </div>
     </div>
     <div v-else class="stats-loading">
       加载中...
@@ -42,6 +47,21 @@ import { storeToRefs } from 'pinia'
 
 const memoryStore = useMemoryStore()
 const { stats, evolutionStatus } = storeToRefs(memoryStore)
+
+const formatDataPath = (path: string | undefined): string => {
+  if (!path) return '未知'
+  if (path.startsWith('/Users/')) {
+    const parts = path.split('/')
+    const userIndex = parts.indexOf('Users') + 2
+    if (userIndex > 1 && userIndex < parts.length) {
+      return '~/' + parts.slice(userIndex).join('/')
+    }
+  }
+  if (path.length > 20) {
+    return '...' + path.slice(-17)
+  }
+  return path
+}
 </script>
 
 <style scoped>
@@ -81,6 +101,20 @@ const { stats, evolutionStatus } = storeToRefs(memoryStore)
   color: #00e5ff;
   text-transform: uppercase;
   font-size: 11px;
+}
+
+.stat-value.data-path {
+  color: #888;
+  font-size: 10px;
+  font-family: monospace;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-path-item {
+  cursor: help;
 }
 
 .stat-label {

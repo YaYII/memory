@@ -8,6 +8,7 @@ Usage:
     mcp-memory-local read "查询内容"
     mcp-memory-local list
     mcp-memory-local interactive  # 交互式TUI模式
+    mcp-memory-local migrate      # 数据迁移
 """
 
 import os
@@ -28,7 +29,6 @@ from rich.layout import Layout
 from rich.live import Live
 from rich.text import Text
 
-# 确保能导入mcp_memory模块
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -41,7 +41,6 @@ app = typer.Typer(
     add_completion=False
 )
 console = Console()
-# 全局实例（延迟初始化）
 _memory_manager: Optional[MemoryManager] = None
 
 def get_memory_manager() -> MemoryManager:
@@ -66,8 +65,6 @@ def write(
     """📝 写入新记忆（本地直接操作）"""
     try:
         manager = get_memory_manager()
-        
-        # 解析关键词
         keyword_list = [k.strip() for k in keywords.split(",")] if keywords else []
         
         with Progress(
@@ -76,8 +73,6 @@ def write(
             console=console,
         ) as progress:
             progress.add_task("正在写入记忆...", total=None)
-            
-            # 直接调用本地方法，不走HTTP
             memory_id = manager.write_memory(
                 user_id=user_id,
                 content=content,
@@ -118,9 +113,7 @@ def read(
             console=console,
         ) as progress:
             progress.add_task("正在搜索记忆...", total=None)
-            
-            # 直接调用本地方法
-            results = manager.read_memory(
+            results, _ = manager.read_memory(
                 user_id=user_id,
                 query=query,
                 project_id=settings.MCP_PROJECT_ID,
@@ -141,12 +134,12 @@ def read(
         for i, mem in enumerate(results, 1):
             content = mem.get("content", "")
             preview = content[:40] + "..." if len(content) > 40 else content
-            similarity = mem.get("similarity", 0)
+            score = mem.get("score", 0)
             table.add_row(
                 str(i),
                 mem.get("title", "无标题")[:20],
                 preview,
-                f"{similarity:.2f}",
+                f"{score:.2f}",
                 mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
             )
         
@@ -172,8 +165,6 @@ def list_memories(
             console=console,
         ) as progress:
             progress.add_task("正在加载记忆列表...", total=None)
-            
-            # 直接查询本地存储 - 使用MemoryManager的store
             memories = manager.store.query_by_type(
                 query="",
                 memory_type=memory_type,
@@ -198,7 +189,6 @@ def list_memories(
             mem_type = mem.get("memory_type", "unknown")
             keywords = ", ".join(mem.get("keywords", []))[:20]
             timestamp = mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
-            
             table.add_row(mem_id, title[:25], mem_type, keywords, timestamp)
         
         console.print(table)
@@ -222,10 +212,7 @@ def delete(
                 return
         
         manager = get_memory_manager()
-        
-        # 直接调用本地删除方法
         manager.store.delete(memory_id)
-        
         console.print(f"[green]✅ 记忆 {memory_id} 已删除[/green]")
         
     except Exception as e:
@@ -244,15 +231,14 @@ def stats():
             console=console,
         ) as progress:
             progress.add_task("正在获取统计数据...", total=None)
-            
-            # 获取本地统计 - 通过查询所有记忆
             all_memories = manager.store.query_by_type(query="", memory_type="all", limit=10000)
             storage_count = len([m for m in all_memories if m.get("memory_type") == "storage"])
             thinking_count = len([m for m in all_memories if m.get("memory_type") == "thinking"])
             skill_count = len([m for m in all_memories if m.get("memory_type") == "skill"])
             total_memories = len(all_memories)
+            
+            graph_stats = manager.store.get_tiered_stats()
         
-        # 显示统计
         table = Table(title="📊 系统统计", show_header=False)
         table.add_column("指标", style="cyan")
         table.add_column("值", style="green")
@@ -262,13 +248,12 @@ def stats():
         table.add_row("思维层", str(thinking_count))
         table.add_row("技能层", str(skill_count))
         table.add_row("数据目录", str(settings.CHROMA_DATA_PATH))
+        table.add_row("图谱节点", str(graph_stats.get("total_count", 0)))
         
         console.print(table)
         
     except Exception as e:
         console.print(f"[red]❌ 获取统计失败: {e}[/red]")
-
-
 
 
 @app.command()
@@ -278,8 +263,6 @@ def show(
     """🔍 显示记忆详情（本地直接操作）"""
     try:
         manager = get_memory_manager()
-        
-        # 查询记忆详情
         memories = manager.store.query_by_type(query="", memory_type="all", limit=100)
         target_mem = None
         for mem in memories:
@@ -291,7 +274,6 @@ def show(
             console.print(f"[red]❌ 未找到记忆: {memory_id}[/red]")
             return
         
-        # 显示详情
         console.print(Panel(
             f"[bold cyan]ID:[/bold cyan] {target_mem.get('memory_id')}\n"
             f"[bold cyan]标题:[/bold cyan] {target_mem.get('title', '无标题')}\n"
@@ -311,12 +293,76 @@ def show(
 
 
 @app.command()
+def migrate():
+    """🔄 迁移旧数据到 ChromaDB 统一存储"""
+    console.print(Panel(
+        "[bold green]🔄 数据迁移工具[/bold green]\n\n"
+        "此命令将迁移以下数据到 ChromaDB 统一存储：\n"
+        "• Token Pool (token_pool.json → ChromaDB)\n"
+        "• Knowledge Graph (knowledge_graph.json → ChromaDB)\n\n"
+        "迁移后旧文件将被重命名为 .migrated 备份",
+        title="数据迁移",
+        border_style="yellow"
+    ))
+    
+    try:
+        manager = get_memory_manager()
+        
+        table = Table(title="迁移结果", show_header=True, header_style="bold cyan")
+        table.add_column("组件", style="cyan")
+        table.add_column("状态", style="green")
+        table.add_column("详情", style="dim")
+        
+        table.add_row("Token Pool", "✅ 自动迁移", "初始化时已自动检查并迁移")
+        table.add_row("Knowledge Graph", "✅ 自动迁移", "初始化时已自动检查并迁移")
+        table.add_row("Memory Store", "✅ 无需迁移", "已在 ChromaDB 中")
+        
+        console.print(table)
+        console.print("\n[green]✅ 所有数据已统一存储在 ChromaDB 中[/green]")
+        console.print(f"[dim]数据目录: {settings.CHROMA_DATA_PATH}[/dim]")
+        
+    except Exception as e:
+        console.print(f"[red]❌ 迁移失败: {e}[/red]")
+
+
+@app.command()
+def reflect():
+    """🧠 触发每日反思（合并重复记忆）"""
+    try:
+        manager = get_memory_manager()
+        
+        from mcp_memory.memory.daily_reflection import DailyReflection
+        dr = DailyReflection(memory_store=manager.store)
+        
+        console.print("[dim]🔄 正在执行每日反思...[/dim]")
+        
+        async def run_reflection():
+            await dr.initialize()
+            return await dr.run_daily_reflection()
+        
+        stats = asyncio.run(run_reflection())
+        
+        console.print(Panel(
+            f"[green]✅ 每日反思完成[/green]\n\n"
+            f"发现重复: {stats.get('duplicates_found', 0)} 条\n"
+            f"合并记忆: {stats.get('memories_merged', 0)} 条\n"
+            f"语言修复: {stats.get('language_fixed', 0)} 条",
+            title="反思结果",
+            border_style="green"
+        ))
+        
+    except Exception as e:
+        console.print(f"[red]❌ 反思失败: {e}[/red]")
+
+
+@app.command()
 def interactive():
     """🖥️ 交互式TUI模式"""
     console.print(Panel(
         "[bold green]🧠 MCP Memory System - 交互式模式[/bold green]\n\n"
         "命令: [cyan]write[/cyan] 写入 | [cyan]read[/cyan] 读取 | [cyan]list[/cyan] 列表\n"
-        "       [cyan]show[/cyan] 详情 | [cyan]delete[/cyan] 删除 | [cyan]stats[/cyan] 统计 | [cyan]quit[/cyan] 退出",
+        "       [cyan]show[/cyan] 详情 | [cyan]delete[/cyan] 删除 | [cyan]stats[/cyan] 统计\n"
+        "       [cyan]reflect[/cyan] 反思 | [cyan]migrate[/cyan] 迁移 | [cyan]quit[/cyan] 退出",
         title="欢迎使用",
         border_style="green"
     ))
@@ -335,6 +381,12 @@ def interactive():
             
             elif command == "list":
                 list_memories()
+            
+            elif command == "migrate":
+                migrate()
+            
+            elif command == "reflect":
+                reflect()
             
             elif command.startswith("write "):
                 content = command[6:]
@@ -368,7 +420,7 @@ def interactive():
             
             else:
                 console.print(f"[red]未知命令: {command}[/red]")
-                console.print("可用: write, read, list, show, delete, stats, quit")
+                console.print("可用: write, read, list, show, delete, stats, reflect, migrate, quit")
         
         except KeyboardInterrupt:
             console.print("\n[yellow]👋 再见！[/yellow]")

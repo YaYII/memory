@@ -66,10 +66,11 @@ class MemoryStore:
         self.client = chromadb.PersistentClient(path=data_path)
         self.collection = self.client.get_or_create_collection("unified_memories")
 
-        # Knowledge Graph
-        self.graph_path = os.path.join(data_path, "knowledge_graph.json")
+        # Knowledge Graph (stored in ChromaDB)
+        self.graph_collection = self.client.get_or_create_collection("knowledge_graph")
         self.graph: nx.DiGraph = nx.DiGraph()
         self._graph_dirty = False
+        self._migrate_graph_from_json()
         self._load_graph()
 
         # BM25 预建索引
@@ -80,31 +81,155 @@ class MemoryStore:
 
     # ========== Knowledge Graph ==========
 
+    def _migrate_graph_from_json(self) -> None:
+        """从旧的 JSON 文件迁移图谱数据到 ChromaDB"""
+        old_graph_path = os.path.join(self.data_path, "knowledge_graph.json")
+        if not os.path.exists(old_graph_path):
+            return
+
+        try:
+            existing = self.graph_collection.get()
+            if existing and existing.get("ids"):
+                logger.info("[MemoryStore] ChromaDB 中已存在图谱数据，跳过迁移")
+                return
+
+            with open(old_graph_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                loaded_graph = nx.node_link_graph(data)
+                if not loaded_graph.is_directed():
+                    loaded_graph = loaded_graph.to_directed()
+
+            node_ids = []
+            documents = []
+            metadatas = []
+
+            for node_id in loaded_graph.nodes():
+                node_data = loaded_graph.nodes[node_id]
+                edges = []
+                for _, target, edge_data in loaded_graph.out_edges(node_id, data=True):
+                    edges.append({
+                        "target": target,
+                        "relation": edge_data.get("relation", "related_to")
+                    })
+
+                node_type = node_data.get("type", "entity")
+                label = node_data.get("label", node_id)
+
+                meta = {
+                    "type": node_type,
+                    "label": label,
+                    "edges": json.dumps(edges, ensure_ascii=False)
+                }
+                for key in ["timestamp", "user_id", "scope"]:
+                    if key in node_data:
+                        meta[key] = node_data[key]
+
+                node_ids.append(node_id)
+                documents.append(label)
+                metadatas.append(meta)
+
+            if node_ids:
+                self.graph_collection.add(
+                    ids=node_ids,
+                    documents=documents,
+                    metadatas=metadatas
+                )
+
+            backup_path = old_graph_path + ".migrated"
+            os.rename(old_graph_path, backup_path)
+            logger.info(f"[MemoryStore] 图谱迁移完成，节点数: {len(node_ids)}，旧文件已备份至 {backup_path}")
+        except Exception as e:
+            logger.warning(f"[MemoryStore] 图谱迁移失败: {e}")
+
     def _load_graph(self) -> None:
-        """加载图谱"""
-        if os.path.exists(self.graph_path):
-            try:
-                with open(self.graph_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    loaded = nx.node_link_graph(data)
-                    self.graph = loaded if loaded.is_directed() else loaded.to_directed()
-            except Exception as e:
-                logger.warning(f"[MemoryStore] 加载知识图谱失败 (可能格式不兼容): {e}")
-                self.graph = nx.DiGraph()
+        """从 ChromaDB 加载图谱"""
+        try:
+            all_nodes = self.graph_collection.get()
+            if not all_nodes or not all_nodes.get("ids"):
+                return
+
+            ids = all_nodes["ids"]
+            metadatas = all_nodes.get("metadatas", [])
+
+            for i, node_id in enumerate(ids):
+                meta = metadatas[i] if i < len(metadatas) else {}
+                node_type = meta.get("type", "entity")
+                label = meta.get("label", node_id)
+
+                self.graph.add_node(node_id, type=node_type, label=label)
+
+                for key in ["timestamp", "user_id", "scope"]:
+                    if key in meta:
+                        self.graph.nodes[node_id][key] = meta[key]
+
+                edges_str = meta.get("edges", "[]")
+                try:
+                    edges = json.loads(edges_str) if edges_str else []
+                except (json.JSONDecodeError, TypeError):
+                    edges = []
+
+                for edge in edges:
+                    target = edge.get("target")
+                    relation = edge.get("relation", "related_to")
+                    if target:
+                        self.graph.add_edge(node_id, target, relation=relation)
+
+            logger.info(f"[MemoryStore] 从 ChromaDB 加载图谱完成，节点数: {len(ids)}")
+        except Exception as e:
+            logger.warning(f"[MemoryStore] 加载知识图谱失败: {e}")
+            self.graph = nx.DiGraph()
 
     def _save_graph(self) -> None:
-        """保存图谱到磁盘"""
+        """保存图谱到 ChromaDB"""
         if not self._graph_dirty:
             return
         try:
-            data = nx.node_link_data(self.graph)
-            tmp_path = self.graph_path + ".tmp"
-            with open(tmp_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False)
-            # Atomic rename
-            os.replace(tmp_path, self.graph_path)
+            existing = self.graph_collection.get()
+            existing_ids = set(existing.get("ids", [])) if existing else set()
+
+            node_ids = []
+            documents = []
+            metadatas = []
+
+            for node_id in self.graph.nodes():
+                node_data = self.graph.nodes[node_id]
+                edges = []
+                for _, target, edge_data in self.graph.out_edges(node_id, data=True):
+                    edges.append({
+                        "target": target,
+                        "relation": edge_data.get("relation", "related_to")
+                    })
+
+                node_type = node_data.get("type", "entity")
+                label = node_data.get("label", node_id)
+
+                meta = {
+                    "type": node_type,
+                    "label": label,
+                    "edges": json.dumps(edges, ensure_ascii=False)
+                }
+                for key in ["timestamp", "user_id", "scope"]:
+                    if key in node_data:
+                        meta[key] = node_data[key]
+
+                node_ids.append(node_id)
+                documents.append(label)
+                metadatas.append(meta)
+
+            if node_ids:
+                self.graph_collection.upsert(
+                    ids=node_ids,
+                    documents=documents,
+                    metadatas=metadatas
+                )
+
+            stale_ids = existing_ids - set(node_ids)
+            if stale_ids:
+                self.graph_collection.delete(ids=list(stale_ids))
+
             self._graph_dirty = False
-        except (IOError, OSError) as e:
+            logger.debug(f"[MemoryStore] 图谱保存到 ChromaDB 完成，节点数: {len(node_ids)}")
+        except Exception as e:
             logger.warning(f"[MemoryStore] 保存知识图谱失败: {e}")
 
     def flush_graph(self) -> None:

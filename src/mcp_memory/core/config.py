@@ -32,6 +32,27 @@ def get_current_project_id() -> str:
     return f"{folder_name}_{project_hash}"
 
 
+def get_default_chroma_path() -> str:
+    """
+    获取默认的 ChromaDB 数据存储路径。
+    优先级：
+    1. 项目目录下的 data/chroma（如果存在且有数据）
+    2. 用户目录下的 ~/.mcp_memory/chroma
+    """
+    cwd = os.getcwd()
+    project_data_path = os.path.join(cwd, "data", "chroma")
+    user_data_path = os.path.join(os.path.expanduser("~"), ".mcp_memory", "chroma")
+    
+    if os.path.exists(project_data_path):
+        chroma_db = os.path.join(project_data_path, "chroma.sqlite3")
+        if os.path.exists(chroma_db):
+            logger.info("[config] 检测到项目数据目录: %s", project_data_path)
+            return project_data_path
+    
+    logger.info("[config] 使用用户数据目录: %s", user_data_path)
+    return user_data_path
+
+
 def _parse_providers_from_env() -> List[Dict[str, Any]]:
     """
     从环境变量解析 LLM 提供商配置。
@@ -86,7 +107,7 @@ class Settings(BaseSettings):
 
     # ── 存储配置 ──────────────────────────────────────────────────────────────
     CHROMA_DATA_PATH: str = Field(
-        default_factory=lambda: os.path.join(os.path.expanduser("~"), ".mcp_memory", "chroma"),
+        default_factory=get_default_chroma_path,
         description="ChromaDB 持久化存储路径",
     )
 
