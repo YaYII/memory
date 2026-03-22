@@ -994,8 +994,9 @@ class MemoryStore:
             if all_memories and all_memories.get("metadatas"):
                 for meta in all_memories["metadatas"]:
                     mem_type = meta.get("memory_type", "storage")
-                    if mem_type in stats:
-                        stats[mem_type] += 1
+                    key = f"{mem_type}_count"
+                    if key in stats:
+                        stats[key] += 1
                     stats["total_count"] += 1
             return stats
         except Exception as e:
