@@ -369,29 +369,10 @@ function getMemoryTypeLabel(type?: string): string {
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+@import './styles/global.css';
+</style>
 
-:root {
-  --neon-green: #00ff6a;
-  --neon-blue: #00e5ff;
-  --neon-purple: #bd00ff;
-  --bg-black: #020405;
-  --panel-bg: rgba(6, 12, 10, 0.75);
-  --border-color: rgba(0, 255, 106, 0.2);
-  --glass-blur: blur(12px);
-  --font-main: 'JetBrains Mono', monospace;
-  --font-heading: 'Rajdhani', sans-serif;
-}
-
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  font-family: var(--font-main);
-  background: var(--bg-black);
-  color: #fff;
-  overflow: hidden;
-}
-
-/* App Layout */
+<style scoped>
 .app-container {
   display: flex;
   width: 100vw;
@@ -479,7 +460,7 @@ body {
 
 .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-button {
+.app-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff; padding: 10px 5px;
@@ -488,13 +469,13 @@ button {
   border-radius: 2px;
 }
 
-button:hover:not(:disabled) {
+.app-btn:hover:not(:disabled) {
   background: rgba(0, 255, 106, 0.1);
   border-color: var(--neon-green);
   color: var(--neon-green);
 }
 
-button:disabled { opacity: 0.3; cursor: not-allowed; }
+.app-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .btn-text { font-size: 10px; letter-spacing: 1px; }
 
@@ -678,12 +659,6 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
-
-/* Global Scrollbar */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: var(--neon-green); }
 
 /* Scanline Overlay */
 .scanline {

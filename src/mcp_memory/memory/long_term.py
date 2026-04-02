@@ -16,10 +16,11 @@ import logging
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from mcp_memory.models.data_models import MemoryItem
-from typing import List, Optional, Dict, Tuple, Set, TypedDict
+from typing import Optional, List, Dict, Tuple, Set, TypedDict
 import os
 import uuid
 import math
+import threading
 import jieba
 import json
 import re
@@ -73,10 +74,12 @@ class MemoryStore:
         self._migrate_graph_from_json()
         self._load_graph()
 
-        # BM25 预建索引
+        # BM25 预建索引（延迟批量重建策略）
         self._bm25_docs: List[str] = []
         self._bm25_ids: List[str] = []
         self._bm25_index: Optional[BM25Okapi] = None
+        self._bm25_dirty: bool = False
+        self._bm25_lock = threading.Lock()
         self._rebuild_bm25_index()
 
     # ========== Knowledge Graph ==========
@@ -262,7 +265,7 @@ class MemoryStore:
                         related.add(n)
         return list(related)[:limit]
 
-    # ========== BM25 Index ==========
+    # ========== BM25 Index（延迟批量重建） ==========
 
     def _rebuild_bm25_index(self) -> None:
         """全量重建 BM25 索引"""
@@ -277,33 +280,68 @@ class MemoryStore:
                 self._bm25_index = BM25Okapi(tokenized)
             else:
                 self._bm25_index = None
+            self._bm25_dirty = False
             logger.info(f"[MemoryStore] BM25 索引重建完成，文档数: {len(self._bm25_docs)}")
         except Exception as e:
             logger.warning(f"[MemoryStore] BM25 索引重建失败: {e}")
             self._bm25_index = None
 
+    def _ensure_bm25_fresh(self) -> None:
+        """按需重建：仅当索引脏时才执行批量重建（搜索前调用）"""
+        with self._bm25_lock:
+            if self._bm25_dirty:
+                self._rebuild_bm25_index()
+
     def _add_to_bm25_index(self, doc_id: str, doc_text: str) -> None:
-        """增量添加文档到 BM25 索引"""
-        self._bm25_ids.append(doc_id)
-        self._bm25_docs.append(doc_text)
-        tokenized = [list(jieba.cut_for_search(d)) for d in self._bm25_docs]
-        self._bm25_index = BM25Okapi(tokenized)
+        """增量添加文档到 BM25 索引（O(1)，延迟重建）"""
+        with self._bm25_lock:
+            self._bm25_ids.append(doc_id)
+            self._bm25_docs.append(doc_text)
+            self._bm25_dirty = True
 
     def _remove_from_bm25_index(self, doc_id: str) -> None:
-        """从 BM25 索引中移除文档"""
-        try:
-            idx = self._bm25_ids.index(doc_id)
-            self._bm25_ids.pop(idx)
-            self._bm25_docs.pop(idx)
-            if self._bm25_docs:
-                tokenized = [list(jieba.cut_for_search(d)) for d in self._bm25_docs]
-                self._bm25_index = BM25Okapi(tokenized)
-            else:
-                self._bm25_index = None
-        except ValueError:
-            pass  # ID 不在索引中，忽略
+        """从 BM25 索引中移除文档（O(1)，延迟重建）"""
+        with self._bm25_lock:
+            try:
+                idx = self._bm25_ids.index(doc_id)
+                self._bm25_ids.pop(idx)
+                self._bm25_docs.pop(idx)
+                self._bm25_dirty = True
+            except ValueError:
+                pass
 
     # ========== Helpers ==========
+
+    @staticmethod
+    def _parse_json_field(raw) -> List[str]:
+        if isinstance(raw, list):
+            return raw
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+                return parsed if isinstance(parsed, list) else [parsed]
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return []
+
+    @staticmethod
+    def _parse_json_str_field(raw) -> str:
+        if raw is None:
+            return ""
+        if isinstance(raw, str):
+            if raw.startswith('[') and raw.endswith(']'):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        return ' '.join(str(s) for s in parsed)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            elif isinstance(raw, list):
+                return ' '.join(str(s) for s in raw)
+            return raw
+        if isinstance(raw, list):
+            return ' '.join(str(s) for s in raw)
+        return str(raw)
 
     def _tokenize(self, text: str) -> List[str]:
         """中文分词"""
@@ -531,7 +569,8 @@ class MemoryStore:
                 return [], []
             raise
 
-        # === Phase 2b: BM25 并行检索 ===
+        # === Phase 2b: BM25 并行检索（按需重建索引） ===
+        self._ensure_bm25_fresh()
         bm25_matches: Dict[str, float] = {}
         if self._bm25_index and self._bm25_ids and self._bm25_docs:
             tokenized_query = self._tokenize(query)
@@ -730,97 +769,32 @@ class MemoryStore:
             return False
 
     def get_memories(self, user_id: str, project_id: Optional[str] = None, limit: int = 100) -> List[MemoryItem]:
-        """
-        获取用户的所有记忆（用于TUI界面）
-        
-        Args:
-            user_id: 用户ID
-            project_id: 项目ID（可选）
-            limit: 返回数量限制
-            
-        Returns:
-            List[MemoryItem]: 记忆列表
-        """
         try:
-            # 构建查询条件
             where_filter = {"user_id": {"$eq": user_id}}
             if project_id:
                 where_filter["project_id"] = {"$eq": project_id}
-            
-            # 执行查询
+
             results = self.collection.get(
                 where=where_filter,
                 limit=limit,
                 include=["documents", "metadatas"]
             )
-            
-            # 转换为MemoryItem对象
+
             memories = []
             if results["ids"]:
                 for i, mem_id in enumerate(results["ids"]):
                     doc = results["documents"][i] if results["documents"] else ""
                     meta = results["metadatas"][i] if results["metadatas"] else {}
-                    
-                    # 处理可能的JSON字符串字段
-                    import json
-                    keywords = meta.get("keywords", [])
-                    if isinstance(keywords, str):
-                        try:
-                            keywords = json.loads(keywords)
-                        except (json.JSONDecodeError, TypeError):
-                            keywords = []
-                    
-                    tags = meta.get("tags", [])
-                    if isinstance(tags, str):
-                        try:
-                            tags = json.loads(tags)
-                        except (json.JSONDecodeError, TypeError):
-                            tags = []
-                    
-                    summary = meta.get("summary", "")
-                    if isinstance(summary, str) and summary.startswith('[') and summary.endswith(']'):
-                        try:
-                            parsed_summary = json.loads(summary)
-                            if isinstance(parsed_summary, list):
-                                summary = ' '.join(str(s) for s in parsed_summary)
-                            else:
-                                summary = str(parsed_summary)
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                    elif isinstance(summary, list):
-                        summary = ' '.join(str(s) for s in summary)
-                    elif summary is None:
-                        summary = ""
-                    else:
-                        summary = str(summary)
-                    
-                    description = meta.get("description", "")
-                    if isinstance(description, str) and description.startswith('[') and description.endswith(']'):
-                        try:
-                            parsed_desc = json.loads(description)
-                            if isinstance(parsed_desc, list):
-                                description = ' '.join(str(d) for d in parsed_desc)
-                            else:
-                                description = str(parsed_desc)
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-                    elif isinstance(description, list):
-                        description = ' '.join(str(d) for d in description)
-                    elif description is None:
-                        description = ""
-                    else:
-                        description = str(description)
-                    
-                    # 创建MemoryItem对象
+
                     memory = MemoryItem(
                         memory_id=mem_id,
                         content=doc,
                         title=meta.get("title", doc[:50] + "..." if len(doc) > 50 else doc),
-                        description=description,
-                        summary=summary,
+                        description=self._parse_json_str_field(meta.get("description")),
+                        summary=self._parse_json_str_field(meta.get("summary")),
                         content_type=meta.get("content_type", "note"),
-                        keywords=keywords,
-                        tags=tags,
+                        keywords=self._parse_json_field(meta.get("keywords")),
+                        tags=self._parse_json_field(meta.get("tags")),
                         char_count=meta.get("char_count", len(doc)),
                         max_chars=meta.get("max_chars", 1000),
                         user_id=meta.get("user_id", user_id),
@@ -834,7 +808,6 @@ class MemoryStore:
                         is_profile=meta.get("is_profile", "False") == "True"
                     )
                     memories.append(memory)
-            
             return memories
         except Exception as e:
             logger.warning(f"[MemoryStore] 获取记忆列表失败: {e}")
@@ -1151,3 +1124,291 @@ class MemoryStore:
             return result
         except Exception as e:
             logger.warning(f"[MemoryStore] 获取合并链失败: {e}")
+            return {"error": str(e)}
+
+    async def deep_deduplicate(self, user_id: str = None, threshold: float = 0.8) -> dict:
+        """
+        深度去重：使用LLM进行语义去重
+        
+        Args:
+            user_id: 可选，指定用户ID，不指定则处理所有用户
+            threshold: 语义相似度阈值，默认0.8
+            
+        Returns:
+            去重结果统计
+        """
+        try:
+            logger.info("[MemoryStore] 开始深度去重...")
+            
+            # 获取所有记忆
+            where_filter = {"user_id": {"$eq": user_id}} if user_id else None
+            all_memories = self.collection.get(where=where_filter)
+            
+            if not all_memories or not all_memories.get("ids"):
+                return {"processed": 0, "merged": 0, "errors": 0}
+            
+            ids = all_memories["ids"]
+            documents = all_memories["documents"]
+            metadatas = all_memories["metadatas"]
+            
+            # 按用户和范围分组
+            groups = {}
+            for i, mem_id in enumerate(ids):
+                meta = metadatas[i] if i < len(metadatas) else {}
+                key = f"{meta.get('user_id', 'unknown')}_{meta.get('scope', 'project')}_{meta.get('project_id', '')}"
+                if key not in groups:
+                    groups[key] = []
+                groups[key].append({
+                    "id": mem_id,
+                    "content": documents[i] if i < len(documents) else "",
+                    "metadata": meta
+                })
+            
+            processed = 0
+            merged = 0
+            errors = 0
+            
+            # 检查LLM是否可用
+            try:
+                from mcp_memory.llm.facade import llm_facade
+                if not llm_facade.is_available():
+                    logger.warning("[MemoryStore] LLM不可用，跳过深度去重")
+                    return {"processed": 0, "merged": 0, "errors": 1, "message": "LLM不可用"}
+            except ImportError:
+                logger.warning("[MemoryStore] LLM模块导入失败，跳过深度去重")
+                return {"processed": 0, "merged": 0, "errors": 1, "message": "LLM模块导入失败"}
+            
+            # 对每个组进行去重
+            for group_key, memories in groups.items():
+                if len(memories) < 2:
+                    continue
+                
+                # 计算记忆之间的相似度
+                for i in range(len(memories)):
+                    for j in range(i + 1, len(memories)):
+                        try:
+                            processed += 1
+                            mem1 = memories[i]
+                            mem2 = memories[j]
+                            
+                            # 使用LLM判断语义相似度
+                            similarity = await self._calculate_semantic_similarity(mem1["content"], mem2["content"])
+                            
+                            if similarity >= threshold:
+                                # 合并记忆
+                                merged_memory_id = await self._merge_memories(mem1, mem2, similarity)
+                                if merged_memory_id:
+                                    merged += 1
+                                    logger.info(f"[MemoryStore] 合并记忆: {mem1['id'][:8]} + {mem2['id'][:8]} → {merged_memory_id[:8]}")
+                        except Exception as e:
+                            logger.warning(f"[MemoryStore] 去重处理失败: {e}")
+                            errors += 1
+            
+            logger.info(f"[MemoryStore] 深度去重完成: 处理 {processed} 对，合并 {merged} 条，错误 {errors} 个")
+            return {"processed": processed, "merged": merged, "errors": errors}
+        except Exception as e:
+            logger.error(f"[MemoryStore] 深度去重失败: {e}")
+            return {"processed": 0, "merged": 0, "errors": 1, "message": str(e)}
+    
+    async def _calculate_semantic_similarity(self, content1: str, content2: str) -> float:
+        """
+        使用LLM计算两个内容的语义相似度
+        
+        Args:
+            content1: 第一个内容
+            content2: 第二个内容
+            
+        Returns:
+            相似度分数 (0-1)
+        """
+        try:
+            from mcp_memory.llm.facade import llm_facade
+            
+            prompt = f"""
+            请判断以下两个内容的语义相似度，返回一个0-1之间的数字，其中1表示完全相同，0表示完全不同。
+            
+            内容1:
+            {content1[:1000]}
+            
+            内容2:
+            {content2[:1000]}
+            
+            请只返回数字，不要有其他文字。
+            """
+            
+            response = await llm_facade.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=10
+            )
+            
+            if response:
+                # 提取数字
+                import re
+                match = re.search(r'\d+(\.\d+)?', response)
+                if match:
+                    score = float(match.group())
+                    return max(0, min(1, score))
+        except Exception as e:
+            logger.warning(f"[MemoryStore] 计算语义相似度失败: {e}")
+        
+        #  fallback: 使用简单的文本相似度
+        return self._simple_text_similarity(content1, content2)
+    
+    def _simple_text_similarity(self, content1: str, content2: str) -> float:
+        """
+        简单的文本相似度计算
+        
+        Args:
+            content1: 第一个内容
+            content2: 第二个内容
+            
+        Returns:
+            相似度分数 (0-1)
+        """
+        import difflib
+        return difflib.SequenceMatcher(None, content1, content2).ratio()
+    
+    async def _merge_memories(self, mem1: dict, mem2: dict, similarity: float) -> str:
+        """
+        合并两个相似的记忆
+        
+        Args:
+            mem1: 第一个记忆
+            mem2: 第二个记忆
+            similarity: 相似度分数
+            
+        Returns:
+            合并后的记忆ID
+        """
+        try:
+            # 生成合并后的内容
+            merged_content = await self._generate_merged_content(mem1["content"], mem2["content"])
+            
+            # 创建新的记忆项
+            from mcp_memory.models.data_models import MemoryItem
+            from datetime import datetime
+            
+            # 合并元数据
+            meta1 = mem1["metadata"]
+            meta2 = mem2["metadata"]
+            
+            merged_meta = {
+                "title": meta1.get("title", "") or meta2.get("title", ""),
+                "description": meta1.get("description", "") or meta2.get("description", ""),
+                "summary": meta1.get("summary", "") or meta2.get("summary", ""),
+                "content_type": meta1.get("content_type", "note"),
+                "keywords": self._merge_lists(meta1.get("keywords", "[]"), meta2.get("keywords", "[]")),
+                "tags": self._merge_lists(meta1.get("tags", "[]"), meta2.get("tags", "[]")),
+                "importance": max(float(meta1.get("importance", 1.0)), float(meta2.get("importance", 1.0))),
+                "access_count": int(meta1.get("access_count", 0)) + int(meta2.get("access_count", 0)),
+                "memory_type": meta1.get("memory_type", "storage"),
+                "source_memories": json.dumps([mem1["id"], mem2["id"]], ensure_ascii=False),
+                "is_merged_memory": True,
+                "merged_from": [mem1["id"], mem2["id"]],
+                "merged_at": datetime.now().isoformat(),
+                "merged_count": 2,
+                "merge_reason": f"语义相似度: {similarity:.2f}",
+                "merge_status": "merged"
+            }
+            
+            # 创建记忆项
+            memory = MemoryItem(
+                content=merged_content,
+                user_id=meta1.get("user_id", "unknown"),
+                scope=meta1.get("scope", "project"),
+                project_id=meta1.get("project_id", ""),
+                title=merged_meta["title"] or merged_content[:50] + "...",
+                description=merged_meta["description"],
+                summary=merged_meta["summary"],
+                content_type=merged_meta["content_type"],
+                keywords=self._parse_json_field(merged_meta["keywords"]),
+                tags=self._parse_json_field(merged_meta["tags"]),
+                importance=merged_meta["importance"],
+                access_count=merged_meta["access_count"],
+                memory_type=merged_meta["memory_type"],
+                source_memories=[mem1["id"], mem2["id"]]
+            )
+            
+            # 保存合并后的记忆
+            merged_memory_id = self.save(memory)
+            
+            # 更新原记忆的状态
+            for mem in [mem1, mem2]:
+                self.collection.update(
+                    ids=[mem["id"]],
+                    metadatas=[{
+                        **mem["metadata"],
+                        "merge_status": "merged_into",
+                        "merged_into_id": merged_memory_id,
+                        "merged_at": datetime.now().isoformat()
+                    }]
+                )
+            
+            return merged_memory_id
+        except Exception as e:
+            logger.warning(f"[MemoryStore] 合并记忆失败: {e}")
+            return None
+    
+    async def _generate_merged_content(self, content1: str, content2: str) -> str:
+        """
+        生成合并后的内容
+        
+        Args:
+            content1: 第一个内容
+            content2: 第二个内容
+            
+        Returns:
+            合并后的内容
+        """
+        try:
+            from mcp_memory.llm.facade import llm_facade
+            
+            prompt = f"""
+            请将以下两个内容合并成一个更完整、更清晰的版本，保留所有重要信息，去除重复内容。
+            
+            内容1:
+            {content1[:1000]}
+            
+            内容2:
+            {content2[:1000]}
+            
+            合并后的内容应该：
+            1. 保持原有的风格和语气
+            2. 去除重复的信息
+            3. 组织成逻辑清晰的结构
+            4. 保留所有重要的细节
+            """
+            
+            response = await llm_facade.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=1000
+            )
+            
+            if response:
+                return response
+        except Exception as e:
+            logger.warning(f"[MemoryStore] 生成合并内容失败: {e}")
+        
+        # fallback: 简单拼接
+        return f"{content1}\n\n=== 合并内容 ===\n\n{content2}"
+    
+    def _merge_lists(self, list1: str, list2: str) -> str:
+        """
+        合并两个列表字符串
+        
+        Args:
+            list1: 第一个列表字符串
+            list2: 第二个列表字符串
+            
+        Returns:
+            合并后的列表字符串
+        """
+        try:
+            items1 = self._parse_json_field(list1)
+            items2 = self._parse_json_field(list2)
+            merged = list(set(items1 + items2))
+            return json.dumps(merged, ensure_ascii=False)
+        except Exception:
+            return json.dumps([], ensure_ascii=False)

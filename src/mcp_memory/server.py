@@ -73,21 +73,18 @@ register_exception_handlers(app)
 
 # ─── 静态文件 ──────────────────────────────────────────────────────────────────
 
-_static_dir = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(_static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=_static_dir), name="static")
-
+# 移除静态文件目录，只保留Vue功能
 _vue_dir = os.path.join(os.path.dirname(__file__), "static_vue")
 if os.path.exists(_vue_dir):
+    from fastapi.staticfiles import StaticFiles
     app.mount("/vue", StaticFiles(directory=_vue_dir, html=True), name="vue")
 
 
 @app.get("/", include_in_schema=False)
 async def dashboard_index():
-    index_path = os.path.join(_static_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "MCP Memory Server is running. See /docs for API documentation."}
+    # 重定向到Vue应用
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/vue")
 
 
 # ─── 路由挂载 ─────────────────────────────────────────────────────────────────
