@@ -15,12 +15,19 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root / "src"))
 
+from mcp_memory.core.config import settings
 from mcp_memory.memory.manager import MemoryManager
 
 
 def seed_memories():
     """写入基础记忆数据"""
     manager = MemoryManager()
+    
+    # 检查是否已有种子记忆
+    existing = manager.store.query_by_type(query="记忆系统CLI", memory_type="all", limit=5)
+    if len(existing) >= 5:
+        print("✅ 种子记忆已存在，跳过写入")
+        return
     
     seeds = [
         {
