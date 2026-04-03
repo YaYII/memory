@@ -1,9 +1,12 @@
 import httpx
+import logging
 from typing import Optional, List, Dict
 import json
 import time
+from datetime import datetime
 from mcp_memory.llm.base import BaseLLMClient, LLMResponse
 
+logger = logging.getLogger("mcp-memory.llm.anthropic")
 
 class AnthropicClient(BaseLLMClient):
     """Anthropic (Claude) 客户端"""
@@ -110,7 +113,7 @@ class AnthropicClient(BaseLLMClient):
         except Exception as e:
             self.record_request(success=False)
             self.set_unavailable(str(e))
-            print(f"[Anthropic] Request Error: {e}")
+            logger.warning("[Anthropic] Request Error: %s", e)
             return None
 
     async def chat_completion_with_full_response(

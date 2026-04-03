@@ -1,9 +1,12 @@
 import httpx
+import logging
 from typing import Optional, List, Dict
 import json
 import time
 from datetime import datetime
 from mcp_memory.llm.base import BaseLLMClient, LLMResponse
+
+logger = logging.getLogger("mcp-memory.llm.deepseek")
 
 
 class DeepSeekClient(BaseLLMClient):
@@ -132,7 +135,7 @@ class DeepSeekClient(BaseLLMClient):
                 "usage": None
             })
 
-            print(f"[DeepSeek] API Error: {error_msg}")
+            logger.warning("[DeepSeek] API Error: %s", error_msg)
             return None
         except Exception as e:
             latency_ms = int((time.perf_counter() - start_time) * 1000)
@@ -150,7 +153,7 @@ class DeepSeekClient(BaseLLMClient):
                 "usage": None
             })
 
-            print(f"[DeepSeek] Request Error: {error_msg}")
+            logger.warning("[DeepSeek] Request Error: %s", error_msg)
             return None
 
     async def chat_completion_with_full_response(
@@ -205,7 +208,7 @@ class DeepSeekClient(BaseLLMClient):
         except Exception as e:
             self.record_request(success=False)
             self.set_unavailable(str(e))
-            print(f"[DeepSeek] Full Response Error: {e}")
+            logger.warning("[DeepSeek] Full Response Error: %s", e)
             return None
 
     async def summarize_memories(self, memories: List[str]) -> Optional[str]:
@@ -278,7 +281,7 @@ class DeepSeekClient(BaseLLMClient):
         )
 
         if result and result.strip() != "PASS":
-            print(f"🔧 Critic corrected the answer.\nOriginal: {initial_answer[:50]}...\nCorrected: {result[:50]}...")
+            logger.info("Critic corrected: original=%s... corrected=%s...", initial_answer[:50], result[:50])
             return result
 
         return initial_answer
@@ -307,7 +310,7 @@ class DeepSeekClient(BaseLLMClient):
                 cleaned = result.replace("```json", "").replace("```", "").strip()
                 return json.loads(cleaned)
         except:
-            print(f"[DeepSeek] Entity extraction failed to parse JSON: {result}")
+            logger.warning("[DeepSeek] Entity extraction failed to parse JSON: %s", result[:100])
 
         return []
 
@@ -405,7 +408,7 @@ class DeepSeekClient(BaseLLMClient):
                 "response_preview": str(e)[:240],
                 "usage": None
             })
-            print(f"[DeepSeek] Synthesize Error: {e}")
+            logger.warning("[DeepSeek] Synthesize Error: %s", e)
             return None
 
     async def close(self):

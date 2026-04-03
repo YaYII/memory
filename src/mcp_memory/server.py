@@ -23,6 +23,7 @@ from typing import Dict, Optional
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # ── 最先加载 .env（config 模块依赖环境变量）──────────────────────────────────
@@ -43,6 +44,7 @@ from mcp_memory.api.memory import router as memory_router
 from mcp_memory.api.dashboard import router as dashboard_router
 from mcp_memory.api.tiered import router as tiered_router
 from mcp_memory.api.logs import router as logs_router
+from mcp_memory.api.users import router as users_router
 
 # 配置日志（此处调用是为了兼容直接 python -m 启动的情况）
 configure_logging()
@@ -61,6 +63,15 @@ app = FastAPI(
 
 # ─── 中间件（注册顺序 = 执行顺序的逆序，RequestID 最先执行）───────────────────
 
+# CORS中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有来源，生产环境中应该设置具体的域名
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有HTTP方法
+    allow_headers=["*"],  # 允许所有HTTP头
+)
+
 app.add_middleware(RequestIDMiddleware)
 
 if settings.MCP_MEMORY_API_KEY:
@@ -73,21 +84,18 @@ register_exception_handlers(app)
 
 # ─── 静态文件 ──────────────────────────────────────────────────────────────────
 
-_static_dir = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(_static_dir, exist_ok=True)
-app.mount("/static", StaticFiles(directory=_static_dir), name="static")
-
+# 移除静态文件目录，只保留Vue功能
 _vue_dir = os.path.join(os.path.dirname(__file__), "static_vue")
 if os.path.exists(_vue_dir):
+    from fastapi.staticfiles import StaticFiles
     app.mount("/vue", StaticFiles(directory=_vue_dir, html=True), name="vue")
 
 
 @app.get("/", include_in_schema=False)
 async def dashboard_index():
-    index_path = os.path.join(_static_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "MCP Memory Server is running. See /docs for API documentation."}
+    # 重定向到Vue应用
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/vue")
 
 
 # ─── 路由挂载 ─────────────────────────────────────────────────────────────────
@@ -97,6 +105,7 @@ app.include_router(memory_router)
 app.include_router(dashboard_router)
 app.include_router(tiered_router)
 app.include_router(logs_router)
+app.include_router(users_router)
 
 
 # ─── 进化策略解析（供 lifespan 任务使用）──────────────────────────────────────

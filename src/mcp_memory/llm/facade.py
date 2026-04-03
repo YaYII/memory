@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List, Dict
 from mcp_memory.llm.base import BaseLLMClient, LLMResponse
 from mcp_memory.llm.glm import GLMClient
@@ -5,6 +6,8 @@ from mcp_memory.llm.deepseek import DeepSeekClient
 from mcp_memory.llm.token_pool import TokenPoolManager
 from mcp_memory.llm.router import LLMRouter
 from mcp_memory.core.config import settings
+
+logger = logging.getLogger("mcp-memory.llm.facade")
 
 
 class LLMFacade:
@@ -19,21 +22,19 @@ class LLMFacade:
         self._initialized = False
 
     def is_available(self) -> bool:
-        """检查是否有可用的 LLM 提供商"""
         if not self._initialized:
             return False
         return len(self.router.get_sorted_providers()) > 0
 
     async def initialize(self):
-        """初始化路由器并注册所有模型客户端"""
         if self._initialized:
             return
 
         providers = settings.providers
-        print(f"[LLMFacade] Found {len(providers)} providers in config")
+        logger.info("Found %d providers in config", len(providers))
 
         if not providers:
-            print("[LLMFacade] Warning: No LLM providers configured!")
+            logger.warning("No LLM providers configured!")
             return
 
         preferred_provider = settings.MCP_LLM_PROVIDER
@@ -46,7 +47,7 @@ class LLMFacade:
             enabled = provider_config.get("enabled", True)
 
             if not api_key:
-                print(f"[LLMFacade] Warning: No API key for {name}, skipping...")
+                logger.warning("No API key for %s, skipping...", name)
                 continue
 
             if name == "glm":
@@ -56,7 +57,7 @@ class LLMFacade:
                     priority=priority
                 )
                 self.router.register_client(client, "glm")
-                print(f"[LLMFacade] GLM client registered (priority: {priority})")
+                logger.info("GLM client registered (priority: %d)", priority)
 
             elif name == "deepseek":
                 client = DeepSeekClient(
@@ -65,7 +66,7 @@ class LLMFacade:
                     priority=priority
                 )
                 self.router.register_client(client, "deepseek")
-                print(f"[LLMFacade] DeepSeek client registered (priority: {priority})")
+                logger.info("DeepSeek client registered (priority: %d)", priority)
 
             elif name == "openai":
                 from mcp_memory.llm.openai import OpenAIClient
@@ -75,7 +76,7 @@ class LLMFacade:
                     priority=priority
                 )
                 self.router.register_client(client, "openai")
-                print(f"[LLMFacade] OpenAI client registered (priority: {priority})")
+                logger.info("OpenAI client registered (priority: %d)", priority)
 
             elif name == "anthropic":
                 from mcp_memory.llm.anthropic import AnthropicClient
@@ -85,7 +86,7 @@ class LLMFacade:
                     priority=priority
                 )
                 self.router.register_client(client, "anthropic")
-                print(f"[LLMFacade] Anthropic client registered (priority: {priority})")
+                logger.info("Anthropic client registered (priority: %d)", priority)
 
         self.router.set_preferred(preferred_provider)
 
@@ -98,7 +99,7 @@ class LLMFacade:
         await self.router.start_health_checker(interval_seconds=60)
 
         self._initialized = True
-        print(f"[LLMFacade] Initialization complete. Preferred: {preferred_provider}, Fallback: {fallback}")
+        logger.info("Initialization complete. Preferred: %s, Fallback: %s", preferred_provider, fallback)
 
     async def chat_completion(
         self,
@@ -108,7 +109,6 @@ class LLMFacade:
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> Optional[str]:
-        """调用 LLM 生成回复（自动路由）"""
         response = await self.router.chat_completion(
             messages=messages,
             model=model,
@@ -126,7 +126,6 @@ class LLMFacade:
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> Optional[LLMResponse]:
-        """获取完整响应"""
         return await self.router.chat_completion(
             messages=messages,
             model=model,
@@ -136,7 +135,6 @@ class LLMFacade:
         )
 
     async def summarize_memories(self, memories: List[str]) -> Optional[str]:
-        """总结记忆"""
         if not memories:
             return None
 
@@ -156,7 +154,6 @@ class LLMFacade:
         return await self.chat_completion(messages)
 
     async def classify_memory(self, content: str) -> Optional[str]:
-        """分类记忆"""
         prompt = f"""
 请将以下记忆内容分类为以下类别之一：
 - Coding (编程知识、代码片段)
@@ -175,7 +172,6 @@ class LLMFacade:
         return result.strip() if result else None
 
     async def extract_entities(self, content: str) -> List[str]:
-        """提取实体"""
         import json
         prompt = f"""
 请从以下内容中提取关键实体 (Entities)。
@@ -197,13 +193,12 @@ class LLMFacade:
             if result:
                 cleaned = result.replace("```json", "").replace("```", "").strip()
                 return json.loads(cleaned)
-        except:
-            pass
+        except Exception as e:
+            logger.debug("Failed to parse entities JSON: %s", e)
 
         return []
 
     async def critique_and_refine(self, query: str, memories: List[str], initial_answer: str) -> str:
-        """批评与修正"""
         memory_block = "\n".join([f"[{i+1}] {m}" for i, m in enumerate(memories)])
 
         prompt = f"""
@@ -237,7 +232,6 @@ class LLMFacade:
         return initial_answer
 
     async def optimize_memory_storage(self, memories: List[str]) -> Optional[str]:
-        """记忆库优化"""
         if not memories:
             return None
 
@@ -259,7 +253,6 @@ class LLMFacade:
         return await self.chat_completion(messages=[{"role": "user", "content": prompt}])
 
     async def synthesize_search_results(self, query: str, memories: List[str]) -> Optional[str]:
-        """综合搜索结果"""
         if not memories:
             return None
 
@@ -300,19 +293,16 @@ class LLMFacade:
         return corrected
 
     def get_recent_interactions(self, limit: int = 20) -> List[Dict]:
-        """获取最近的交互记录"""
         if "deepseek" in self.router.clients:
             return self.router.clients["deepseek"].get_recent_interactions(limit)
         return []
 
     def get_status(self) -> Dict:
-        """获取状态"""
         return self.router.get_status()
 
     async def close(self):
-        """关闭所有连接"""
         await self.router.close_all()
-        print("[LLMFacade] Closed")
+        logger.info("LLMFacade closed")
 
 
 llm_facade = LLMFacade()

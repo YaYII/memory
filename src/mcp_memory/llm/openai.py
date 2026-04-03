@@ -1,8 +1,11 @@
 import httpx
+import logging
 from typing import Optional, List, Dict
 import json
 import time
 from datetime import datetime
+
+logger = logging.getLogger("mcp-memory.llm.openai")
 from mcp_memory.llm.base import BaseLLMClient, LLMResponse
 
 
@@ -93,7 +96,7 @@ class OpenAIClient(BaseLLMClient):
         except Exception as e:
             self.record_request(success=False)
             self.set_unavailable(str(e))
-            print(f"[OpenAI] Request Error: {e}")
+            logger.warning("[OpenAI] Request Error: %s", e)
             return None
 
     async def chat_completion_with_full_response(

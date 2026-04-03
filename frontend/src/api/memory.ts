@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { setupInterceptors, withRetry } from './interceptors'
 import type { 
   Memory, 
   GraphData, 
@@ -9,33 +10,35 @@ import type {
   EvolutionProfile 
 } from '@/types/memory'
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:22888',
-  timeout: 30000
-})
+const api = setupInterceptors(
+  axios.create({
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:22888',
+    timeout: 30000
+  })
+)
 
 export const memoryApi = {
   async getStats(): Promise<SystemStats> {
-    const response = await api.get<SystemStats>('/dashboard/stats')
+    const response = await withRetry(() => api.get<SystemStats>('/dashboard/stats'))
     return response.data
   },
 
   async getGraph(days: number = 7, maxNodes: number = 1000, memoryOnly: boolean = false): Promise<GraphData> {
-    const response = await api.get<GraphData>('/dashboard/graph', {
+    const response = await withRetry(() => api.get<GraphData>('/dashboard/graph', {
       params: { days, max_nodes: maxNodes, memory_only: memoryOnly }
-    })
+    }))
     return response.data
   },
 
   async searchMemories(query: string, limit: number = 20): Promise<{ items: SearchResult[] }> {
-    const response = await api.get<{ items: SearchResult[] }>('/dashboard/memory/search', {
+    const response = await withRetry(() => api.get<{ items: SearchResult[] }>('/dashboard/memory/search', {
       params: { query, limit }
-    })
+    }))
     return response.data
   },
 
   async getMemoryDetail(memoryId: string): Promise<Memory> {
-    const response = await api.get<Memory>(`/dashboard/memory/${memoryId}`)
+    const response = await withRetry(() => api.get<Memory>(`/dashboard/memory/${memoryId}`))
     return response.data
   },
 
@@ -45,13 +48,13 @@ export const memoryApi = {
     title?: string
     keywords?: string[]
   }): Promise<{ status: string; id: string }> {
-    const response = await api.post('/dashboard/memory/update', {
+    const response = await withRetry(() => api.post('/dashboard/memory/update', {
       memory_id: memoryId,
       content: data.content,
       user_id: data.user_id,
       title: data.title,
       keywords: data.keywords
-    })
+    }))
     return response.data
   },
 
@@ -63,7 +66,7 @@ export const memoryApi = {
     keywords?: string[]
     content_type?: string
   }): Promise<{ status: string; id: string }> {
-    const response = await api.post('/memory/write', data)
+    const response = await withRetry(() => api.post('/memory/write', data))
     return response.data
   },
 
@@ -74,52 +77,52 @@ export const memoryApi = {
     project_id?: string
     top_k?: number
   }): Promise<{ memories: Memory[] }> {
-    const response = await api.post('/memory/read', data)
+    const response = await withRetry(() => api.post('/memory/read', data))
     return response.data
   },
 
   async deleteMemory(memoryId: string, userId: string): Promise<{ status: string }> {
-    const response = await api.post('/memory/delete', {
+    const response = await withRetry(() => api.post('/memory/delete', {
       memory_id: memoryId,
       user_id: userId
-    })
+    }))
     return response.data
   },
 
   async reflectMemory(userId: string): Promise<{ status: string; message: string }> {
-    const response = await api.post('/memory/reflect', null, { params: { user_id: userId } })
+    const response = await withRetry(() => api.post('/memory/reflect', null, { params: { user_id: userId } }))
     return response.data
   },
 
   async rebuildGraph(): Promise<{ status: string }> {
-    const response = await api.post('/dashboard/rebuild_graph')
+    const response = await withRetry(() => api.post('/dashboard/rebuild_graph'))
     return response.data
   },
 
   async getLogs(): Promise<Array<{ time: string; message: string; type: string }>> {
-    const response = await api.get('/logs')
+    const response = await withRetry(() => api.get('/logs'))
     return response.data
   }
 }
 
 export const tieredApi = {
   async getStats(): Promise<any> {
-    const response = await api.get('/tiered/stats')
+    const response = await withRetry(() => api.get('/tiered/stats'))
     return response.data
   },
 
   async getMergedMemories(): Promise<any> {
-    const response = await api.get('/tiered/merged')
+    const response = await withRetry(() => api.get('/tiered/merged'))
     return response.data
   },
 
   async getMergeChain(memoryId: string): Promise<any> {
-    const response = await api.get(`/tiered/memory/${memoryId}/merge-chain`)
+    const response = await withRetry(() => api.get(`/tiered/memory/${memoryId}/merge-chain`))
     return response.data
   },
 
   async triggerDailyReflection(): Promise<any> {
-    const response = await api.post('/tiered/daily-reflection/trigger')
+    const response = await withRetry(() => api.post('/tiered/daily-reflection/trigger'))
     return response.data
   },
 
@@ -129,7 +132,7 @@ export const tieredApi = {
     title?: string
     keywords?: string[]
   }): Promise<{ status: string; id: string }> {
-    const response = await api.post('/tiered/storage/write', data)
+    const response = await withRetry(() => api.post('/tiered/storage/write', data))
     return response.data
   },
 
@@ -139,7 +142,7 @@ export const tieredApi = {
     title?: string
     keywords?: string[]
   }): Promise<{ status: string; id: string }> {
-    const response = await api.post('/tiered/thinking/write', data)
+    const response = await withRetry(() => api.post('/tiered/thinking/write', data))
     return response.data
   },
 
@@ -149,7 +152,7 @@ export const tieredApi = {
     title?: string
     keywords?: string[]
   }): Promise<{ status: string; id: string }> {
-    const response = await api.post('/tiered/skill/write', data)
+    const response = await withRetry(() => api.post('/tiered/skill/write', data))
     return response.data
   },
 
@@ -159,17 +162,17 @@ export const tieredApi = {
     memory_type?: string
     top_k?: number
   }): Promise<{ memories: Memory[] }> {
-    const response = await api.get('/tiered/query', { params })
+    const response = await withRetry(() => api.get('/tiered/query', { params }))
     return response.data
   },
 
   async getMemory(memoryId: string): Promise<Memory> {
-    const response = await api.get(`/tiered/memory/${memoryId}`)
+    const response = await withRetry(() => api.get(`/tiered/memory/${memoryId}`))
     return response.data
   },
 
   async getMemoryTrace(memoryId: string): Promise<any> {
-    const response = await api.get(`/tiered/memory/${memoryId}/trace`)
+    const response = await withRetry(() => api.get(`/tiered/memory/${memoryId}/trace`))
     return response.data
   },
 
@@ -178,40 +181,40 @@ export const tieredApi = {
     useful?: boolean
     comment?: string
   }): Promise<{ status: string }> {
-    const response = await api.post(`/tiered/memory/${memoryId}/feedback`, feedback)
+    const response = await withRetry(() => api.post(`/tiered/memory/${memoryId}/feedback`, feedback))
     return response.data
   },
 
   async summarizeMemories(memoryIds: string[]): Promise<{ summary: string }> {
-    const response = await api.post('/tiered/summarize', { memory_ids: memoryIds })
+    const response = await withRetry(() => api.post('/tiered/summarize', { memory_ids: memoryIds }))
     return response.data
   }
 }
 
 export const evolutionApi = {
   async getStatus(): Promise<EvolutionStatus> {
-    const response = await api.get<EvolutionStatus>('/dashboard/evolution/status')
+    const response = await withRetry(() => api.get<EvolutionStatus>('/dashboard/evolution/status'))
     return response.data
   },
 
   async setProfile(profile: EvolutionProfile): Promise<{ status: string; profile: string }> {
-    const response = await api.post('/dashboard/evolution/profile', null, {
+    const response = await withRetry(() => api.post('/dashboard/evolution/profile', null, {
       params: { profile }
-    })
+    }))
     return response.data
   }
 }
 
 export const llmApi = {
   async getStatus(): Promise<LLMStatus> {
-    const response = await api.get<LLMStatus>('/dashboard/llm/status')
+    const response = await withRetry(() => api.get<LLMStatus>('/dashboard/llm/status'))
     return response.data
   },
 
   async getInteractions(limit: number = 50): Promise<any> {
-    const response = await api.get('/dashboard/llm/interactions', {
+    const response = await withRetry(() => api.get('/dashboard/llm/interactions', {
       params: { limit }
-    })
+    }))
     return response.data
   }
 }

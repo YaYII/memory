@@ -176,6 +176,19 @@ async def search_memories(request: Request, query: str = "", limit: int = 20):
     try:
         items = []
         store = state.memory_manager.store
+        
+        def _parse_json_list(raw):
+            if isinstance(raw, list):
+                return raw
+            if isinstance(raw, str):
+                try:
+                    import json
+                    parsed = json.loads(raw)
+                    return parsed if isinstance(parsed, list) else []
+                except (json.JSONDecodeError, TypeError):
+                    pass
+            return []
+        
         if not query.strip():
             all_docs = store.collection.get(limit=limit)
             for i, mid in enumerate(all_docs.get("ids", [])):
@@ -189,6 +202,10 @@ async def search_memories(request: Request, query: str = "", limit: int = 20):
                     "scope": meta.get("scope", "project"),
                     "user_id": meta.get("user_id", ""),
                     "match_type": "all",
+                    "memory_type": meta.get("memory_type", "storage"),
+                    "keywords": _parse_json_list(meta.get("keywords", [])),
+                    "tags": _parse_json_list(meta.get("tags", [])),
+                    "importance": meta.get("importance", 0.5),
                 })
         else:
             results, _ = store.search(query, user_id="dashboard", limit=limit, reinforce=False)
@@ -203,6 +220,10 @@ async def search_memories(request: Request, query: str = "", limit: int = 20):
                     "scope": meta.get("scope", "project"),
                     "user_id": meta.get("user_id", ""),
                     "match_type": "semantic",
+                    "memory_type": meta.get("memory_type", "storage"),
+                    "keywords": _parse_json_list(meta.get("keywords", [])),
+                    "tags": _parse_json_list(meta.get("tags", [])),
+                    "importance": meta.get("importance", 0.5),
                 })
         return {"items": items}
     except Exception as e:

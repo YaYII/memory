@@ -25,18 +25,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import * as THREE from 'three'
 
+interface TieredBreakdown {
+  storage: number
+  thinking: number
+  skill: number
+}
+
+interface BrainStats {
+  memory_count?: number
+  tiered_breakdown?: TieredBreakdown
+}
+
 const props = defineProps<{
-  stats: {
-    memory_count?: number
-    tiered_breakdown?: {
-      storage: number
-      thinking: number
-      skill: number
-    }
-  } | null
+  stats: BrainStats | null
 }>()
 
 const canvasRef = ref<HTMLDivElement>()
@@ -51,6 +55,7 @@ let renderer: THREE.WebGLRenderer | null = null
 let brainGroup: THREE.Group | null = null
 let animationId: number | null = null
 let particles: THREE.Points | null = null
+let synapseLines: THREE.LineSegments | null = null
 
 const REGION_COLORS = {
   storage: 0x4A90E2,
@@ -58,7 +63,37 @@ const REGION_COLORS = {
   skill: 0x7ED321,
   core: 0x00ff41,
   inactive: 0x333333
+} as const
+
+type RegionName = keyof typeof REGION_COLORS
+
+const MIN_PARTICLES = 30
+const MAX_PARTICLES = 400
+const PARTICLES_PER_MEMORY = 1.5
+
+function calcParticleCount(memoryCount: number): number {
+  return Math.min(MAX_PARTICLES, Math.max(MIN_PARTICLES, Math.floor(memoryCount * PARTICLES_PER_MEMORY)))
 }
+
+function calcSynapseCount(memoryCount: number): number {
+  return Math.min(300, Math.max(10, Math.floor(memoryCount * 0.6)))
+}
+
+const computedStats = computed(() => {
+  const total = props.stats?.memory_count || 0
+  const breakdown = props.stats?.tiered_breakdown
+  return {
+    total,
+    storage: breakdown?.storage ?? 0,
+    thinking: breakdown?.thinking ?? 0,
+    skill: breakdown?.skill ?? 0,
+    activeRegions: [
+      (breakdown?.storage ?? 0) > 0 ? 1 : 0,
+      (breakdown?.thinking ?? 0) > 0 ? 1 : 0,
+      (breakdown?.skill ?? 0) > 0 ? 1 : 0
+    ].reduce((a, b) => a + b, 0)
+  }
+})
 
 onMounted(() => {
   initBrain()
@@ -103,6 +138,10 @@ function initBrain() {
   createNeuralParticles()
   createSynapseConnections()
 
+  if (props.stats) {
+    updateBrainActivity(props.stats)
+  }
+
   animate()
   window.addEventListener('resize', handleResize)
 
@@ -140,7 +179,7 @@ function createBrainModel() {
   const center = new THREE.Mesh(centerGeometry, centerMaterial)
   brainGroup.add(center)
 
-  const regions = [
+  const regions: Array<{ name: RegionName; position: [number, number, number]; color: number }> = [
     { name: 'storage', position: [-5, 2, 0], color: REGION_COLORS.storage },
     { name: 'thinking', position: [5, 2, 0], color: REGION_COLORS.thinking },
     { name: 'skill', position: [0, -4, 2], color: REGION_COLORS.skill }
@@ -155,7 +194,7 @@ function createBrainModel() {
     })
     const sphere = new THREE.Mesh(geometry, material)
     sphere.position.set(region.position[0], region.position[1], region.position[2])
-    sphere.userData = { region: region.name }
+    sphere.userData = { region: region.name, baseScale: 1.0 }
     brainGroup!.add(sphere)
 
     const ringGeometry = new THREE.RingGeometry(1.5, 1.8, 32)
@@ -167,6 +206,7 @@ function createBrainModel() {
     })
     const ring = new THREE.Mesh(ringGeometry, ringMaterial)
     ring.position.set(region.position[0], region.position[1], region.position[2] + 0.1)
+    ring.userData = { region: region.name }
     brainGroup!.add(ring)
   })
 }
@@ -174,11 +214,14 @@ function createBrainModel() {
 function createNeuralParticles() {
   if (!brainGroup) return
 
-  const particleCount = 150
+  const stats = computedStats.value
+  const totalMemory = stats.total || 50
+  const particleCount = calcParticleCount(totalMemory)
   const geometry = new THREE.BufferGeometry()
   const positions = new Float32Array(particleCount * 3)
   const colors = new Float32Array(particleCount * 3)
   const sizes = new Float32Array(particleCount)
+  const regionWeights = getRegionWeights(stats.storage, stats.thinking, stats.skill)
 
   for (let i = 0; i < particleCount; i++) {
     const theta = Math.random() * Math.PI * 2
@@ -189,16 +232,7 @@ function createNeuralParticles() {
     positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
     positions[i * 3 + 2] = radius * Math.cos(phi)
 
-    const colorType = Math.random()
-    let color
-    if (colorType < 0.33) {
-      color = new THREE.Color(REGION_COLORS.storage)
-    } else if (colorType < 0.66) {
-      color = new THREE.Color(REGION_COLORS.thinking)
-    } else {
-      color = new THREE.Color(REGION_COLORS.skill)
-    }
-
+    const color = pickColorByWeight(regionWeights)
     colors[i * 3] = color.r
     colors[i * 3 + 1] = color.g
     colors[i * 3 + 2] = color.b
@@ -212,17 +246,19 @@ function createNeuralParticles() {
 
   const material = new THREE.ShaderMaterial({
     uniforms: {
-      uTime: { value: 0 }
+      uTime: { value: 0 },
+      uPulseIntensity: { value: 1.0 }
     },
     vertexShader: `
       attribute float size;
       uniform float uTime;
+      uniform float uPulseIntensity;
       varying vec3 vColor;
       
       void main() {
         vColor = color;
         vec3 pos = position;
-        float pulse = sin(uTime * 2.0 + position.x * 0.5 + position.y * 0.3) * 0.3;
+        float pulse = sin(uTime * 2.0 + position.x * 0.5 + position.y * 0.3) * 0.3 * uPulseIntensity;
         pos += normalize(position) * pulse;
         vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
         gl_PointSize = size * (200.0 / -mvPosition.z);
@@ -254,7 +290,8 @@ function createNeuralParticles() {
 function createSynapseConnections() {
   if (!brainGroup) return
 
-  const connectionCount = 60
+  const stats = computedStats.value
+  const connectionCount = calcSynapseCount(stats.total || 50)
   const allPoints: THREE.Vector3[] = []
 
   for (let i = 0; i < connectionCount; i++) {
@@ -292,42 +329,118 @@ function createSynapseConnections() {
     opacity: 0.15
   })
 
-  const lines = new THREE.LineSegments(geometry, material)
-  lines.userData.isSynapse = true
-  brainGroup.add(lines)
+  synapseLines = new THREE.LineSegments(geometry, material)
+  synapseLines.userData.isSynapse = true
+  brainGroup.add(synapseLines)
 
   synapseCount.value = connectionCount
-  activeRegions.value = 3
+  activeRegions.value = stats.activeRegions
 }
 
-function updateBrainActivity(stats: any) {
-  if (!brainGroup || !particles) return
+type DataRegion = 'storage' | 'thinking' | 'skill'
+
+function getRegionWeights(storage: number, thinking: number, skill: number): Record<DataRegion, number> {
+  const total = storage + thinking + skill
+  if (total === 0) {
+    return { storage: 0.33, thinking: 0.33, skill: 0.34 }
+  }
+  return {
+    storage: storage / total,
+    thinking: thinking / total,
+    skill: skill / total
+  }
+}
+
+function pickColorByWeight(weights: Record<DataRegion, number>): THREE.Color {
+  const rand = Math.random()
+  let cumulative = 0
+  const order: DataRegion[] = ['storage', 'thinking', 'skill']
+  for (const region of order) {
+    cumulative += weights[region]
+    if (rand <= cumulative) {
+      return new THREE.Color(REGION_COLORS[region])
+    }
+  }
+  return new THREE.Color(REGION_COLORS.skill)
+}
+
+interface TargetState {
+  particleCount: number
+  synapseCount: number
+  regionOpacities: Partial<Record<RegionName, number>>
+  regionScales: Partial<Record<RegionName, number>>
+  regionWeights: Record<DataRegion, number>
+}
+let targetState: TargetState | null = null
+let transitionStartTime = 0
+const TRANSITION_DURATION = 1200
+
+function updateBrainActivity(stats: BrainStats) {
+  if (!brainGroup) return
 
   const total = stats.memory_count || 0
   const storage = stats.tiered_breakdown?.storage || 0
   const thinking = stats.tiered_breakdown?.thinking || 0
   const skill = stats.tiered_breakdown?.skill || 0
 
-  brainGroup.children.forEach(child => {
-    if (child.userData.region && child instanceof THREE.Mesh) {
-      const material = child.material as THREE.MeshBasicMaterial
-      let opacity = 0.5
+  targetState = {
+    particleCount: calcParticleCount(total),
+    synapseCount: calcSynapseCount(total),
+    regionOpacities: {},
+    regionScales: {},
+    regionWeights: getRegionWeights(storage, thinking, skill)
+  }
 
-      switch (child.userData.region) {
-        case 'storage':
-          opacity = 0.3 + (storage / Math.max(total, 1)) * 0.7
-          break
-        case 'thinking':
-          opacity = 0.3 + (thinking / Math.max(total, 1)) * 0.7
-          break
-        case 'skill':
-          opacity = 0.3 + (skill / Math.max(total, 1)) * 0.7
-          break
-      }
-
-      material.opacity = opacity
-    }
+  const maxRegion = Math.max(storage, thinking, skill, 1)
+  ;(['storage', 'thinking', 'skill'] as RegionName[]).forEach((region) => {
+    const count = region === 'storage' ? storage : region === 'thinking' ? thinking : skill
+    targetState!.regionOpacities[region] = count > 0 ? 0.3 + (count / maxRegion) * 0.7 : 0.15
+    targetState!.regionScales[region] = count > 0 ? 0.8 + (count / maxRegion) * 0.7 : 0.6
   })
+
+  transitionStartTime = performance.now()
+  activeRegions.value = [storage > 0, thinking > 0, skill > 0].filter(Boolean).length
+}
+
+function applyTransition(progress: number) {
+  if (!targetState || !brainGroup) return
+
+  const ts = targetState
+  const t = Math.min(1, progress)
+
+  brainGroup.children.forEach(child => {
+    if (!(child instanceof THREE.Mesh)) return
+    const region = child.userData.region as RegionName | undefined
+    if (!region) return
+
+    const material = child.material as THREE.MeshBasicMaterial
+    const targetOpacity = ts.regionOpacities[region] ?? 0.3
+    const targetScale = ts.regionScales[region] ?? 1.0
+
+    material.opacity = THREE.MathUtils.lerp(material.opacity, targetOpacity, t * 0.1)
+    const currentScale = child.scale.x
+    const newScale = THREE.MathUtils.lerp(currentScale, targetScale, t * 0.08)
+    child.scale.setScalar(newScale)
+  })
+
+  if (particles && particles.material instanceof THREE.ShaderMaterial) {
+    const intensity = 0.8 + t * 0.4
+    particles.material.uniforms.uPulseIntensity.value = intensity
+  }
+
+  if (synapseLines && synapseLines.material instanceof THREE.LineBasicMaterial) {
+    const targetOpacity = 0.1 + t * 0.15
+    ;(synapseLines.material as THREE.LineBasicMaterial).opacity = THREE.MathUtils.lerp(
+      synapseLines.material.opacity, targetOpacity, t * 0.05
+    )
+  }
+
+  neuronCount.value = Math.round(THREE.MathUtils.lerp(
+    neuronCount.value, ts.particleCount, t * 0.03
+  ))
+  synapseCount.value = Math.round(THREE.MathUtils.lerp(
+    synapseCount.value, ts.synapseCount, t * 0.03
+  ))
 }
 
 function animate() {
@@ -342,6 +455,15 @@ function animate() {
 
   if (particles && particles.material instanceof THREE.ShaderMaterial) {
     particles.material.uniforms.uTime.value = time
+  }
+
+  if (targetState && transitionStartTime > 0) {
+    const elapsed = performance.now() - transitionStartTime
+    applyTransition(elapsed / TRANSITION_DURATION)
+    if (elapsed > TRANSITION_DURATION * 3) {
+      targetState = null
+      transitionStartTime = 0
+    }
   }
 
   renderer.render(scene, camera)
@@ -399,6 +521,8 @@ function cleanup() {
   renderer = null
   brainGroup = null
   particles = null
+  synapseLines = null
+  targetState = null
 }
 </script>
 

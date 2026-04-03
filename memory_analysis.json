@@ -1,0 +1,3197 @@
+{
+  "total_count": 530,
+  "by_type": {
+    "storage": 11,
+    "thinking": 333,
+    "skill": 186,
+    "other": 0
+  },
+  "by_user": {
+    "test_user": 526,
+    "cli_user": 4
+  },
+  "test_memories": [
+    {
+      "id": "4872a126-104e-42c9-b19a-e7a3de90c67e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "2b289786-721d-4892-b7f8-3c06a4d58f2a",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自动化...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "29240e8d-d21d-4176-b6d9-c001f8d2aef3",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "2cfc1ad9-d3da-4422-b2cf-151e4ff1385b",
+      "title": "团队针对Python项目建立了一套完整的编码规范和质量保障体系，其核心目标是通过标准化的开发实践提升...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "b65cdd7c-ce58-4264-823d-cde0fa4307a2",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "e3500709-ba2b-4ad2-9cd6-985299321413",
+      "title": "测试记忆",
+      "user_id": "test_user"
+    },
+    {
+      "id": "cbc58a06-071f-421c-aa7c-7432541050ff",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "61aa9599-2c25-4eed-b774-8b9c3254d123",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障框架，其核心逻辑是通过统一的工具链和明确的约定...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "dc5d4e31-ddd5-44ec-a2d1-b721435c71d2",
+      "title": "用于验证记忆系统功能的测试记忆内容",
+      "user_id": "test_user"
+    },
+    {
+      "id": "df21c925-088d-46fa-b1f5-ba16bc53ea4a",
+      "title": "本次工作记忆流揭示了从简单的功能验证到发现并解决关键架构问题的完整过程。初始阶段通过重复性测试内容验...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "0dc6e5b0-d1c9-42fd-bf2d-23073f2ad4de",
+      "title": "近期工作围绕记忆系统的功能验证和关键问题修复展开。核心意图是确保记忆系统的基础架构稳定可靠，特别是验...",
+      "user_id": "test_user"
+    },
+    {
+      "id": "d751d410-6829-41e2-b460-cef3d1ee012d",
+      "title": "记忆系统整理与商用化规划方案：从现状分析、分类架构到实施路线图",
+      "user_id": "cli_user"
+    }
+  ],
+  "python_memories": [
+    {
+      "id": "2201e02f-6d5d-4dea-a927-d42f181f6c2b",
+      "title": "Python项目代码缩进规范：统一使用4个空格",
+      "user_id": "test_user",
+      "memory_type": "storage"
+    },
+    {
+      "id": "3bbcd5e0-b350-4427-abf0-362c32e9b566",
+      "title": "遵循Google Python风格指南编写文档字符串的规范说明",
+      "user_id": "test_user",
+      "memory_type": "storage"
+    },
+    {
+      "id": "e2e2fd4c-aab4-42a2-8aaf-5ab8b479f973",
+      "title": "关于函数必须为所有参数和返回值添加类型提示的编程规范要求",
+      "user_id": "test_user",
+      "memory_type": "storage"
+    },
+    {
+      "id": "a1e08d8b-475c-4672-ad11-0d4359be6a24",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "65d4c0d9-0592-48bd-93be-5f495ae86d83",
+      "title": "在Python项目中建立编码规范与质量保障体系：\n1. 格式规范：使用4空格缩进，文档字符串遵循Go...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ecc7f1ff-5c98-4eb7-9ed0-0e01ceaddc1f",
+      "title": "团队通过系统讨论确立了完整的Python开发规范体系，核心目标是建立可维护、可协作的代码质量标准。决...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4f7196ff-4b15-496c-b138-06f2e899fc64",
+      "title": "在Python项目中建立编码规范与质量保障体系的执行指令：\n1. 格式规范：采用4空格缩进，使用'b...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "c2f74926-2401-4c35-9c9f-3d368a2e8744",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：使用4空格缩进，采用black工具自动格式化代码...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e93b6344-1360-4ea7-9144-172f141be8e0",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ab71d0ff-09df-46be-a325-bdc9ac632912",
+      "title": "1. 编码规范：采用4空格缩进；遵循Google Python Style Guide编写文档字符串...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "1d763ee4-a781-4a3b-ae87-77c3d9403c14",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a6d6c7e6-5da8-4a7c-90e0-7c9adfb621cd",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式：使用4空格缩进，采用bla...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "9c7aeb40-5490-4806-bd50-a70694cba648",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化。\n2. 文档规范：遵循Google风格...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a01ebe9f-d892-4b30-bad3-6874b7c4f188",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8d5df75e-44dd-49b0-8702-7ce7e226f22c",
+      "title": "1. 基础格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "430a2e85-fee8-4ace-b3eb-a2b543ccaccd",
+      "title": "1. 代码格式：使用4空格缩进作为基础格式标准。\n2. 文档规范：遵循Google风格编写文档字符串...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "44b70a99-3a7c-4900-bfed-f025b701d785",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码结构：采用4空格缩进作为基础标准\n...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "408b2954-42b6-4295-acf4-bc39568d7a77",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "087b98e5-4fd3-46c5-a778-e3894113b8ec",
+      "title": "建立并执行Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e4ccbd9a-b7c4-4265-9caf-e3616e987d59",
+      "title": "在Python项目中建立系统化编码规范和质量保障体系的执行指令：\n1. 代码结构：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "83cceae5-27e6-4798-954f-2e1c1aee56f8",
+      "title": "1. 代码格式规范：所有Python代码使用4空格缩进，使用black工具自动格式化。\n2. 文档规...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "34c9c2a8-317e-439c-9ab8-904be21c7b81",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b2c547fa-9665-41b6-826d-6c083648dc97",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：统一使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "9d7a3e4c-7f6a-42c8-a26c-3876f6d0af7e",
+      "title": "1. 代码格式化：使用black自动格式化Python代码，确保4空格缩进。\n2. 代码检查：使用r...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "1aa47a66-cd79-4f44-ab7f-70e2d38ac3cb",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码风格规范：\n   - 采...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "86d39b1e-3c49-4a71-be59-7b8071c187a3",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1994a4bb-a20c-42ef-b9e7-dfcb0c53617e",
+      "title": "建立并执行Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a1b324f7-2a29-4677-999a-58e0099ff1cd",
+      "title": "1. 代码格式化：使用black自动格式化Python代码，采用4空格缩进标准\n2. 代码检查：使用...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "762e6849-3587-4d80-a8df-1cd4ba1b177c",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "6ad45f2e-d48c-4a76-a036-eb1d81ba1fb2",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "61be1961-d2bb-4ea4-9487-1acd02a54ec6",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0eb4c0d0-3683-4b18-acce-10580dc7e6a9",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "1e7953df-ac1a-4b5c-9a64-8648eaa82ab9",
+      "title": "1. 代码格式规范：使用4空格缩进；所有函数必须添加类型提示；文档字符串遵循Google风格。\n2....",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "04c92546-5b72-408a-a9c3-208951b18b68",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：采用4空格缩进，使用bl...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "531c9d96-913d-4ae0-b2aa-d08c0d48e0e8",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d949005f-d329-4ed1-bf6f-30be5b7eb0dc",
+      "title": "1. 代码格式：使用4空格缩进作为基础格式标准。\n2. 文档规范：遵循Google风格编写文档字符串...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "bc2bd415-418f-42b7-84c9-fdc6407a49b9",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f44b0e7f-dcf7-4830-a069-22c3736e5841",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "5639ac9e-06c2-4790-a329-d2ece19ecba0",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e673e5fe-6bd4-4c44-978c-e3e53fe5fa04",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "6bcd59e0-a383-4e73-b977-c220730de23c",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：遵循Google...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "1750d1ad-8bfa-41fb-9aa4-9043ca5dac8c",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准。\n2. 文档规范：遵循Google风格编写文档字...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d0d04e03-151b-40c5-9db5-d300e836bf7a",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f97f5d87-e886-46a5-9f90-56c7de84df35",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b91ac77b-c636-4cbb-95cb-df60a12b2e17",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "259e36c4-6cd8-4290-9351-988765dd1b9e",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：遵循Google...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "561d596c-9b50-44c6-8a86-6744bb3fcf72",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、维护性和协作效率。核心决策包括：采用4...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "17485a55-c4cf-460e-9490-dd6c8dd7822d",
+      "title": "建立并执行Python开发规范体系：\n1. 基础格式：使用4空格缩进，采用black工具自动格式化代...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7f140da2-4e15-46d5-a5fb-3ffe171a6871",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c21c542b-49a0-4ccd-ad0b-271748642a22",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "cbac8e07-b9ce-4238-a152-772630eba50f",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0d245d85-96e1-4d18-b06f-6e491ad4f8e6",
+      "title": "在Python项目中建立编码规范与质量保障体系：\n1. 代码格式：采用4空格缩进，使用black进行...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "8226c970-8230-4d4b-816a-28ea739a8ccc",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a5a68580-06e5-4918-8a9c-4d7013d610e1",
+      "title": "在Python项目中建立系统化编码规范和质量保障体系：\n1. 代码结构：采用4空格缩进作为基础标准\n...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "03289b96-d14d-40ea-82c3-a6c3543b675e",
+      "title": "1. 代码格式规范：使用4空格缩进；所有函数必须添加类型提示；文档字符串遵循Google风格。\n2....",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "655ace21-caaf-408c-8216-01262a2dcd49",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e71c4568-29e4-41f8-87be-7ae13ac0436c",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3c39dd91-734f-4ce5-8069-7c95d9c6ab0f",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式：使用4空格缩进，采用bla...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "518a28b9-0d97-4842-a62e-987052188d4f",
+      "title": "1. 编码规范：采用4空格缩进；遵循Google Python Style Guide编写文档字符串...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d482c3cb-c6be-47b8-bd42-cdfaddeaadf2",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "824ad71d-d6d9-4023-856c-0b8936e757cc",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：强制使用4空格缩进，采用black工具自动格式化...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d5d26544-7345-4894-aed0-fdf9f3554975",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "39d92dad-55ab-4939-a22d-a31a335592c3",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式：使用4空格缩进，采用bla...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f1be62e0-2a99-480c-afc0-b868c48b6124",
+      "title": "1. 代码格式化：使用black自动格式化Python代码，确保4空格缩进。\n2. 代码检查：使用r...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "4eea15ae-c96c-4377-bebe-a44a2909253f",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c769dee0-b252-40ba-b8ac-eec828947de8",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "5881349a-4fc1-4134-88e6-7c73040fbf35",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "930e8912-9c8b-4f06-a2c5-78d82fbee3ba",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a0b85ac1-6904-449f-9444-6bedf5135f0c",
+      "title": "在Python项目中建立系统化编码规范和质量保障体系的执行指令：\n1. 代码结构：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "8a1d756c-34fd-4daa-aab4-f07a43dcfebd",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c6a229c2-5184-48f4-ba92-8f3afaad40fe",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码可读性、可维护性和协作效率。采用4空格...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f641b103-621f-4820-a7a9-78694b7dd8ec",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d385f576-bea0-4ecc-a013-3311270460e1",
+      "title": "1. 基础格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "9c4f5473-fe85-4654-a34b-0dda995f992d",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "3532a9a8-79a2-47a6-8059-b4837fc6514e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "84a74380-c317-4cf5-9582-fe0b463394ec",
+      "title": "在Python项目中建立编码规范与质量保障体系的执行指令：\n1. 代码结构：采用4空格缩进作为基础标...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "2f36ff2d-c1e0-4ccf-a9e1-20b244fa1acb",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "67d83bbc-597d-4118-a511-d0ec3943a6c4",
+      "title": "1. 基础格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "40d7840e-c5d7-4e99-b360-f5e2f359aeb9",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、维护性和协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d2203e48-2dcb-4ff3-9479-57934379a808",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "12f06cb3-22e2-45cc-bb01-12a07bb88c48",
+      "title": "团队在Python项目开发中建立了系统化的代码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "fd48e662-6199-4497-b714-b6d661fde57f",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "07e2fdf7-f1b7-4e4f-894d-b57e6fa18046",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "acdc3a82-163a-492d-a4dd-cae83462c53d",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：\n  ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d4ff2815-fb60-4e16-b934-7e082fad606b",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "155a2123-af34-49a2-8992-34a841eec7dc",
+      "title": "团队在Python项目开发中确立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7b10e49d-3041-42e3-9999-fed1d2bef315",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3cc6bf0e-2de5-4f51-b3da-4d934e7be5e4",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式：使用4空格缩进，采用bla...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a0bacbc0-4f74-40ad-a52d-8e71e39e925e",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1b3a5991-7c34-42ea-840c-6fa3b320b813",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a0f719c0-99d4-483a-a5b4-af0f25f9d1d3",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c5023bc0-a638-4bf3-9987-4b0316ee5280",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "11d361d8-2279-439e-b8da-23f226210e62",
+      "title": "团队在Python项目开发中建立了系统性的代码质量保障体系，核心目标是确保代码一致性、可维护性和协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "accb8537-ba3d-4e91-a600-d9340577a225",
+      "title": "1. 代码格式化：使用black自动格式化Python代码，确保4空格缩进标准\n2. 代码检查：使用...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "508d3aa9-f917-4c55-99a1-98a2aec32923",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b6bda21d-37bc-426c-8b77-1a360e319136",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障框架，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2c6511b4-b90d-484e-a34a-13ba359cc730",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3b4788a2-aa40-4a7b-9e4a-169b1f5e5999",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a1af80a6-7e47-4338-8973-76ca756a97b3",
+      "title": "团队通过系统讨论确立了完整的Python开发规范体系，核心目标是建立可维护、可协作的代码质量标准。决...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b2b32b79-254b-4822-90a0-e420f838a907",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7e764f87-f0b7-49b9-8cc7-4690dfc96b06",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d0a79938-0784-4077-a436-e4979a99cc8c",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、维护性和协作效率。核心决策包括：采用4...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e5ca3499-3bbd-4566-8164-d0418d7421c7",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "cb634eae-92d9-4b95-95bc-022a27232f30",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "bad47f06-f3fa-4bce-8832-31984033664f",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：\n  ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "49568514-08be-4f98-8925-57a944272471",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "2edc2ef1-348a-44f6-9301-f52f58039ade",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b0068bc9-12d8-41d0-8de7-00b75e00b410",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a2600b31-06bc-4487-939b-700464d3ba43",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "444d0026-8908-46f5-8183-e6f460438927",
+      "title": "团队针对Python项目建立了一套系统性的编码规范与质量保障体系，其核心目标是通过标准化的开发实践提...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "5a7426cd-0c2f-4983-ba32-a8750b9c0430",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0116dac4-c8f2-4ef0-bf94-f5106cce5247",
+      "title": "1. 代码格式化：使用black自动格式化Python代码，确保4空格缩进标准\n2. 代码检查：使用...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "c85eb3dc-8341-4cdd-b3e9-1799b800fd6e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0a3bc5e0-9cd4-4455-9d9d-b6a2cb54bb02",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4872a126-104e-42c9-b19a-e7a3de90c67e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "505c80e3-f747-470e-8565-6738f5371ece",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "69af00cd-a382-476f-b797-776c4e783dea",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "998e6be3-db9a-4431-be5d-5f64dbdaf4a0",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e6333c10-f623-4102-a404-573ebfb15c42",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、维护性和协作效率。核心决策包括：采用4...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "fb39a096-abc9-46df-a694-cba89e10dfdf",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：使用4空格缩进，采用black工具自动格式化代码...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f51c444d-1cc9-4676-b9ac-c4f32810e268",
+      "title": "在Python项目中建立编码规范与质量保障体系：\n1. 代码格式：采用4空格缩进，使用black进行...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fd9e2085-de84-4ad2-92c2-579fa1481110",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b057c1ce-c1b4-434e-aeb0-58da9a6f1ca2",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：强制4空格缩进，使用black自动格式化；2. ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "2b289786-721d-4892-b7f8-3c06a4d58f2a",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自动化...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ab27fd48-450c-4cf3-ad1d-f91f0233e80f",
+      "title": "团队通过系统化讨论，确立了以提升代码可维护性、协作效率和自动化水平为核心目标的开发规范体系。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c0d0a0f0-cb18-487b-a580-226d827c6f64",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ec73e935-bfc6-4147-9c93-afe9ff611755",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9857bccf-f71e-4d13-8849-8df00535f132",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8cea3fe4-eb68-49e0-8dbd-866c060408c5",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4e38b10b-e456-4e84-b6b2-40174bc9ad33",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "004cb93c-785a-4c3a-ac49-7861c21c0330",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4cb28310-2fb1-4235-abef-8d1b8d1a3f69",
+      "title": "建立并执行Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ee5ee036-0831-42a0-a102-bd6240635d7d",
+      "title": "团队在Python项目开发中建立了系统化的代码质量保障体系，核心目标是提升代码的可读性、可维护性和协...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "96ac25d7-0efc-447c-9698-89d878c3779a",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c35a3932-bd42-46e7-a338-d08d3019153d",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8018b173-3ed7-48a5-93e3-3c4665dbad5a",
+      "title": "团队在Python项目开发中确立了系统性的编码规范与质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3a9ab40c-8e50-46be-becb-6688fe3babe6",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7e39bad0-4f69-4b20-b764-66c4a2acbd16",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b9db6332-cc93-4208-8d29-d2452a3f0173",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "02a6af94-65db-4079-9cf7-e9b8b64bb68a",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d6343b7f-e2c3-47b0-a1fe-a664b964d37b",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9af9f6e3-bfa0-4fb6-844f-85bfbaf4836c",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1c3dd2fd-a029-4288-9620-5c54711deb3c",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4f273e28-eaf5-4de0-8abf-9bd258349988",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "64ae1779-de04-4e41-9ed3-228ab60c874e",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "776adefb-2403-4472-b14e-377a2c592ce5",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "22d7eb7e-36fb-4ee5-8ae7-5fb818dc4365",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "5624754c-94fd-4d20-9e56-5328d89a88ee",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：使用4空格缩进，采用black工具自动格式化代码...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a5c35f97-b94b-41b8-b512-7c1c0fa217e4",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "bfc4cd88-7587-44a9-a5f9-ad50d3e21b45",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "004dc217-4ee4-4778-9363-292da979d5c7",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3cff8c8a-3732-4028-9b9f-31960e3c4e03",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "bbc02b23-8183-456d-8de1-7ab61dcd87a2",
+      "title": "团队在Python项目开发中建立了明确的编码规范体系，其核心目标是通过统一的代码风格和自动化工具提升...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e5ca0c3b-78a4-4dae-a4be-7fcfea79fe55",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7c12d5c3-d7df-4f87-b2d4-92da0d853533",
+      "title": "团队针对Python项目建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3e2d7c03-6fa9-464f-ac5e-699e155d7b30",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9aa9198f-7314-4746-a01b-5dd3df12d8c8",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "6b91e5e6-ed87-45a5-96e7-d30bae369747",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a81d0206-6473-47c9-b25d-267c168d08f8",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7cd86494-9fac-47c5-a471-d15be2a480d1",
+      "title": "团队在Python项目开发中建立了明确的编码规范体系，核心目标是提升代码可读性、可维护性和协作效率。...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "17ccb11a-555f-4f88-8887-fdc7077b526e",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "59ba1f30-fe60-4020-b579-33a2775018b0",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：统一使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ddf4dea0-f685-471c-aa3c-c5940480b94f",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "117322c3-3963-49b4-bf37-71f08b6a3751",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "024e062e-8863-40b2-9ae6-d9d8dc609273",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "6c061d00-a532-4ef2-9be9-420588e88f99",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f996276f-0314-44d2-970b-8b90113dcaed",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3eedb7a6-3fc9-479a-9545-62687359fb66",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ffee3bdd-15d0-4e41-a229-2cb384403e73",
+      "title": "团队针对Python项目建立了一套系统性的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0106c81a-c501-47d8-a6ac-dc48d209786d",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "605494c6-f4ea-4371-9749-5bd8f48a9ede",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "c5500b71-0284-44b5-ad33-07c3da220029",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6227b751-7a2f-4a34-b646-5f2ef8547b95",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一标准提升代码可...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "947d4115-d1ce-4ed7-bfdd-624fbaae6320",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b0826790-93eb-409b-8e78-18b8d9871f21",
+      "title": "1. 基础格式规范：采用4空格缩进，使用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7ead2b54-e2f3-4d78-a33e-7753ae13fa7d",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立统一、可维护、可扩展的代码...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e2213fdd-3cfd-4865-98b6-5b00c69921e7",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：采用4空格缩进，使用bl...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "648c692a-f0c0-4eb6-be92-30aac57bac7c",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，其核心目标是通过统一的编码规范提升代码可...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "32d28209-41c1-4355-b258-20590f7f3186",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "231574e2-0a9e-4e7d-8ec9-620ed366b2d0",
+      "title": "在Python项目中建立编码规范与质量保障体系：\n1. 代码结构：采用4空格缩进作为基础标准\n2. ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fc961941-2298-4bc3-9b80-05b443551db9",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码一致性、可维护性和协作效率。核心决策包括：采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "72bb7e3e-add7-4004-bdf4-3ac54eaa3c78",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "48f944ac-3baf-4759-8ea4-e3a5cbdc578b",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d6a8ad12-fd59-43d9-8fc6-8aa2ae45d26b",
+      "title": "团队在Python项目开发中建立了系统性的代码质量保障体系，核心目标是提升代码的可读性、可维护性和协...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c1689c85-71e9-4c55-928a-65f7525bfc1a",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "29240e8d-d21d-4176-b6d9-c001f8d2aef3",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9f46446e-9bf2-4763-8065-8fb45b27bb56",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、维护性和协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "44fb9f8d-f4cc-428e-aefc-45ed9f4babcd",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "962a1909-2e22-4d4e-841f-2cd486005d3d",
+      "title": "建立并执行Python团队开发规范体系，具体包括：1) 基础格式：强制使用4空格缩进，采用black...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "40cf32f7-c03f-4e2e-85d0-766919cd9768",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "691194f7-6826-492f-a7f5-8ac280a191f6",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "499cdebd-f1bf-4205-84a1-18b4f038a2d3",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c75336a7-8980-4d98-a3ab-d36e03f3feea",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "07d3aa8f-836b-4f04-9c12-cfeaf1cf8a5e",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：遵循Google...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fbd9f243-0acc-42eb-828a-116ac644fc61",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。采用4空...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2f454ff3-4680-442f-8b4d-e7c3307e9d2f",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、维护性和协作效率。核心决策包括：采用4...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c6ea5193-2783-4f7b-966f-87bc1d48e501",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "66ae6adc-5ca6-4998-b73a-aced0c003464",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8d88aea1-a037-43c1-8c2e-e495a3a263ed",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式：使用4空格缩进，采用bla...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "88a9c3d0-1888-44f0-8e35-d69041820db3",
+      "title": "团队针对Python项目建立了一套系统性的编码规范与质量保障体系，其核心目标是通过统一的代码风格、严...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b9bfb5f8-c389-4f49-8d5a-9aae023eb9bb",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "77b78945-c5eb-4da3-9310-226894200c4d",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d19b9dba-b825-46e9-97a9-d7e8a6cee57e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f6854268-6691-476c-9e9f-d9b47acf869a",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "82b994d3-bb97-4788-ae19-1ad3ee02d674",
+      "title": "团队在Python项目开发中建立了系统性的代码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8971a6c6-a2d0-4ac9-a985-0068be86939d",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a72d0e1b-c323-415e-a861-6408d922e827",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ceb23e84-cd41-4d3a-8fcf-239813417492",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "629cf60b-9612-456e-9c57-7ea6a08530ff",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c5d3785b-47be-47f8-9da1-0040f7254743",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4bf2cb61-eeb3-4864-b623-b034db293d08",
+      "title": "团队在Python项目开发中建立了系统性的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7d08d09c-0f4e-434b-9248-e0f2b1d64e38",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0855fe3d-4756-48a1-aa7b-cd5690009eb7",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "527f9e6e-9735-41e7-bee8-a3dd560c70bc",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "76c9e7be-c80b-4e2e-a0b4-4a5244d74979",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a3a11b93-b32c-451b-818c-4e1d375485f1",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、维护性和团队协作效率。该体系包含...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7b3e9278-edfd-4c4c-b418-21be90af61e4",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "30ef560c-10f9-46cb-8c2b-74a671bf8bab",
+      "title": "团队针对Python项目建立了系统性的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性以及...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2eab05ff-4a91-4af5-b026-cc8adfb1aeb1",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "497744a8-5ae6-4f36-8eef-558e610f195d",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4c8cd2b0-8150-4e61-b878-3b8b7d815e92",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障框架，其核心目标是通过统一的编码规范、静态分析...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9bf96e28-c8b5-49cc-9336-355fb793c965",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "56cbdca3-e212-4c7a-bb1e-e61c33f31e4b",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1709b989-0651-4968-a307-78918bf7cd1e",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3373c8a3-56a5-4090-94ea-e47e9bba93b5",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "216cedb5-0795-4e5a-9336-9b4a1ac020c5",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d729fbc9-b7eb-485b-a34f-70d7b7059095",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与质量保障体系，其核心目标是通过标准化的开发实践...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "eebfde6a-45b1-4321-a7e0-173a83aaaf65",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f09b08cc-1430-45ec-9451-e77bf38542eb",
+      "title": "团队在Python项目开发中建立了系统化的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a81a31ca-82ef-480b-bdca-f134906e2606",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f7d0dad0-279f-4e16-b3fb-39d914fc60ae",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "567dc645-129f-465d-9f77-55d45e0a11b9",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：强制4空格缩进，使用black自动格式化；2. ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "2fede99a-dade-42aa-90c8-eea1dc835f4f",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ab228fe0-8a7b-40ba-a26d-98ff52b455b4",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，其核心目标是通过统一的编码规范提升代码可...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "61b19dde-8ac3-4e0a-bd41-05e1eec5ffb6",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "27f22474-eedf-4f43-bf2e-a752cd72ade9",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d6a06434-0137-4933-b416-93d1c77f09ef",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "633e9053-aa64-46cb-9349-4be3c78bd8de",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4c01ac51-0305-4d60-b32f-c01a748d92f5",
+      "title": "团队针对Python项目开发建立了一套系统性的编码规范与质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2cfc1ad9-d3da-4422-b2cf-151e4ff1385b",
+      "title": "团队针对Python项目建立了一套完整的编码规范和质量保障体系，其核心目标是通过标准化的开发实践提升...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "96efd1be-f10d-42bf-9bf4-fdc2294c2a08",
+      "title": "团队在Python项目开发中确立了系统性的编码规范与质量保障体系，其核心目标是通过统一的代码风格、明...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3f9d60f5-51aa-4288-b514-f2084d56653a",
+      "title": "团队针对Python项目建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "df07ce15-17ca-4957-bf5e-eb5b6b76b815",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a3afd94a-84fd-4f7b-a3cd-5e0b9c8d18bc",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4fa576f8-e9a9-4799-9a7c-3aca2756346b",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码一致性、可维护性和协作效率。核心决策包括：采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6b202280-d671-4392-8fa2-d3d654d9ba7b",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a2da608f-5a4b-46c0-91bf-5e0d19026abd",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "40e69dd3-b923-4780-a06e-14d17a9e779e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7ce52a0e-9e12-462a-8180-910b4d3eb4b4",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3d492104-fabf-4634-a4fd-50e24df71b2a",
+      "title": "团队针对Python项目建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基础格...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "05390657-9376-4713-ade8-fe1a61b42443",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a9e925ce-9bd1-4071-84a8-9f12956f147d",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4348d0e8-5efe-400b-8006-939b1b25cca4",
+      "title": "建立并执行Python团队开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "3642e114-ec93-4a3e-887d-62d85189cdab",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码一致性、可维护性和协作效率。核心决策包括：采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "af05aae6-12d2-4c28-993b-ce0ae6ef3330",
+      "title": "团队通过系统讨论确立了完整的Python开发规范体系，核心目标是建立可维护、一致且高效的代码库。决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a33b7d30-ae0e-4b85-b440-6ebbb1982073",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b3ebbaa0-bf70-4c40-a8ee-d6fd8cdff984",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码可读性、可维护性和协作效率。采用4空格...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "603e60f4-c0ab-4843-86a0-30401a80e1e5",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3b1305b6-6c9b-4185-80ed-86631c823a76",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7aaffc92-638c-42ee-860a-610d0643757f",
+      "title": "团队通过系统化讨论，确立了以提升代码可维护性、协作效率和自动化水平为核心目标的开发规范体系。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c59fc7f4-afcb-45b5-9dc8-ed66655a44e1",
+      "title": "团队在Python项目开发中建立了系统性的代码质量保障体系，核心目标是提升代码的可读性、可维护性和协...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "794706c9-dcfa-44ce-a7f4-4592039bcbfd",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "dcea974e-c4d4-48ed-b7c9-c058e7fcab32",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "385ba9f8-7983-48a1-81a0-abb212d5b055",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a5ce4fec-a5f3-4255-98e5-7606b694f017",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数和模...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "8f835e65-c405-4ecb-9685-dba90ef54d61",
+      "title": "1. 代码格式规范：所有Python代码使用4空格缩进，使用black工具自动格式化。\n2. 文档规...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "0ca8fdb6-dfd0-4b13-9461-774cfefd65fc",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码格式规范：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fad80295-b488-4ead-908c-668e1f2e1a92",
+      "title": "1. 代码格式：使用4空格缩进作为基础格式标准。\n2. 文档规范：遵循Google风格编写文档字符串...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "cdd94700-bdf4-4bfd-8d2e-aad5a92aabcd",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9997d540-0b11-43a1-a266-ee076fc29937",
+      "title": "建立并实施Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a7e2b671-d1b9-4461-ba58-be07ba1bfd5b",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数、类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "bb019061-611d-4127-b5fe-237055e32ac3",
+      "title": "团队在Python项目开发中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b132a89d-c442-4dec-aabf-d9424c97479a",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数和模...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "9ea173fd-2ce4-4869-95e0-2efac131ff53",
+      "title": "1. 代码格式规范：\n   - 使用4空格缩进\n   - 遵循Google风格编写文档字符串\n   ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "be01938a-4823-4df0-a70e-651af7dda1cc",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：所有函数和模...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "309162c0-c9e7-410c-8df7-1f4d8e9240c5",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：\n   - 使用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "42e25fea-71be-4616-8855-1649d19d83a2",
+      "title": "1. 代码格式规范：\n   - 使用4空格缩进\n   - 采用Google风格编写文档字符串\n   ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "cef5c5e4-acfc-464f-8784-cc8259335332",
+      "title": "团队确立了以代码一致性、可维护性和自动化保障为核心的Python开发规范体系。核心决策包括：采用4空...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e07bd936-bba1-4442-b8c9-7b44ec28b009",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. **代码格式规范**...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "98ffbc4d-459f-4728-870f-0582e2ff9acc",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，采用black工具自动格式化；2. 文...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e75c6b27-46b7-453c-976f-f4f3669f7fb8",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数/类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "aeab40cd-0d9b-4c39-8705-350e0828eb0c",
+      "title": "团队在Python开发实践中建立了系统性的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "872a976d-7d81-439c-8d97-4268f0b4ce34",
+      "title": "建立并执行Python团队开发规范的完整流程：\n1. 确立规范体系目标：建立可维护、可协作的代码质量...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "b65cdd7c-ce58-4264-823d-cde0fa4307a2",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b59c2643-4c85-4c12-8ee0-54e24448353b",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，用black自动格式化；2. 文档规范...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fd6d0a15-490c-4af7-b30a-9a3b4784492c",
+      "title": "团队在Python项目开发中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c0043b8f-9959-4d48-8fcf-16545dcc7c5a",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8fa2b342-e02f-4b43-b80c-d06661fefbd1",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数、类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "cd3c0843-9a92-45ad-809e-d4218876ba37",
+      "title": "团队在Python项目开发中建立了系统性的代码质量保障体系，核心目标是确保代码一致性、可维护性和协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ddd392a1-a49c-42cc-8e2a-411fe5857fbd",
+      "title": "在Python项目中建立编码规范与质量保障体系的执行指令：\n1. 格式规范：采用4空格缩进，使用'b...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "87136a37-7032-43e9-9ef7-71a73700e655",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "49a92088-9963-4958-b353-f7d7568d35d3",
+      "title": "在Python项目中建立编码规范与质量保障体系的执行指令：\n1. 格式规范：采用4空格缩进作为基础格...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7a7a6378-e87d-4070-b593-de00b404d6a8",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：使用4空格缩进，采用black工具自动格式化代码...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "622d280a-ca8f-47c6-854f-db9725ba7777",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0a262c72-f244-44c5-ba2d-1e3c348617fa",
+      "title": "团队在Python项目开发中建立了系统性的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "004436a6-7b54-48fc-8ffe-96db3c5a05db",
+      "title": "1. 代码格式规范：\n   - 使用4空格缩进\n   - 遵循Google风格编写文档字符串\n   ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "c38e9fc8-60ff-41f4-a281-e87c031cac53",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "51a3823c-09de-48f3-8ad6-e3cbeafef858",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b9c6cc68-bbc2-4b8a-81a5-1433d9717b1a",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。该体系包含三...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9ce018e6-983d-4371-8966-88298e15ecb8",
+      "title": "建立并实施Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "5272b31f-ec07-4ca7-97cb-3f829fd8a9c3",
+      "title": "1. 代码格式规范：所有Python代码使用4空格缩进；使用black工具自动格式化代码；使用ruf...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "b534d9a4-5880-4ab8-b0f1-8de33a7ca5fd",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码风格规范：\n   - 采...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "3ec066d6-9c7b-4366-b4e6-c69a7e66821b",
+      "title": "1. 代码格式规范：使用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "536ad20f-4d40-406c-9fc7-03dc9c171163",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码风格规范：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "3552fccb-e409-4d3e-8b1e-1ef783f9a6c4",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，采用black工具自动格式化；2. 文...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "84d29d3d-8029-431b-8db9-ccdc2bdfc2ca",
+      "title": "1. 代码格式规范：\n   - 使用4空格缩进\n   - 文档字符串遵循Google风格\n   - ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ebd1ec97-4a7e-4245-9902-24859f7a9e32",
+      "title": "团队针对Python项目开发建立了一套系统性的代码规范与质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "5d60357e-f8b8-4ca2-8341-d534eb40763c",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "27bb3cae-e1d4-4961-8eb5-75c6f864ea22",
+      "title": "团队针对Python项目开发建立了一套系统性的编码规范与自动化质量保障体系。核心决策包括：采用4空格...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "127b245e-ef33-4642-b7fa-e55c1b64eee2",
+      "title": "团队针对Python项目建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8a0d3d51-0356-4d9e-870a-e32b916e9fab",
+      "title": "团队在Python项目开发中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4c0cdde5-8bdb-4dcc-bbb9-9f3bd61f65d5",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "abcca3b7-c436-44f4-becc-cbc45e13dccb",
+      "title": "建立并实施Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7b4b3bab-bf3d-45a1-b599-e1c2dea8a635",
+      "title": "团队通过系统讨论确立了完整的Python项目开发规范体系，其核心目标是通过标准化的代码风格、类型系统...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6bdc7d72-8b4a-4756-ad26-4c3053940d84",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "eb1b0708-75cf-4295-a764-ff0077a6cf58",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式统一：使用4空格缩进，采用b...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d52d699a-62b0-40ff-9237-19ba4be05b6d",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c97c2080-5d0a-45e9-a0e2-aeec2f600520",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：统一使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ebc4986d-9a76-4c3f-b063-f19863cdb1b7",
+      "title": "在Python项目中建立系统性的编码规范和质量保障体系，具体执行指令如下：\n1. **格式规范**：...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "badbcdda-dde3-4d6f-b3a6-3f9a60d4edeb",
+      "title": "团队通过系统讨论确立了统一的Python开发规范体系，其核心目标在于提升代码的可读性、可维护性及协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "aa578afb-3f3b-45ce-93f3-8afcab513a65",
+      "title": "建立并执行Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e520835f-1671-4470-8e96-2a013749c24c",
+      "title": "团队通过系统讨论确立了Python项目的统一编码规范和质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "daea82b6-d165-424d-a715-39ba12174b99",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "5efa6ff7-db09-4755-8abf-678de70d1579",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障体系，核心目标是提升代码可读性、可维护性和协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7a9a356b-b442-4046-bd3e-2470801957ce",
+      "title": "1. 建立Python开发规范体系：\n   - 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "5b769b2e-a578-4d3f-9c34-d16de0054b7e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3f2be5a4-2b4c-4e64-8552-03cdff87e852",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，用black自动格式化；2. 文档：按...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "071c2302-d7ea-4b0e-ad47-10107357f908",
+      "title": "团队在Python项目开发中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "21a29859-55da-42de-8a76-84c358abdef8",
+      "title": "1. 建立Python开发规范体系，包含三个层面：\n   a) 基础格式：使用4空格缩进，采用bla...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "0c9ebc3e-6df7-42a8-a896-6a0e90351574",
+      "title": "团队在Python开发实践中建立了系统性的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4e74ce32-9c01-473a-bdfe-ba60a1919ea8",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "58c9d821-c995-4209-83ab-e582174d9144",
+      "title": "在Python项目中建立系统性的编码规范和质量保障体系，具体执行指令如下：\n1. 格式规范：采用4空...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "143529dd-2280-4fe8-8bc0-440e3b0be30e",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障框架，其核心逻辑是通过统一的工具链和明确的约定...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "35b57ac8-4e26-4e1b-9915-7f5e801c1717",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7e1486f5-45cb-4bf6-a61a-0f9bb947b2e6",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3ba20c5e-2be3-4052-85b9-0572a8a7d54e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f939cef0-2504-4dde-af57-f9db0a4fdf65",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6376ff15-6811-42cd-965a-697afef96f0e",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e0b2e0b6-929c-497d-b958-1db6c5943fcf",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b0112100-e59c-4cc9-b447-d61e82e285cc",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障框架，核心目标是通过统一的编码规范提升代码可读...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c3e8586f-da34-42f7-9b3a-0757d0ae6dff",
+      "title": "团队针对Python项目建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "77ca62c7-f2cc-4a0c-b412-badd3d14abde",
+      "title": "团队针对Python项目建立了一套完整的编码规范和质量保障体系，其核心目标是通过标准化的开发实践提升...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "23194f3d-0438-4be0-9b99-9cd4a37aaba5",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "a18292e2-9b8f-483e-aec5-74d7d0d5d7b8",
+      "title": "团队针对Python项目建立了系统性的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "cbc58a06-071f-421c-aa7c-7432541050ff",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和协作效率。核心决策包括：采用...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2db6f5e2-5d6e-4c88-8098-655ab665afd7",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black进行自动格式化\n2. 文档规范：所有函数和模块使用...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "2eab4843-0a58-4d0b-9b63-99e5e4c975ab",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "b12210a5-1ab5-4a5e-befc-c370785af6f5",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数和类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ab954429-17ad-44d3-9c08-b42bd32092ca",
+      "title": "建立并执行Python开发规范体系，具体包括：1. 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "5c9bdf2a-709a-459d-8ff2-a65937e1f2f2",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8a90b2ba-3629-40f6-84fd-98b0e128bc42",
+      "title": "建立并执行Python开发规范体系：1. 基础格式：使用4空格缩进，采用black工具自动格式化代码...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "1382c7e4-79f4-4f27-ad45-1674dded141c",
+      "title": "团队通过系统讨论确立了Python项目的标准化开发框架，核心目标是建立可维护、可协作的代码基础。决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "71780e22-d1d4-4d50-9466-5d83beaf8df6",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ae80c01c-f69f-4e28-b28b-294122bc286e",
+      "title": "团队确立了统一的Python开发规范体系，旨在提升代码可读性、维护性和协作效率。核心决策包括：采用4...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1b3c0c56-c242-467c-9d79-1e32fd5da512",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "b40b8723-8dab-44dd-af29-2c85df1b024d",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8539c449-d994-4e99-9404-d1ba3bed1091",
+      "title": "团队在Python开发实践中建立了系统性的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7d69829d-503a-46bd-8dba-0ab2ab479916",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f8fc09b7-fdfc-4d97-bcc3-8b10a99df7cd",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码风格规范：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "bc612dc7-c588-478f-b1ba-8f6ec05a89bd",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码可读性、维护性和协作效率。采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f29e724a-a2ab-492a-ba58-83d5632d3cb8",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：遵循Google...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fe2405c8-fbf3-4752-9135-7cc7518d5838",
+      "title": "团队在Python开发实践中建立了系统性的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8dde7406-b340-4213-b6c0-29ec5fce89db",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：采用4空格缩进，使用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "61447ea2-f774-470a-b0f0-43ea35d9d23e",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，核心目标是建立可维护、可协作的代码库。采...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "cc9e39a1-ebf6-493b-a828-9ab13a3fc79c",
+      "title": "在Python项目中建立系统化编码规范和质量保障体系，具体执行指令：1. 采用4空格缩进和Googl...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e959d5fc-90d5-4190-a6ed-51b477dfe298",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数/类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "842cb99c-cbe2-4111-9730-021170f067ad",
+      "title": "团队确立了明确的Python开发规范体系，核心目标是建立统一、可维护的代码库并提升开发效率。采用4空...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "fc6bebc6-3d87-4514-9524-76380fe4938e",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障体系，核心目标是提升代码可读性、可维护性和协作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "44eea702-cbec-4c26-91a7-fd806568d238",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：\n   - 使用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "db57ffd8-ab2e-4a09-9f8f-dc676069799e",
+      "title": "团队在Python开发实践中建立了系统性的代码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "92362fb6-1fc5-4559-b600-a09a2e1aeb03",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "34fe60f4-4e2e-4fe1-b672-c10cd094baaa",
+      "title": "在Python项目中建立编码规范与质量保障体系的执行指令：\n1. 格式规范：采用4空格缩进，遵循Go...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "dca12923-379d-41b2-b9c4-b292a07cb9be",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，采用black工具自动格式化；2. 文...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f28c985b-8d5f-4ad6-af4e-9989ee61c10c",
+      "title": "团队通过系统讨论确立了统一的Python开发规范体系，核心目标是建立可维护、可协作的代码质量标准。该...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6805cf26-ebda-4676-b9d4-3215207dfd29",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：\n   - 使用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d056a4f2-b332-46ca-96d6-f46231d077dc",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：\n  ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "94f99ce1-c949-465b-ab46-c16d1475a9b3",
+      "title": "团队通过系统讨论确立了完整的Python项目开发规范体系，其核心目标在于建立统一、可维护、高质量的代...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c118439e-db1f-439a-939d-fe2b6439ee74",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系的执行指令：\n1. 代码格式规范：\n   - 使...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e4ff5fe9-3f5d-4796-b70c-91ff59c58d55",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。该体系包含三...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ba4f6c7b-6f11-4e11-add5-88a7c549cf1a",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "bc8d2b4a-0bae-4b30-9c02-64ada44bfc35",
+      "title": "建立并实施Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d31413cb-cd55-47ab-9f80-9390852bf5c5",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：\n   - 使用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7d2de7d8-953d-45c0-8f5b-c1c56dadb959",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，采用black工具自动格式化；2. 文...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "887a1a9b-6606-4245-a5a4-a659313d0919",
+      "title": "团队在Python项目开发中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e9da4e88-599e-439d-a3a1-13280dec2df6",
+      "title": "团队在Python项目开发中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3a8e362f-3295-420d-80aa-31ded1ac708c",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：所有函数必须...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "763b5a33-d6af-447b-a7c6-a8c361c69249",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9817919c-87b6-4305-abf7-ebc0041850c1",
+      "title": "团队通过系统讨论确立了统一的Python开发规范体系，核心目标是建立可维护、可协作的代码质量标准。决...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "da95b9a3-822e-4781-92e8-5271358c03f0",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "3e3be324-d5d5-4a1e-ae96-0e5fea3491f3",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障体系，其核心目标是通过统一的规范提升代码可读性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "910d4d64-db0d-4d37-8dc0-3ccc7d13480e",
+      "title": "1. **编码规范**：\n   - 缩进：使用4个空格，禁止使用Tab。\n   - 文档字符串：遵循...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "01b68134-e6ad-43d1-9265-21781767b355",
+      "title": "执行Python开发规范体系：1. 格式标准：使用4空格缩进；2. 文档规范：遵循Google风格编...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "5fc9e95b-f37b-4769-ae47-b4d63945e6e9",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数/类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "2d4dc9ea-4d02-4e8e-8b9d-d3a35939d815",
+      "title": "团队通过系统讨论确立了完整的Python项目开发规范体系，核心目标是建立可维护、可协作、高质量的代码...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7405a963-c77b-42d1-8c4d-9179bd452f66",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。该体系包含四...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "04fc7f7f-cba5-48dd-9939-7cc970dd17f0",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：使用4空格缩进，采用black工具自动格式...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "fbd0a4a0-5765-469d-a09e-9c8e11ee5da4",
+      "title": "建立并执行一套系统化的Python开发规范体系，具体包括：\n1. 代码格式：采用4空格缩进作为基础格...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7aabde54-e904-4a08-a743-27c784a64340",
+      "title": "1. 编码规范：\n   - 基础格式：使用4空格缩进\n   - 文档字符串：遵循Google Pyt...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f30033f6-5ce6-4c61-86c4-08764a6cde78",
+      "title": "执行Python开发规范体系：1. 代码格式：使用4空格缩进，通过black工具自动格式化。2. 文...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "4ef07d18-1ba3-4134-ba5c-89d19e03a6fa",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。该体系包含三...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b43351ea-2482-4777-88ab-94e447236d8a",
+      "title": "1. 基础格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ff0b724a-dd09-44d4-9e6c-a111012190de",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码风格规范：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e849c189-dcb6-40a4-ba5c-47cebbc8f169",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数/类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "34a78537-d418-4aca-af5d-6572ffeea50c",
+      "title": "团队通过系统讨论确立了Python项目的标准化开发框架，核心目标是建立可维护、可协作的代码质量保障体...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e2941fde-0a7d-44f0-ae3d-6ff22cdd4289",
+      "title": "1. 代码格式规范：使用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ed439a40-f98c-44a7-9759-df1722a60f33",
+      "title": "团队在Python开发实践中建立了系统性的代码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9f41b3b1-c44c-48b3-8add-1a5bd8524c1d",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化。\n2. 文档规范：遵循Google风格...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "9e62582a-23a3-4895-8bf2-4f98e352dbbf",
+      "title": "团队通过系统讨论确立了Python项目的标准化开发框架，核心目标是建立可维护、可协作的代码质量保障体...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "72b7e40f-8954-4814-b1eb-69dd68f9d922",
+      "title": "1. **编码规范**：\n   - 使用4空格缩进。\n   - 遵循Google Python St...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a680ed4d-095f-4595-85d4-fac5ce8bf4d7",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化。\n2. 文档规范：遵循Google风格...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "1fe3261d-ae2f-42ca-8bb2-bb96435cb921",
+      "title": "1. 代码格式规范：\n   - 使用4空格缩进\n   - 所有函数必须使用类型提示\n   - 异步函...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "62ed2a52-94d3-4cff-a7e1-11e5664fd423",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立可维护、一致且高质量的代码库。该体系包含四...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2496a03b-5583-4610-b703-a5c7f05c5fbd",
+      "title": "团队在Python开发实践中建立了系统性的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "721ca0fd-d343-450a-a14b-51de4a3a1eb9",
+      "title": "团队在Python项目开发中确立了系统性的编码规范与质量保障体系，其核心目标是通过统一的代码风格、明...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9b77915b-655c-4ce4-b12f-633fe6f42e8f",
+      "title": "团队在Python项目开发中确立了系统性的编码规范和质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f1ef9771-a241-4a11-8b07-431b90d05c2c",
+      "title": "团队针对Python项目建立了系统化的编码规范与质量保障体系，其核心目标是通过统一的代码风格、严格的...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b3892dd4-be89-4ddd-9a43-26567cd87b77",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障体系，其核心逻辑是通过统一的工具链和明确的约定...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d6e26ed0-2995-48d0-87df-d4f1e1cbf42e",
+      "title": "1. 建立Python开发规范体系，包含三个层面：基础格式统一（4空格缩进、black格式化）、文档...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "42641024-98d2-4c63-8a19-f80dcff4b389",
+      "title": "团队通过系统讨论确立了完整的Python项目开发规范体系，其核心目标在于建立统一、可维护、高质量的代...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7403fa76-beb4-41f5-9f94-596a712ee7af",
+      "title": "团队在Python项目开发中确立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6fa4bfa1-aaed-4101-9c1c-610a581ad828",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：遵循Goog...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f79a6a8b-c6ab-4bb6-9a37-85702ce73bd6",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "61aa9599-2c25-4eed-b774-8b9c3254d123",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障框架，其核心逻辑是通过统一的工具链和明确的约定...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0c232c2d-1379-451f-99dd-787645caec8b",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码可读性、可维护性和协作效率。采用4空格...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "42f067ee-a3c0-4402-8602-bc408c82e281",
+      "title": "团队在Python项目开发中建立了明确的编码规范体系，其核心目标是通过统一的代码风格和自动化工具保障...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "bc19ff24-7992-4a8b-ac49-9ea083b93f4c",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是建立统一、可维护、高质量的代码库。该体系包含四...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "e9a79061-dfc3-4599-9096-288c1b1b474e",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "5c26f83f-8538-4c34-94a3-30db73a8198c",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "8d138336-04d3-4d29-882d-d8c12fbc3d76",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "efd4eb1c-8db4-4a9e-aa56-f1725ba25379",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "06a32c2b-7676-4aa2-9d06-e2ab229e8671",
+      "title": "团队针对Python项目建立了一套完整的编码规范和质量保障体系，其核心目标是通过标准化的开发实践提升...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c453d7f9-5c2d-44ee-8d26-4e9a3aa26ee8",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准；遵循Google风格编写文档字符串；强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d5a061f9-ec7a-444e-be24-c9fa0fc1ef89",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "05eefa32-d62a-488a-b525-cc45bfd02ef8",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数、类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a1b1de45-7685-4353-8036-ff13947b53ca",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7fd5ab6b-41b5-4c75-affa-8f0604838556",
+      "title": "团队通过系统讨论确立了Python项目的标准化开发框架，核心目标是建立可维护、可协作的代码基础。决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "57875f4d-5fd7-4bf6-8536-52afcf48de2f",
+      "title": "团队通过系统化讨论，确立了以代码一致性、可维护性和自动化保障为核心的Python开发规范体系。核心决...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "db67a8a8-cb9f-43ed-ab08-5e467eeed2ae",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码可读性、维护性和协作效率。采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7db8d297-9755-464f-809f-ff90344b820c",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码格式规范：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "14a2f5cd-efdf-48ca-b38e-f074b0f3db79",
+      "title": "团队在Python开发实践中建立了系统化的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f6cc8ff8-0fe1-459c-a314-17a91afb6d35",
+      "title": "团队在Python开发实践中建立了系统性的代码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "27acc8bd-f2c3-450f-beae-3d93bf41eb67",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数/类必须...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "0e1950c1-8a78-4e69-96eb-e0b2009c18f3",
+      "title": "团队通过系统讨论确立了统一的Python开发规范体系，其核心目标在于提升代码的可读性、可维护性及团队...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4ccc8d94-bd53-46bf-beac-9ae03240436e",
+      "title": "团队通过系统讨论，确立了以代码一致性、可维护性和自动化工具为核心的Python开发规范体系。核心决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1222f30a-6474-4abe-8e0c-89da9a545aec",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系的执行指令：\n1. 代码格式规范：\n   - 统...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "7d6e1f88-d64f-4a5c-8de6-38774adad2c3",
+      "title": "1. 基础格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "21bbfa0f-df85-49b0-a59e-5a13ff7720b4",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：采用4...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "77350e36-921a-4a35-921c-176198b47641",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1b0df160-5e67-4cb5-b887-64bbb0558a2e",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "468d570b-ba77-4fdf-8fa3-ff9fa4025dbc",
+      "title": "团队在Python开发实践中建立了系统性的代码质量保障体系，其核心逻辑是通过统一的工具链和明确的约定...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "144201fb-9ed1-41a0-ba0f-813ddbdff4ca",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。采用4空...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ae5b61cc-fb6a-4936-8d4b-29ca8d48a5f3",
+      "title": "1. 基础格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档与类型规范：编写G...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "99b7d7c6-c7bf-4b29-879f-828529ac274a",
+      "title": "1. 代码格式：使用4空格缩进，使用black工具自动格式化。\n2. 文档规范：遵循Google风格...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "a2a95623-5862-44a2-aa67-997719c8304a",
+      "title": "团队在Python项目开发中确立了系统性的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d6c18fb3-989c-4434-8928-4fb5cb4bc059",
+      "title": "团队在Python开发实践中建立了系统化的代码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f3a2686b-efb2-420a-a712-f369baa3062e",
+      "title": "建立并执行Python团队开发规范体系：\n1. 基础格式：强制使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "019937cd-53c1-4ff1-9203-c936b5ae082e",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9f9c7796-4feb-4220-b8ab-dc4ba8d4e22d",
+      "title": "1. 代码格式规范：使用4空格缩进，采用black工具自动格式化代码。\n2. 文档规范：所有函数必须...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "3b254b17-72ec-4b11-b7fe-527fbdba84d8",
+      "title": "团队在Python项目开发中确立了系统性的代码规范与质量保障框架。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f0d0ba2d-1421-47ad-b2ef-411b5ad7f4ed",
+      "title": "1. **编码规范**：\n   - 使用4空格缩进\n   - 遵循Google Python Sty...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "35ce2f21-714b-442a-8740-ea9ec472e2ff",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性，并...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1fbea2d9-9ac7-4641-bf95-cb390411afb2",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "550e57ae-83b6-49c4-bfff-5a129ffb09a6",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b84b6249-d456-4c7a-8794-5e30519183a1",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与质量保障体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9f687bce-e9a2-4c07-946a-1ec167704cd6",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系：\n1. 代码格式规范：\n   - 使用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "690144c5-c99d-414b-99ea-f8ad62dc16cd",
+      "title": "执行Python开发规范体系：1. 使用4空格缩进；2. 遵循Google风格编写文档字符串；3. ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "b2db8704-4e04-40e2-a9e8-a8363fa4b576",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4c3f019b-27b9-4b35-8f94-08e0744585a3",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "856e35f9-7244-4f17-beb1-661d562d7b22",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. **代码格式规范**...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "83b058ad-eb12-4eaa-8177-92271696bc02",
+      "title": "团队通过系统讨论确立了完整的Python开发规范体系，核心目标是建立可维护、一致且高效的代码库。决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "af8bec2f-ee53-4d75-9c1f-9ead155fc4c4",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "17d9eb25-2fc4-48a4-a200-889db469e5f2",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4ee1c6d4-8fe9-47bf-b887-03ab430754b5",
+      "title": "团队针对Python项目建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "53b1f779-c1b7-4e4d-b1ee-924083b0ed05",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "52dbebad-5e74-4e33-8698-8c4e90317348",
+      "title": "团队针对Python项目建立了一套系统性的编码规范与质量保障体系，其核心目标是通过统一的代码风格和自...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "58377bb5-1430-4cc9-bfda-8c34a5ecd806",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6c59e5d7-db9a-4f41-82c7-05cdd5650823",
+      "title": "团队通过系统讨论确立了完整的Python开发规范体系，其核心目标在于建立可维护、可协作、高质量的代码...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c24d5f34-8ff6-445b-9b97-e528d3e435b9",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "78770b13-419f-4f32-bda0-cea300abc3e4",
+      "title": "团队通过系统化讨论，确立了以提升代码可维护性、协作效率和自动化水平为核心目标的开发规范体系。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6a2e517a-e92e-456a-ac00-86cc49a65893",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "aa6210b6-3584-472d-90f4-43ed5dfc0d61",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "eeb4aad6-70d0-4fbe-bc1a-86fe93d3211e",
+      "title": "团队通过讨论明确了Python项目的代码规范体系，其核心意图是建立统一、可维护、可扩展的代码库，减少...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1b871fe3-d79d-473d-87ee-a0d81fac0a78",
+      "title": "团队针对Python项目建立了一套系统性的编码规范与质量保障体系，其核心目标是通过统一的代码风格、严...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "261fa221-ad9d-47f5-8177-3bbb6d299279",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c33eafba-6e26-4be6-a16e-e81b567143a1",
+      "title": "团队在Python项目开发中建立了系统性的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "7c978ef1-e466-4d30-9ad9-8d70bb957153",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f073f761-3721-4183-88df-21f50c01b42d",
+      "title": "团队在Python项目开发中建立了系统化的编码规范和质量保障体系，核心目标是提升代码可读性、可维护性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "d44b06be-f64a-4258-a2f4-73b7c507b8a7",
+      "title": "1. 代码格式规范：采用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "f7955c96-880a-48c7-901b-b4662bdcb56e",
+      "title": "团队在Python项目开发中建立了系统化的代码规范和质量保障体系。核心决策包括：采用4空格缩进作为基...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b10aa937-f1ea-4001-a9b5-2ca7931cfec1",
+      "title": "团队在Python项目开发中确立了系统性的代码质量保障体系，其核心目标是通过统一的编码规范提升代码可...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c5862be1-4d9c-41d0-8417-2ea0a7f96736",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "2b1cea23-69ee-4aef-99da-6a685e9887be",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是提升代码质量、可维护性和团队协作效率。该体系包...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "dcca9be4-7202-4a90-8ecd-93923a83a059",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "1b5b9c0c-f5fe-4664-9a92-93a44e4b1cb7",
+      "title": "团队在Python项目开发中确立了系统性的代码质量与一致性规范体系。核心决策包括：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "c069c60c-920c-46b6-8361-613b624bb896",
+      "title": "团队通过系统讨论确立了完整的Python项目开发规范体系，其核心目标是通过标准化的代码风格、类型系统...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "0fa662b9-dfad-430e-ba66-0d2d98c7886c",
+      "title": "团队针对Python项目开发建立了一套完整的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "4266a2ff-a78d-4170-9fa7-c3ebd8991af1",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "98ab504c-af92-44c8-bd44-35f00cbf33c1",
+      "title": "在Python项目中建立系统性的编码规范和质量保障体系，具体执行指令如下：\n1. 格式规范：采用4空...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d61d926c-9f68-433b-ab1f-30c6db4fc9db",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化代码。\n2. 文档规范：所有函数和类...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "b546373a-1b8e-4fcc-b9db-e5e1df132bdb",
+      "title": "团队在Python项目开发中建立了系统性的编码规范与自动化质量保障体系。核心决策包括：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9a05e2e2-66ce-4bcd-8232-945168361bd0",
+      "title": "团队通过系统讨论确立了Python项目的标准化开发框架，核心目标是建立可维护、一致且高效的代码库。决...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "56794b20-477d-42c7-a66b-b95c45e2d1d1",
+      "title": "团队在Python项目开发中建立了系统性的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "f338c6f1-a403-40cb-bc2f-e7bd5de210ef",
+      "title": "1. 编码规范：采用4空格缩进，遵循Google Python Style Guide编写文档字符串...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "eb68a88c-1cf1-44e5-89ee-4a4c01a22494",
+      "title": "1. 代码格式规范：使用4空格缩进作为基础格式标准，遵循Google风格编写文档字符串，强制要求所有...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "c9fb4c12-9155-4dcc-87b9-7b4c8c330674",
+      "title": "团队通过系统讨论，确立了以代码一致性、可维护性和自动化保障为核心的Python开发规范体系。核心决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "b062ff93-6233-47d7-a3e0-e886e94a51b7",
+      "title": "团队针对Python项目建立了系统化的编码规范和质量保障体系，核心目标是提升代码的可读性、可维护性和...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "af3c8f7b-e62f-4d43-b044-c96e6d08fba3",
+      "title": "在Python项目中建立系统性编码规范与质量保障体系的执行指令：\n1. 格式规范：采用4空格缩进作为...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "80266f0f-d24e-4ba0-996a-7d5749649adb",
+      "title": "团队针对Python项目开发建立了一套系统性的代码规范与质量保障体系。核心决策包括：采用4空格缩进作...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9ecf4883-51dd-496d-9236-d2036c0684f7",
+      "title": "在Python项目中建立系统化编码规范与质量保障体系的执行指令：\n1. 代码风格规范：采用4空格缩进...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "47ab0b6d-c715-4793-85ee-92f961295543",
+      "title": "团队通过系统讨论确立了完整的Python项目开发规范体系，其核心目标在于建立统一、可维护、高质量的代...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "ed7a64b3-cfc5-42e4-93e9-55c4fc230528",
+      "title": "团队通过系统讨论，确立了以代码一致性、可维护性和自动化保障为核心的Python开发规范体系。核心决策...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "48f0bc49-6ff8-4628-a2dd-0e7ada632c87",
+      "title": "建立并实施Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "ffa979a3-4a12-4eb4-8439-1e28d05b3cba",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "311e7186-0f8a-4a87-bb99-426e3834e228",
+      "title": "团队确立了系统化的Python开发规范体系，旨在提升代码质量、可维护性和团队协作效率。核心决策包括：...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "6de193bc-721f-4c89-aa13-19c8dc6db6c3",
+      "title": "在Python项目中建立系统化编码规范和质量保障体系的执行指令：\n1. 代码格式规范：\n   - 使...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "e0cf76c7-8293-4f08-91ee-0a4c0dea084a",
+      "title": "在Python项目中实施系统化编码规范与质量保障体系，具体执行指令如下：\n1. 代码格式规范：\n  ...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "d9e05a7f-227f-4763-8df4-c12e50b8ba2a",
+      "title": "团队确立了系统化的Python开发规范体系，核心目标是通过统一的代码风格和自动化工具链提升代码可读性...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    },
+    {
+      "id": "9bd82858-23c2-423b-9fb9-2b6f67223c6f",
+      "title": "建立并实施Python开发规范体系，具体包括：1) 基础格式：使用4空格缩进，采用black工具自动...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "69ae53f4-cf84-4e72-b0b3-83525b98c4b0",
+      "title": "1. 代码格式：统一使用4空格缩进，使用black工具自动格式化。\n2. 文档规范：所有函数/类必须...",
+      "user_id": "test_user",
+      "memory_type": "skill"
+    },
+    {
+      "id": "3ec84fbd-9d26-40d1-9c6b-3ea0471956c5",
+      "title": "团队通过系统讨论确立了Python项目的标准化开发框架，其核心目标是通过一致的编码规范、静态检查工具...",
+      "user_id": "test_user",
+      "memory_type": "thinking"
+    }
+  ]
+}

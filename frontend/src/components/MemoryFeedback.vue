@@ -81,6 +81,9 @@
 import { ref, onMounted } from 'vue'
 import { useMemoryStore } from '@/stores/memory'
 import { tieredApi } from '@/api/memory'
+import { useToast } from '@/composables/useToast'
+
+const toast = useToast()
 
 interface FeedbackRecord {
   memoryId: string
@@ -112,7 +115,7 @@ function loadHistory() {
       feedbackHistory.value = JSON.parse(saved)
     }
   } catch (e) {
-    console.error('加载反馈历史失败:', e)
+    toast.warn('加载反馈历史失败')
   }
 }
 
@@ -120,7 +123,7 @@ function saveHistory() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(feedbackHistory.value))
   } catch (e) {
-    console.error('保存反馈历史失败:', e)
+    toast.warn('保存反馈历史失败')
   }
 }
 

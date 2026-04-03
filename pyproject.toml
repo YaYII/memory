@@ -65,7 +65,7 @@ dev = [
 [project.scripts]
 mcp-memory-cli   = "mcp_memory.cli:app"
 mcp-memory-local = "mcp_memory.cli_local:app"
-memory           = "mcp_memory.tui_cli:app"
+memory           = "mcp_memory.cli_unified:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_memory"]
