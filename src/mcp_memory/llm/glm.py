@@ -1,8 +1,11 @@
 import httpx
+import logging
 from typing import Optional, List, Dict, Any
 import json
 import time
 from mcp_memory.llm.base import BaseLLMClient, LLMResponse
+
+logger = logging.getLogger("mcp-memory.llm.glm")
 
 
 class GLMClient(BaseLLMClient):
@@ -158,13 +161,13 @@ class GLMClient(BaseLLMClient):
             self.record_request(success=False)
             error_msg = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
             self.set_unavailable(error_msg)
-            print(f"[GLM] API Error: {error_msg}")
+            logger.warning("[GLM] API Error: %s", error_msg)
             return None
         except Exception as e:
             self.record_request(success=False)
             error_msg = str(e)
             self.set_unavailable(error_msg)
-            print(f"[GLM] Request Error: {error_msg}")
+            logger.warning("[GLM] Request Error: %s", error_msg)
             return None
 
     async def chat_completion_with_full_response(
@@ -235,7 +238,7 @@ class GLMClient(BaseLLMClient):
         except Exception as e:
             self.record_request(success=False)
             self.set_unavailable(str(e))
-            print(f"[GLM] Full Response Error: {e}")
+            logger.warning("[GLM] Full Response Error: %s", e)
             return None
 
     async def summarize_memories(self, memories: List[str]) -> Optional[str]:
@@ -301,7 +304,7 @@ class GLMClient(BaseLLMClient):
                 cleaned = result.replace("```json", "").replace("```", "").strip()
                 return json.loads(cleaned)
         except:
-            print(f"[GLM] Entity extraction failed to parse JSON: {result}")
+            logger.warning("[GLM] Entity extraction failed to parse JSON: %s", result[:100])
 
         return []
 

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import sys
 import time
@@ -18,6 +19,7 @@ from mcp_memory.core.config import settings
 SERVER_PORT = settings.MCP_MEMORY_PORT
 SERVER_URL = f"http://127.0.0.1:{SERVER_PORT}"
 server = Server("mcp-memory-bridge")
+logger = logging.getLogger("mcp-memory.main")
 
 async def ensure_server_running():
     """
@@ -60,9 +62,8 @@ async def ensure_server_running():
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(f"{SERVER_URL}/health", timeout=0.5)
                     if resp.status_code == 200:
-                        # Print dashboard URL to stderr (visible in MCP client logs)
-                        print(f"MCP Memory Server started at {SERVER_URL}", file=sys.stderr)
-                        print(f"📊 Dashboard available at: {SERVER_URL}/", file=sys.stderr)
+                        logger.info("MCP Memory Server started at %s", SERVER_URL)
+                        logger.info("Dashboard available at: %s/", SERVER_URL)
                         return
             except:
                 continue
@@ -71,7 +72,7 @@ async def ensure_server_running():
         # Fallback: If we can't start the server, we might be in trouble.
         # But we should log this error somewhere.
         # Since we are in stdio mode, print to stderr
-        print(f"Failed to start MCP Memory Server: {e}", file=sys.stderr)
+        logger.error("Failed to start MCP Memory Server: %s", e)
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
