@@ -52,7 +52,7 @@ class MemoryDetailsScreen(Screen):
     def compose(self) -> ComposeResult:
         with Container(id="memory-details"):
             yield Static("记忆详情", classes="title")
-            yield Static(f"ID: {self.memory_item.id}", id="memory-id")
+            yield Static(f"ID: {self.memory_item.memory_id}", id="memory-id")
             yield Static(f"标题: {self.memory_item.title}", id="memory-title")
             yield Static(f"类型: {self.memory_item.content_type}", id="memory-type")
             yield Static(f"创建时间: {self.memory_item.timestamp}", id="memory-timestamp")
@@ -87,18 +87,42 @@ class SearchScreen(Screen):
 class MemoryListWidget(ListView):
     """记忆列表组件"""
 
-    def __init__(self, memories: list = None):
+    def __init__(self, parent_app: "TUIApp" = None):
         super().__init__()
-        self.memories = memories or []
-        self.update_memories()
+        self._parent_app = parent_app
+        self._memories = []
+        self._initialized = False
 
-    def update_memories(self):
+    def on_mount(self) -> None:
+        """组件挂载时标记已初始化"""
+        self._initialized = True
+        # 如果父应用已经有数据，立即更新
+        if self._parent_app and self._parent_app.memories:
+            self._do_update()
+
+    def _do_update(self) -> None:
+        """执行列表更新"""
+        if not self._initialized:
+            return
+        
+        # 更新数据源
+        if self._parent_app:
+            self._memories = self._parent_app.memories
+        
+        # 清空现有项并添加新项
+        # 注意：在 Textual 应用上下文中，clear() 和 append() 才能正常工作
+        try:
+            self.clear()
+            for memory in self._memories:
+                item = ListItem(f"[{memory.content_type}] {memory.title[:50]}...")
+                item.data = memory
+                self.append(item)
+        except Exception as e:
+            logger.warning(f"[MemoryListWidget] 更新列表失败: {e}")
+
+    def update_memories(self) -> None:
         """更新记忆列表"""
-        self.clear()
-        for memory in self.memories:
-            item = ListItem(f"[{memory.content_type}] {memory.title[:50]}...")
-            item.data = memory
-            self.append(item)
+        self._do_update()
 
     def get_selected_memory(self) -> Optional[MemoryItem]:
         """获取选中的记忆"""
@@ -136,31 +160,105 @@ class TUIApp(App):
     async def on_mount(self) -> None:
         """应用启动时初始化"""
         try:
+            logger.info("[TUI] on_mount 开始执行")
             # 延迟初始化以避免启动错误
             self.memory_manager = MemoryManager()
-
-            await self.push_screen(LoadingScreen())
-            # 模拟加载延迟
-            await asyncio.sleep(1)
+            logger.info("[TUI] MemoryManager 初始化完成")
+            
+            # 刷新记忆列表
             await self.refresh_memory_list()
+            logger.info(f"[TUI] refresh_memory_list 完成，记忆数: {len(self.memories)}")
+            
         except Exception as e:
             logger.error(f"初始化失败: {e}")
+            import traceback
+            traceback.print_exc()
             # 显示错误信息但继续运行
             self.notify(f"初始化失败: {e}", severity="error")
 
     async def refresh_memory_list(self) -> None:
         """刷新记忆列表"""
         try:
-            # 获取所有记忆
-            self.memories = self.memory_manager.store.get_memories(
-                user_id=self.current_user,
-                project_id=self.current_project
+            logger.info("[TUI] refresh_memory_list 开始执行")
+            # 获取所有记忆（不限制用户）
+            all_memories = self.memory_manager.store.collection.get(
+                limit=100,
+                include=["documents", "metadatas"]
             )
+            
+            logger.info(f"[TUI] 获取到 {len(all_memories.get('ids', []))} 条记忆")
+            
+            self.memories = []
+            if all_memories.get("ids"):
+                for i, mem_id in enumerate(all_memories["ids"]):
+                    doc = all_memories["documents"][i] if all_memories.get("documents") else ""
+                    meta = all_memories["metadatas"][i] if all_memories.get("metadatas") else {}
+                    
+                    # 处理关键词和标签
+                    import json
+                    keywords = meta.get("keywords", [])
+                    if isinstance(keywords, str):
+                        try:
+                            keywords = json.loads(keywords)
+                        except:
+                            keywords = []
+                    
+                    tags = meta.get("tags", [])
+                    if isinstance(tags, str):
+                        try:
+                            tags = json.loads(tags)
+                        except:
+                            tags = []
+                    
+                    # 创建 MemoryItem 对象
+                    memory = MemoryItem(
+                        memory_id=mem_id,
+                        content=doc,
+                        title=meta.get("title", doc[:50] + "..." if len(doc) > 50 else doc),
+                        description=meta.get("description", ""),
+                        summary=meta.get("summary", ""),
+                        content_type=meta.get("content_type", "note"),
+                        keywords=keywords,
+                        tags=tags,
+                        char_count=meta.get("char_count", len(doc)),
+                        max_chars=meta.get("max_chars", 1000),
+                        user_id=meta.get("user_id", "unknown"),
+                        scope=meta.get("scope", "project"),
+                        project_id=meta.get("project_id", ""),
+                        timestamp=datetime.fromisoformat(meta["timestamp"]) if meta.get("timestamp") else datetime.now(),
+                        importance=meta.get("importance", 1.0),
+                        access_count=meta.get("access_count", 0),
+                        last_accessed=datetime.fromisoformat(meta["last_accessed"]) if meta.get("last_accessed") else datetime.now(),
+                        is_shared=meta.get("is_shared", "False") == "True",
+                        is_profile=meta.get("is_profile", "False") == "True"
+                    )
+                    self.memories.append(memory)
+            
+            logger.info(f"[TUI] 创建了 {len(self.memories)} 个 MemoryItem 对象")
+            
             # 更新UI
-            if hasattr(self, 'memory_list'):
+            if hasattr(self, 'memory_list') and self.memory_list:
                 self.memory_list.update_memories()
+                logger.info("[TUI] memory_list.update_memories() 调用完成")
+            
+            # 更新统计信息
+            try:
+                total_widget = self.query_one("#total-memories", Static)
+                if total_widget:
+                    total_widget.update(f"总记忆: {len(self.memories)}")
+                
+                today_count = len([m for m in self.memories if m.timestamp.date() == datetime.now().date()])
+                today_widget = self.query_one("#today-memories", Static)
+                if today_widget:
+                    today_widget.update(f"今日新增: {today_count}")
+                logger.info("[TUI] 统计信息更新完成")
+            except Exception as e:
+                logger.warning(f"[TUI] 更新统计信息失败: {e}")
+                
         except Exception as e:
             logger.error(f"刷新记忆列表失败: {e}")
+            import traceback
+            traceback.print_exc()
 
     async def action_quit(self) -> None:
         """退出应用"""
@@ -213,7 +311,7 @@ class TUIApp(App):
             # 右侧主内容区
             with Container(id="content-area"):
                 yield Static("记忆列表", id="list-title")
-                self.memory_list = MemoryListWidget(self.memories)
+                self.memory_list = MemoryListWidget(self)
                 yield self.memory_list
 
                 yield Tabs(
@@ -316,7 +414,6 @@ class NewMemoryScreen(Screen):
                 content_type=memory_type,
                 keywords=keywords,
                 tags=tags,
-                auto_enhance=auto_enhance
             )
 
             self.notify(f"记忆保存成功！ID: {memory_id}", severity="information")
@@ -350,6 +447,108 @@ class HelpScreen(Screen):
                 yield Static("5. Esc键返回上一级")
 
             yield Button("返回", id="back-btn")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "back-btn":
+            self.app.pop_screen()
+
+
+class SearchScreen(Screen):
+    """搜索屏幕"""
+
+    def compose(self) -> ComposeResult:
+        with Container(id="search-container"):
+            yield Static("搜索记忆", classes="title")
+            yield Input(placeholder="输入搜索关键词...", id="search-input")
+            yield Horizontal(
+                Button("搜索", id="search-btn", variant="primary"),
+                Button("返回", id="back-btn"),
+                classes="button-group"
+            )
+            yield ListView(id="search-results")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "search-btn":
+            self.do_search()
+        elif event.button.id == "back-btn":
+            self.app.pop_screen()
+
+    def do_search(self) -> None:
+        """执行搜索"""
+        query = self.query_one("#search-input", Input).value
+        if not query:
+            self.notify("请输入搜索关键词", severity="warning")
+            return
+
+        try:
+            results, _ = self.app.memory_manager.store.search(
+                query=query,
+                user_id=self.app.current_user,
+                project_id=self.app.current_project,
+                limit=20
+            )
+
+            results_list = self.query_one("#search-results", ListView)
+            results_list.clear()
+
+            if results:
+                for item in results:
+                    list_item = ListItem(f"[{item.get('content_type', 'note')}] {item.get('title', '无标题')[:50]}...")
+                    list_item.data = item
+                    results_list.append(list_item)
+                self.notify(f"找到 {len(results)} 条记忆", severity="information")
+            else:
+                self.notify("未找到匹配的记忆", severity="information")
+        except Exception as e:
+            self.notify(f"搜索失败: {str(e)}", severity="error")
+
+
+class MemoryDetailsScreen(Screen):
+    """记忆详情查看屏幕"""
+
+    memory_item: reactive[MemoryItem] = reactive(None)
+
+    def compose(self) -> ComposeResult:
+        with Container(id="memory-details"):
+            yield Static("记忆详情", classes="title")
+            yield Static(f"ID: {self.memory_item.memory_id if self.memory_item else ''}", id="memory-id")
+            yield Static(f"标题: {self.memory_item.title if self.memory_item else ''}", id="memory-title")
+            yield Static(f"类型: {self.memory_item.content_type if self.memory_item else ''}", id="memory-type")
+            yield Static(f"创建时间: {self.memory_item.timestamp if self.memory_item else ''}", id="memory-timestamp")
+            yield Static(f"字符数: {self.memory_item.char_count if self.memory_item else 0}", id="memory-chars")
+            yield Static("关键词:", id="keywords-label")
+            yield Static(", ".join(self.memory_item.keywords) if self.memory_item else "", id="memory-keywords")
+            yield Static("标签:", id="tags-label")
+            yield Static(", ".join(self.memory_item.tags) if self.memory_item else "", id="memory-tags")
+            yield Static("内容:", id="content-label")
+            yield TextArea(self.memory_item.content if self.memory_item else "", id="memory-content", read_only=True)
+            yield Horizontal(
+                Button("删除", id="delete-btn", variant="error"),
+                Button("返回", id="back-btn"),
+                classes="button-group"
+            )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "delete-btn":
+            self.delete_memory()
+        elif event.button.id == "back-btn":
+            self.app.pop_screen()
+
+    def delete_memory(self) -> None:
+        """删除记忆"""
+        if self.memory_item:
+            try:
+                success = self.app.memory_manager.delete_memory(
+                    user_id=self.app.current_user,
+                    memory_id=self.memory_item.memory_id
+                )
+                if success:
+                    self.notify("记忆已删除", severity="information")
+                    self.app.pop_screen()
+                else:
+                    self.notify("删除失败", severity="error")
+            except Exception as e:
+                self.notify(f"删除失败: {str(e)}", severity="error")
 
 
 def main():

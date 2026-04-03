@@ -1,11 +1,12 @@
 import asyncio
-import time
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from enum import Enum
 import json
 import os
+import chromadb
+from chromadb.config import Settings as ChromaSettings
 
 
 class ModelProvider(str, Enum):
@@ -40,74 +41,160 @@ class TokenUsage:
 
 
 class TokenPoolManager:
-    """Token 池管理器 - 跟踪和管理所有模型的 Token 使用"""
+    """Token 池管理器 - 跟踪和管理所有模型的 Token 使用（ChromaDB 存储）"""
 
-    def __init__(self, data_path: Optional[str] = None):
+    def __init__(
+        self,
+        data_path: Optional[str] = None,
+        chroma_client: Optional[chromadb.Client] = None
+    ):
         self.data_path = data_path or os.path.join(
             os.path.expanduser("~"), ".mcp_memory", "token_pool.json"
         )
+        self.chroma_client = chroma_client
+        self.collection: Optional[chromadb.Collection] = None
         self.pools: Dict[str, TokenPoolConfig] = {}
         self.usage_history: Dict[str, List[TokenUsage]] = {}
         self._lock = asyncio.Lock()
+        self._init_collection()
         self._load()
+        self._migrate_from_json()
+
+    def _init_collection(self):
+        """初始化 ChromaDB collection"""
+        if self.chroma_client is None:
+            from mcp_memory.core.config import settings
+            chroma_path = settings.CHROMA_DATA_PATH
+            os.makedirs(chroma_path, exist_ok=True)
+            self.chroma_client = chromadb.PersistentClient(path=chroma_path)
+        
+        self.collection = self.chroma_client.get_or_create_collection(
+            name="token_pool",
+            metadata={"description": "Token pool configuration and usage tracking"}
+        )
 
     def _load(self):
-        """从磁盘加载 Token 池数据"""
-        if os.path.exists(self.data_path):
-            try:
-                with open(self.data_path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    pools_data = data.get("pools", {})
-                    for provider, pool_data in pools_data.items():
-                        self.pools[provider] = TokenPoolConfig(**pool_data)
-                    usage_data = data.get("usage_history", {})
-                    for provider, usages in usage_data.items():
-                        self.usage_history[provider] = [
-                            TokenUsage(
-                                provider=u["provider"],
-                                tokens=u["tokens"],
-                                timestamp=datetime.fromisoformat(u["timestamp"]),
-                                cost=u.get("cost", 0.0)
-                            )
-                            for u in usages
-                        ]
-            except Exception as e:
-                print(f"[TokenPool] Failed to load: {e}")
+        """从 ChromaDB 加载 Token 池数据"""
+        try:
+            all_data = self.collection.get()
+            if not all_data or not all_data.get("ids"):
+                return
+            
+            for i, provider_id in enumerate(all_data["ids"]):
+                metadata = all_data["metadatas"][i] if all_data.get("metadatas") else {}
+                
+                pool_config = TokenPoolConfig(
+                    provider=metadata.get("provider", provider_id),
+                    api_key=metadata.get("api_key", ""),
+                    base_url=metadata.get("base_url"),
+                    priority=int(metadata.get("priority", 50)),
+                    enabled=metadata.get("enabled", "true").lower() == "true",
+                    monthly_token_limit=int(metadata.get("monthly_token_limit", 1000000)),
+                    daily_token_limit=int(metadata.get("daily_token_limit", 100000)),
+                    model=metadata.get("model", "default"),
+                    extra_config=json.loads(metadata.get("extra_config", "{}"))
+                )
+                self.pools[provider_id] = pool_config
+                
+                usage_history_str = metadata.get("usage_history", "[]")
+                usage_list = json.loads(usage_history_str)
+                self.usage_history[provider_id] = [
+                    TokenUsage(
+                        provider=u.get("provider", provider_id),
+                        tokens=u.get("tokens", 0),
+                        timestamp=datetime.fromisoformat(u["timestamp"]) if isinstance(u.get("timestamp"), str) else datetime.now(),
+                        cost=u.get("cost", 0.0)
+                    )
+                    for u in usage_list
+                ]
+        except Exception as e:
+            print(f"[TokenPool] Failed to load from ChromaDB: {e}")
 
     def _save(self):
-        """保存 Token 池数据到磁盘"""
+        """保存 Token 池数据到 ChromaDB"""
         try:
-            os.makedirs(os.path.dirname(self.data_path), exist_ok=True)
-            pools_data = {
-                provider: {
-                    "provider": cfg.provider,
-                    "api_key": cfg.api_key,
-                    "base_url": cfg.base_url,
-                    "priority": cfg.priority,
-                    "enabled": cfg.enabled,
-                    "monthly_token_limit": cfg.monthly_token_limit,
-                    "daily_token_limit": cfg.daily_token_limit,
-                    "model": cfg.model,
-                    "extra_config": cfg.extra_config
-                }
-                for provider, cfg in self.pools.items()
-            }
-            usage_data = {
-                provider: [
+            existing_ids = set(self.collection.get().get("ids", []))
+            
+            for provider, cfg in self.pools.items():
+                usage_data = [
                     {
                         "provider": u.provider,
                         "tokens": u.tokens,
                         "timestamp": u.timestamp.isoformat(),
                         "cost": u.cost
                     }
-                    for u in usages
+                    for u in self.usage_history.get(provider, [])
                 ]
-                for provider, usages in self.usage_history.items()
-            }
-            with open(self.data_path, 'w', encoding='utf-8') as f:
-                json.dump({"pools": pools_data, "usage_history": usage_data}, f, ensure_ascii=False, indent=2)
+                
+                metadata = {
+                    "provider": cfg.provider,
+                    "api_key": cfg.api_key,
+                    "base_url": cfg.base_url or "",
+                    "priority": str(cfg.priority),
+                    "enabled": "true" if cfg.enabled else "false",
+                    "monthly_token_limit": str(cfg.monthly_token_limit),
+                    "daily_token_limit": str(cfg.daily_token_limit),
+                    "model": cfg.model,
+                    "extra_config": json.dumps(cfg.extra_config, ensure_ascii=False),
+                    "usage_history": json.dumps(usage_data, ensure_ascii=False)
+                }
+                
+                if provider in existing_ids:
+                    self.collection.update(
+                        ids=[provider],
+                        metadatas=[metadata],
+                        documents=[f"Token pool for {provider}"]
+                    )
+                else:
+                    self.collection.add(
+                        ids=[provider],
+                        metadatas=[metadata],
+                        documents=[f"Token pool for {provider}"]
+                    )
         except Exception as e:
-            print(f"[TokenPool] Failed to save: {e}")
+            print(f"[TokenPool] Failed to save to ChromaDB: {e}")
+
+    def _migrate_from_json(self):
+        """自动迁移旧的 JSON 数据到 ChromaDB"""
+        if not os.path.exists(self.data_path):
+            return
+        
+        try:
+            with open(self.data_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            pools_data = data.get("pools", {})
+            usage_data = data.get("usage_history", {})
+            
+            if not pools_data:
+                return
+            
+            print(f"[TokenPool] Migrating {len(pools_data)} pools from JSON to ChromaDB...")
+            
+            for provider, pool_data in pools_data.items():
+                if provider not in self.pools:
+                    self.pools[provider] = TokenPoolConfig(**pool_data)
+            
+            for provider, usages in usage_data.items():
+                if provider not in self.usage_history:
+                    self.usage_history[provider] = [
+                        TokenUsage(
+                            provider=u["provider"],
+                            tokens=u["tokens"],
+                            timestamp=datetime.fromisoformat(u["timestamp"]),
+                            cost=u.get("cost", 0.0)
+                        )
+                        for u in usages
+                    ]
+            
+            self._save()
+            
+            backup_path = self.data_path + ".migrated"
+            os.rename(self.data_path, backup_path)
+            print(f"[TokenPool] Migration complete. Old file backed up to: {backup_path}")
+            
+        except Exception as e:
+            print(f"[TokenPool] Migration failed (may already be migrated): {e}")
 
     def register_pool(self, config: TokenPoolConfig):
         """注册一个新的 Token 池"""

@@ -96,8 +96,8 @@ export const memoryApi = {
     return response.data
   },
 
-  async getLogs(): Promise<{ logs: Array<{ time: string; message: string; type: string }> }> {
-    const response = await api.get('/dashboard/logs')
+  async getLogs(): Promise<Array<{ time: string; message: string; type: string }>> {
+    const response = await api.get('/logs')
     return response.data
   }
 }

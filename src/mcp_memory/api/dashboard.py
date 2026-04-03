@@ -84,6 +84,7 @@ async def get_stats(request: Request):
             "llm_enabled": settings.has_llm,
             "providers_count": len(providers),
             "preferred_provider": settings.MCP_LLM_PROVIDER,
+            "data_path": settings.CHROMA_DATA_PATH,
         }
 
         if state.ai_brain:

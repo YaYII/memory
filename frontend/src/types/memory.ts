@@ -57,6 +57,7 @@ export interface SystemStats {
   llm_enabled: boolean
   providers_count: number
   preferred_provider: string
+  data_path?: string
 }
 
 export interface EvolutionStatus {

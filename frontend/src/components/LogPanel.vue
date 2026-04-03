@@ -59,11 +59,8 @@ function clearLogs() {
 
 <style scoped>
 .log-panel {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  width: 400px;
-  height: 200px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }

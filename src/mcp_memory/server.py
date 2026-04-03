@@ -42,6 +42,7 @@ from mcp_memory.api.health import router as health_router
 from mcp_memory.api.memory import router as memory_router
 from mcp_memory.api.dashboard import router as dashboard_router
 from mcp_memory.api.tiered import router as tiered_router
+from mcp_memory.api.logs import router as logs_router
 
 # 配置日志（此处调用是为了兼容直接 python -m 启动的情况）
 configure_logging()
@@ -95,6 +96,7 @@ app.include_router(health_router)
 app.include_router(memory_router)
 app.include_router(dashboard_router)
 app.include_router(tiered_router)
+app.include_router(logs_router)
 
 
 # ─── 进化策略解析（供 lifespan 任务使用）──────────────────────────────────────

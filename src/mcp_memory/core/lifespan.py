@@ -72,6 +72,7 @@ async def _health_check_warmup(state) -> None:
     try:
         count = state.memory_manager.store.collection.count()
         logger.info("ChromaDB ready: %d memories loaded", count)
+        add_log(f"ChromaDB 就绪，加载了 {count} 条记忆", "success")
     except Exception as e:
         logger.warning("ChromaDB warmup check failed: %s", e)
 
@@ -110,11 +111,13 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 延迟导入（避免循环导入）
     from mcp_memory.memory.manager import MemoryManager
     from mcp_memory.memory.tiered_evolution import TieredEvolutionEngine
+    from mcp_memory.api.logs import add_log
 
     # ── 初始化核心组件 ────────────────────────────────────────────────────────
     try:
         memory_manager = MemoryManager()
         logger.info("MemoryManager initialized")
+        add_log("MemoryManager 初始化完成", "success")
     except Exception as e:
         logger.critical("FATAL: Failed to initialize MemoryManager: %s", e, exc_info=True)
         app.state.startup_error = str(e)
@@ -125,6 +128,7 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         tiered_evolution = TieredEvolutionEngine(memory_manager.store)
         await tiered_evolution.initialize()
         logger.info("TieredEvolutionEngine initialized")
+        add_log("进化引擎初始化完成", "success")
     except Exception as e:
         logger.error("Failed to initialize TieredEvolutionEngine: %s", e, exc_info=True)
         tiered_evolution = None
