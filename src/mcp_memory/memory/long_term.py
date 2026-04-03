@@ -16,7 +16,7 @@ import logging
 import chromadb
 from chromadb.config import Settings as ChromaSettings
 from mcp_memory.models.data_models import MemoryItem
-from typing import Optional, List, Dict, Tuple, Set, TypedDict
+from typing import Optional, List, Dict, Tuple, Set, TypedDict, Any
 import os
 import uuid
 import math
@@ -1412,3 +1412,733 @@ class MemoryStore:
             return json.dumps(merged, ensure_ascii=False)
         except Exception:
             return json.dumps([], ensure_ascii=False)
+
+    # ========== 增强去重引擎（多层检测 + 真正删除） ==========
+
+    def _content_fingerprint(self, content: str) -> str:
+        """生成内容指纹：标准化后的内容哈希"""
+        import re, hashlib
+        normalized = re.sub(r'\s+', ' ', content.lower().strip())
+        normalized = re.sub(r'[^\w\u4e00-\u9fff]', '', normalized)
+        return hashlib.md5(normalized.encode()).hexdigest() if len(normalized) > 10 else hashlib.md5(content.encode()).hexdigest()
+
+    def _find_exact_duplicates(self, memories: List[dict]) -> Dict[str, List[dict]]:
+        """Layer 1: 精确/近精确重复检测（基于内容指纹，O(n)）"""
+        import hashlib
+        fp_groups: Dict[str, List[dict]] = {}
+        for mem in memories:
+            content = mem.get("content", "")
+            fp = self._content_fingerprint(content)
+            if fp not in fp_groups:
+                fp_groups[fp] = []
+            fp_groups[fp].append(mem)
+
+        duplicates: Dict[str, List[dict]] = {}
+        for fp, group in fp_groups.items():
+            if len(group) > 1:
+                duplicates[fp] = group
+
+        return duplicates
+
+    def _find_fuzzy_duplicates(self, memories: List[dict], threshold: float = 0.85) -> List[List[dict]]:
+        """Layer 2: 模糊重复检测（基于 difflib SequenceMatcher，O(n²) 但仅对同类型同用户）"""
+        import difflib
+        from collections import defaultdict
+
+        groups: Dict[str, List[dict]] = defaultdict(list)
+        for mem in memories:
+            key = f"{mem.get('user_id', '')}_{mem.get('memory_type', '')}"
+            groups[key].append(mem)
+
+        clusters: List[List[dict]] = []
+        processed_indices: set = set()
+
+        for key, group in groups.items():
+            for i in range(len(group)):
+                if i in processed_indices:
+                    continue
+                cluster = [group[i]]
+                processed_indices.add(i)
+                for j in range(i + 1, len(group)):
+                    if j in processed_indices:
+                        continue
+                    c1 = group[i].get("content", "")
+                    c2 = group[j].get("content", "")
+                    if not c1 or not c2 or len(c1) < 10 or len(c2) < 10:
+                        continue
+                    ratio = difflib.SequenceMatcher(None, c1[:500], c2[:500]).ratio()
+                    if ratio >= threshold:
+                        cluster.append(group[j])
+                        processed_indices.add(j)
+                if len(cluster) > 1:
+                    clusters.append(cluster)
+
+        return clusters
+
+    def _pick_best_memory(self, cluster: List[dict]) -> dict:
+        """从重复簇中选择保留的最佳记忆"""
+        scored = []
+        for mem in cluster:
+            meta = mem.get("metadata", {})
+            score = 0
+            content = mem.get("content", "")
+
+            length_score = min(1.0, len(content) / 200)
+            score += length_score * 20
+
+            access_count = int(meta.get("access_count", 0))
+            score += access_count * 2
+
+            importance = float(meta.get("importance", 1.0))
+            score += importance * 10
+
+            has_keywords = bool(meta.get("keywords"))
+            has_summary = bool(meta.get("summary"))
+            score += (5 if has_keywords else 0) + (3 if has_summary else 0)
+
+            newer_is_better = meta.get("timestamp", "")
+            try:
+                from datetime import datetime
+                ts = datetime.fromisoformat(newer_is_better) if newer_is_better else datetime.min
+                age_days = (datetime.now() - ts).days
+                score -= age_days * 0.01
+            except (ValueError, TypeError):
+                pass
+
+            scored.append((score, mem))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return scored[0][1]
+
+    def smart_deduplicate(
+        self,
+        user_id: str = None,
+        fuzzy_threshold: float = 0.82,
+        dry_run: bool = False,
+        delete_duplicates: bool = True
+    ) -> dict:
+        """
+        增强版智能去重：三层检测 + 真正删除重复记忆
+
+        Layer 1: 精确重复（内容指纹相同）→ 直接删除
+        Layer 2: 模糊重复（相似度 > threshold）→ 保留最佳，删除其余
+        Layer 3: （可选）语义聚类 → LLM 辅助判断
+
+        Args:
+            user_id: 用户ID，None 则处理所有用户
+            fuzzy_threshold: 模糊匹配阈值（默认 0.82）
+            dry_run: 仅分析不执行删除
+            delete_duplicates: 是否真正删除重复项
+
+        Returns:
+            去重统计报告
+        """
+        report = {
+            "total_before": 0,
+            "total_after": 0,
+            "exact_duplicates": 0,
+            "fuzzy_duplicates": 0,
+            "deleted_ids": [],
+            "kept_ids": [],
+            "clusters_found": 0,
+            "dry_run": dry_run
+        }
+
+        try:
+            where_filter = {"user_id": {"$eq": user_id}} if user_id else None
+            all_data = self.collection.get(where=where_filter, include=['documents', 'metadatas'])
+
+            if not all_data or not all_data.get("ids"):
+                return {**report, "message": "无记忆数据"}
+
+            ids = all_data["ids"]
+            docs = all_data["documents"]
+            metas = all_data["metadatas"]
+            report["total_before"] = len(ids)
+
+            if len(ids) <= 1:
+                return {**report, "message": "记忆数量不足，无需去重"}
+
+            memories = []
+            for i in range(len(ids)):
+                memories.append({
+                    "id": ids[i],
+                    "content": docs[i] if i < len(docs) else "",
+                    "metadata": metas[i] if i < len(metas) else {}
+                })
+
+            logger.info("[smart_deduplicate] 开始分析 %d 条记忆...", len(memories))
+
+            # === Layer 1: 精确重复 ===
+            exact_dups = self._find_exact_duplicates(memories)
+            exact_dup_ids: set = set()
+            exact_kept_ids: set = set()
+
+            for fp, dup_group in exact_dups.items():
+                report["clusters_found"] += 1
+                best = self._pick_best_memory(dup_group)
+                exact_kept_ids.add(best["id"])
+                for mem in dup_group:
+                    if mem["id"] != best["id"]:
+                        exact_dup_ids.add(mem["id"])
+                        report["exact_duplicates"] += 1
+
+            logger.info("[smart_deduplicate] Layer 1 完成: %d 组精确重复, 将删除 %d 条",
+                       len(exact_dups), len(exact_dup_ids))
+
+            # === Layer 2: 模糊重复 ===
+            non_exact = [m for m in memories if m["id"] not in exact_dup_ids and m["id"] not in exact_kept_ids]
+            fuzzy_clusters = self._find_fuzzy_duplicates(non_exact, fuzzy_threshold)
+            fuzzy_dup_ids: set = set()
+            fuzzy_kept_ids: set = set()
+
+            for cluster in fuzzy_clusters:
+                report["clusters_found"] += 1
+                best = self._pick_best_memory(cluster)
+                fuzzy_kept_ids.add(best["id"])
+                for mem in cluster:
+                    if mem["id"] != best["id"]:
+                        fuzzy_dup_ids.add(mem["id"])
+                        report["fuzzy_duplicates"] += 1
+
+            logger.info("[smart_deduplicate] Layer 2 完成: %d 组模糊重复, 将删除 %d 条",
+                       len(fuzzy_clusters), len(fuzzy_dup_ids))
+
+            # === 汇总 & 执行 ===
+            all_to_delete = exact_dup_ids | fuzzy_dup_ids
+            all_to_keep = exact_kept_ids | fuzzy_kept_ids | {m["id"] for m in non_exact if m["id"] not in fuzzy_dup_ids and m["id"] not in fuzzy_kept_ids}
+
+            report["deleted_ids"] = list(all_to_delete)
+            report["kept_ids"] = list(all_to_keep)
+            report["total_after"] = len(all_to_keep)
+
+            if dry_run:
+                logger.info("[smart_deduplicate] DRY RUN 模式: 不执行实际删除")
+                return report
+
+            if delete_duplicates and all_to_delete:
+                delete_list = list(all_to_delete)
+                for i in range(0, len(delete_list), 50):
+                    batch = delete_list[i:i+50]
+                    try:
+                        self.collection.delete(ids=batch)
+                        logger.debug("[smart_deduplicate] 已删除批次: %d 条", len(batch))
+                    except Exception as e:
+                        logger.warning("[smart_deduplicate] 删除失败 (batch): %s", e)
+
+                self._rebuild_bm25_index()
+                logger.info("[smart_deduplicate] 实际删除完成: 删除 %d 条, 保留 %d 条",
+                           len(all_to_delete), len(all_to_keep))
+
+            return report
+
+        except Exception as e:
+            logger.error("[smart_deduplicate] 去重失败: %s", e)
+            return {**report, "error": str(e)}
+
+    def enhance_save_with_dedup(self, memory: MemoryItem) -> str:
+        """
+        写入时增强去重：在 save() 基础上增加 BM25 文本相似度检查
+
+        当向量距离不够近但文本高度相似时（如同一段话换了表述方式），
+        也应判定为重复并强化已有记忆而非新增。
+        """
+        is_profile = self._is_profile_content(memory.content)
+
+        existing_id = self._check_write_time_duplicate(memory)
+        if existing_id:
+            return existing_id
+
+        last_accessed_iso = memory.last_accessed.isoformat() if memory.last_accessed else datetime.now().isoformat()
+        char_count = len(memory.content) if memory.content else 0
+
+        def _to_str(val):
+            if val is None: return ""
+            if isinstance(val, (list, dict)): return json.dumps(val, ensure_ascii=False)
+            return str(val)
+
+        metadata = {
+            "user_id": memory.user_id,
+            "scope": memory.scope,
+            "project_id": memory.project_id or "",
+            "is_shared": str(memory.is_shared),
+            "is_profile": str(is_profile),
+            "timestamp": memory.timestamp.isoformat(),
+            "importance": memory.importance,
+            "last_accessed": last_accessed_iso,
+            "access_count": memory.access_count,
+            "memory_type": memory.memory_type or "storage",
+            "source_memories": json.dumps(memory.source_memories or [], ensure_ascii=False),
+            "summary_type": memory.summary_type or "",
+            "skill_type": memory.skill_type or "",
+            "verified": str(memory.verified) if memory.verified is not None else "False",
+            "confidence": memory.confidence or 1.0,
+            "title": _to_str(memory.title),
+            "description": _to_str(memory.description),
+            "summary": _to_str(memory.summary),
+            "content_type": memory.content_type or "note",
+            "keywords": json.dumps(memory.keywords or [], ensure_ascii=False),
+            "tags": json.dumps(memory.tags or [], ensure_ascii=False),
+            "char_count": char_count,
+            "max_chars": memory.max_chars or 1000,
+        }
+
+        memory_id = str(uuid.uuid4())
+
+        try:
+            self.collection.upsert(ids=[memory_id], documents=[memory.content], metadatas=[metadata])
+        except Exception as e:
+            logger.warning(f"[MemoryStore] upsert 失败: {e}")
+            memory_id = str(uuid.uuid4())
+            self.collection.upsert(ids=[memory_id], documents=[memory.content], metadatas=[metadata])
+
+        self._add_to_bm25_index(memory_id, memory.content)
+
+        if is_profile:
+            try:
+                profile_meta = {**metadata}
+                profile_meta["is_profile"] = "True"
+                self.profile_collection.upsert(
+                    ids=[f"profile_{memory.user_id}"],
+                    documents=[memory.content],
+                    metadatas=[profile_meta]
+                )
+            except Exception as e:
+                logger.warning(f"[MemoryStore] 更新个人档案失败: {e}")
+
+        logger.debug(f"[MemoryStore] 记忆已保存: {memory_id[:12]}... type={memory.memory_type}")
+        return memory_id
+
+    def _check_write_time_duplicate(self, memory: MemoryItem) -> Optional[str]:
+        """写入时快速去重检查：向量 + BM25 双重验证"""
+        content = memory.content
+        if not content or len(content.strip()) < 5:
+            return None
+
+        # 快速路径：向量距离 < 0.08（约 99% 相似）
+        try:
+            where_clause = {"$and": [
+                {"user_id": {"$eq": memory.user_id}},
+                {"scope": {"$eq": memory.scope}},
+                {"memory_type": {"$eq": memory.memory_type or "storage"}}
+            ]}
+            results = self.collection.query(
+                query_texts=[content],
+                n_results=3,
+                where=where_clause
+            )
+            if results["ids"] and results["ids"][0]:
+                dist = results["distances"][0][0]
+                if dist < 0.08:
+                    existing_id = results["ids"][0][0]
+                    existing_meta = results["metadatas"][0][0]
+                    logger.info("[write_dedup] 向量命中 (dist=%.3f): 强化 %s", dist, existing_id[:8])
+                    self._reinforce_memory(existing_id, existing_meta)
+                    return existing_id
+        except Exception as e:
+            logger.debug("[write_dedup] 向量查重跳过: %s", e)
+
+        # 中速路径：BM25 文本相似度 > 0.88
+        try:
+            self._ensure_bm25_fresh()
+            if self._bm25_index and self._bm25_docs:
+                tokenized_query = list(jieba.cut_for_search(content))
+                scores = self._bm25_index.get_scores(tokenized_query)
+                if scores:
+                    max_score = max(scores)
+                    max_idx = scores.index(max_score)
+                    if max_score > 15.0 and max_idx < len(self._bm25_ids):
+                        candidate_id = self._bm25_ids[max_idx]
+                        candidate_doc = self._bm25_docs[max_idx] if max_idx < len(self._bm25_docs) else ""
+                        if candidate_doc and candidate_id != getattr(memory, 'memory_id', None):
+                            import difflib
+                            ratio = difflib.SequenceMatcher(None, content[:300], candidate_doc[:300]).ratio()
+                            if ratio > 0.88:
+                                logger.info("[write_dedup] BM25+文本命中 (score=%.1f ratio=%.2f): 强化 %s",
+                                           max_score, ratio, candidate_id[:8])
+                                candidate_results = self.collection.get(ids=[candidate_id], include=['metadatas'])
+                                if candidate_results and candidate_results.get("metadatas"):
+                                    self._reinforce_memory(candidate_id, candidate_results["metadatas"][0])
+                                return candidate_id
+        except Exception as e:
+            logger.debug("[write_dedup] BM25 查重跳过: %s", e)
+
+        return None
+
+    # ========== Layer 4: 向量语义聚类去重 ==========
+
+    def semantic_deduplicate(
+        self,
+        user_id: str = None,
+        vector_threshold: float = 0.92,
+        dry_run: bool = False,
+        delete_duplicates: bool = True
+    ) -> dict:
+        """
+        Layer 4: 基于向量语义相似度的去重
+        利用 ChromaDB 内置的 embedding 做余弦相似度聚类，
+        专门捕捉 LLM 改写导致的「语义等价但措辞不同」的重复内容。
+
+        Args:
+            user_id: 用户ID
+            vector_threshold: 余弦相似度阈值（默认 0.92，即距离 < 0.08 视为重复）
+            dry_run: 仅分析不删除
+            delete_duplicates: 是否实际删除
+
+        Returns:
+            去重报告
+        """
+        report = {
+            "total_before": 0,
+            "total_after": 0,
+            "semantic_duplicates": 0,
+            "deleted_ids": [],
+            "kept_ids": [],
+            "clusters_found": 0,
+            "dry_run": dry_run,
+            "method": "vector_semantic"
+        }
+
+        try:
+            where_filter = {"user_id": {"$eq": user_id}} if user_id else None
+            all_data = self.collection.get(where=where_filter, include=['documents', 'metadatas'])
+
+            if not all_data or not all_data.get("ids"):
+                return {**report, "message": "无记忆数据"}
+
+            ids = all_data["ids"]
+            docs = all_data["documents"]
+            metas = all_data["metadatas"]
+            report["total_before"] = len(ids)
+
+            if len(ids) <= 1:
+                return {**report, "message": "记忆数量不足"}
+
+            logger.info("[semantic_deduplicate] 开始向量语义分析 %d 条记忆...", len(ids))
+
+            # 对每条记忆查询最相似的邻居
+            processed: set = set()
+            to_delete: set = set()
+            clusters: List[List[dict]] = []
+
+            for i, mem_id in enumerate(ids):
+                if mem_id in processed:
+                    continue
+
+                doc = docs[i] if i < len(docs) else ""
+                meta = metas[i] if i < len(metas) else {}
+
+                # 用当前文档作为 query，找 top-5 最相似的
+                try:
+                    results = self.collection.query(
+                        query_texts=[doc],
+                        n_results=6,
+                        where=where_filter,
+                        include=["distances", "metadatas"]
+                    )
+                except Exception as e:
+                    logger.debug("[semantic_dedup] 查询失败 id=%s: %s", mem_id[:8], e)
+                    continue
+
+                if not results["ids"] or not results["ids"][0]:
+                    continue
+
+                neighbor_ids = results["ids"][0]
+                distances = results["distances"][0] if results["distances"] else []
+
+                cluster = [{"id": mem_id, "content": doc, "metadata": meta}]
+                processed.add(mem_id)
+
+                for j, nid in enumerate(neighbor_ids):
+                    if nid == mem_id:
+                        continue
+                    if j >= len(distances):
+                        break
+                    dist = distances[j]
+
+                    if dist < (1.0 - vector_threshold):
+                        if nid not in processed:
+                            nj = ids.index(nid) if nid in ids else -1
+                            n_doc = docs[nj] if 0 <= nj < len(docs) else ""
+                            n_meta = metas[nj] if 0 <= nj < len(metas) else {}
+                            cluster.append({"id": nid, "content": n_doc, "metadata": n_meta})
+                            processed.add(nid)
+
+                if len(cluster) > 1:
+                    clusters.append(cluster)
+                    report["clusters_found"] += 1
+
+            logger.info("[semantic_deduplicate] 发现 %d 个语义重复簇", len(clusters))
+
+            for cluster in clusters:
+                best = self._pick_best_memory(cluster)
+                report["kept_ids"].append(best["id"])
+                for mem in cluster:
+                    if mem["id"] != best["id"]:
+                        to_delete.add(mem["id"])
+                        report["semantic_duplicates"] += 1
+
+            report["deleted_ids"] = list(to_delete)
+            report["total_after"] = len(ids) - len(to_delete)
+
+            if dry_run:
+                logger.info("[semantic_dedup] DRY RUN: 将删除 %d 条", len(to_delete))
+                return report
+
+            if delete_duplicates and to_delete:
+                delete_list = list(to_delete)
+                for batch_start in range(0, len(delete_list), 50):
+                    batch = delete_list[batch_start:batch_start+50]
+                    try:
+                        self.collection.delete(ids=batch)
+                    except Exception as e:
+                        logger.warning("[semantic_dedup] 删除失败: %s", e)
+
+                self._rebuild_bm25_index()
+                logger.info("[semantic_dedup] 完成: 删除 %d 条语义重复, 保留 %d 条",
+                           len(to_delete), report["total_after"])
+
+            return report
+
+        except Exception as e:
+            logger.error("[semantic_deduplicate] 失败: %s", e)
+            return {**report, "error": str(e)}
+
+    def full_deduplicate_pipeline(
+        self,
+        user_id: str = None,
+        fuzzy_threshold: float = 0.82,
+        vector_threshold: float = 0.92,
+        dry_run: bool = False,
+    ) -> dict:
+        """
+        完整去重流水线：按顺序执行所有 4 层检测
+
+        Layer 1: 精确重复（内容指纹）
+        Layer 2: 模糊重复（difflib SequenceMatcher）
+        Layer 3: 向量语义重复（ChromaDB embedding 余弦距离）
+        Layer 4: 写入时预防（已集成到 enhance_save_with_dedup）
+
+        Args:
+            user_id: 用户ID
+            fuzzy_threshold: Layer 2 阈值
+            vector_threshold: Layer 3 阈值
+            dry_run: 仅分析模式
+
+        Returns:
+            完整报告
+        """
+        pipeline_report = {
+            "phases": {},
+            "total_before": 0,
+            "total_after": 0,
+            "total_deleted": 0
+        }
+
+        all_data = self.collection.get(include=['documents', 'metadatas'])
+        pipeline_report["total_before"] = len(all_data['ids'])
+
+        if dry_run:
+            print(f"\n{'='*60}")
+            print("  FULL DEDUP PIPELINE — DRY RUN")
+            print(f"{'='*60}")
+
+        # Phase 1: Exact + Fuzzy
+        r1 = self.smart_deduplicate(
+            user_id=user_id,
+            fuzzy_threshold=fuzzy_threshold,
+            dry_run=dry_run,
+            delete_duplicates=not dry_run
+        )
+        pipeline_report["phases"]["layer1_exact_fuzzy"] = r1
+
+        if dry_run:
+            print(f"\n  Phase 1 (Exact+Fuzzy): {r1['total_before']} → {r1['total_after']} "
+                  f"(删 {len(r1['deleted_ids'])}: exact={r1['exact_duplicates']} fuzzy={r1['fuzzy_duplicates']})")
+
+        # Phase 2: Vector Semantic
+        r2 = self.semantic_deduplicate(
+            user_id=user_id,
+            vector_threshold=vector_threshold,
+            dry_run=dry_run,
+            delete_duplicates=not dry_run
+        )
+        pipeline_report["phases"]["layer2_vector_semantic"] = r2
+
+        if dry_run:
+            print(f"  Phase 2 (Vector):   {r2['total_before']} → {r2['total_after']} "
+                  f"(删 {len(r2['deleted_ids'])} 语义重复)")
+
+        final_data = self.collection.get(include=['documents'])
+        pipeline_report["total_after"] = len(final_data['ids'])
+        pipeline_report["total_deleted"] = pipeline_report["total_before"] - pipeline_report["total_after"]
+
+        if dry_run:
+            print(f"\n{'='*60}")
+            print(f"  总计: {pipeline_report['total_before']} → {pipeline_report['total_after']} "
+                  f"(共删 {pipeline_report['total_deleted']})")
+            print(f"{'='*60}\n")
+
+        return pipeline_report
+
+    # ========== 用户管理和使用统计 ==========
+
+    def get_all_users(self) -> List[Dict[str, Any]]:
+        """获取系统中的所有用户及其统计信息"""
+        try:
+            all_data = self.collection.get(include=['metadatas'])
+            if not all_data or not all_data.get('metadatas'):
+                return []
+
+            user_stats = {}
+            for meta in all_data['metadatas']:
+                user_id = meta.get('user_id', 'unknown')
+                if user_id not in user_stats:
+                    user_stats[user_id] = {
+                        'user_id': user_id,
+                        'memory_count': 0,
+                        'storage_count': 0,
+                        'thinking_count': 0,
+                        'skill_count': 0,
+                        'total_chars': 0,
+                        'first_seen': None,
+                        'last_seen': None
+                    }
+                
+                stat = user_stats[user_id]
+                stat['memory_count'] += 1
+                
+                mem_type = meta.get('memory_type', 'storage')
+                type_key = f'{mem_type}_count'
+                if type_key in stat:
+                    stat[type_key] += 1
+                
+                stat['total_chars'] += meta.get('char_count', 0)
+                
+                ts = meta.get('timestamp')
+                if ts:
+                    if not stat['first_seen'] or ts < stat['first_seen']:
+                        stat['first_seen'] = ts
+                    if not stat['last_seen'] or ts > stat['last_seen']:
+                        stat['last_seen'] = ts
+
+            return list(user_stats.values())
+        except Exception as e:
+            logger.error(f"[MemoryStore] 获取用户列表失败: {e}")
+            return []
+
+    def delete_user(self, user_id: str, force: bool = False) -> bool:
+        """删除指定用户及其所有记忆数据"""
+        try:
+            where_filter = {"user_id": {"$eq": user_id}}
+            user_data = self.collection.get(where=where_filter)
+            
+            if not user_data or not user_data.get('ids'):
+                return False
+
+            memory_ids = user_data['ids']
+            self.collection.delete(ids=memory_ids)
+            
+            # 清理 BM25 索引
+            for mem_id in memory_ids:
+                self._remove_from_bm25_index(mem_id)
+            
+            # 清理图谱中该用户的节点
+            nodes_to_remove = []
+            for node_id, node_data in self.graph.nodes(data=True):
+                if node_data.get('user_id') == user_id:
+                    nodes_to_remove.append(node_id)
+            
+            for node_id in nodes_to_remove:
+                if node_id in self.graph:
+                    self.graph.remove_node(node_id)
+                    self._graph_dirty = True
+            
+            if self._graph_dirty:
+                self._save_graph()
+            
+            # 重建 BM25 索引
+            self._rebuild_bm25_index()
+            
+            logger.info(f"[MemoryStore] 删除用户 {user_id} 完成，删除了 {len(memory_ids)} 条记忆")
+            return True
+        except Exception as e:
+            logger.error(f"[MemoryStore] 删除用户失败: {e}")
+            return False
+
+    def get_user_usage(self, user_id: str, period: str = "7d") -> Dict[str, Any]:
+        """获取用户使用统计信息"""
+        try:
+            from datetime import datetime, timedelta
+
+            # 计算时间范围
+            now = datetime.now()
+            if period == "1d":
+                start_time = now - timedelta(days=1)
+            elif period == "7d":
+                start_time = now - timedelta(days=7)
+            elif period == "30d":
+                start_time = now - timedelta(days=30)
+            else:
+                start_time = None
+
+            where_filter = {"user_id": {"$eq": user_id}}
+            all_data = self.collection.get(where=where_filter, include=['metadatas'])
+            
+            if not all_data or not all_data.get('metadatas'):
+                return {
+                    'user_id': user_id,
+                    'period': period,
+                    'total_memories': 0,
+                    'recent_memories': 0,
+                    'total_chars': 0,
+                    'by_type': {'storage': 0, 'thinking': 0, 'skill': 0},
+                    'by_scope': {'project': 0, 'global': 0}
+                }
+
+            total_memories = len(all_data['metadatas'])
+            recent_memories = 0
+            total_chars = 0
+            by_type = {'storage': 0, 'thinking': 0, 'skill': 0}
+            by_scope = {'project': 0, 'global': 0}
+
+            for meta in all_data['metadatas']:
+                total_chars += meta.get('char_count', 0)
+                
+                mem_type = meta.get('memory_type', 'storage')
+                if mem_type in by_type:
+                    by_type[mem_type] += 1
+                
+                scope = meta.get('scope', 'project')
+                if scope in by_scope:
+                    by_scope[scope] += 1
+                
+                if start_time:
+                    ts = meta.get('timestamp')
+                    if ts:
+                        try:
+                            mem_time = datetime.fromisoformat(ts)
+                            if mem_time >= start_time:
+                                recent_memories += 1
+                        except (ValueError, TypeError):
+                            pass
+
+            if start_time is None:
+                recent_memories = total_memories
+
+            return {
+                'user_id': user_id,
+                'period': period,
+                'total_memories': total_memories,
+                'recent_memories': recent_memories,
+                'total_chars': total_chars,
+                'by_type': by_type,
+                'by_scope': by_scope
+            }
+        except Exception as e:
+            logger.error(f"[MemoryStore] 获取用户使用统计失败: {e}")
+            return {
+                'user_id': user_id,
+                'period': period,
+                'error': str(e)
+            }

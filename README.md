@@ -1,51 +1,146 @@
-# AI Memory System (MCP) - 生物本能增强版
+# AI Memory System (MCP) - AI优先记忆系统
 
-本项目实现了一个 **基于个体、构建集体** 且具备 **生物学本能** 的 AI 记忆系统。
+本项目实现了一个 **AI优先** 的记忆系统，通过简洁的CLI命令行接口为AI提供高效、开放、可扩展的记忆管理能力。
+
+## 核心理念
+
+- **AI优先**：系统设计目标是AI使用，而非人类使用
+- **开放原则**：通过CLI命令行方式调用，而非MCP协议
+- **双重模式**：支持本地模式（直接操作数据库）和服务器模式
+- **向后兼容**：保留HTTP API和MCP协议作为可选接入方式
 
 ## 快速开始 (Quick Start)
 
-### 方式一：本地 CLI（推荐，无需启动服务器）
+### 方式一：统一CLI（推荐，AI首选）
 
 ```bash
 # 激活环境
 source .venv/bin/activate
 
-# 查看系统统计
-mcp-memory-local stats
+# 查看帮助
+memory --help
 
-# 写入记忆
-mcp-memory-local write "重要信息" --title "记忆标题" --keywords "标签1,标签2"
+# 本地模式写入记忆（无需服务器）
+memory --local write "重要信息" --title "记忆标题" --keywords "标签1,标签2"
 
-# 搜索记忆
-mcp-memory-local read "关键词"
+# 搜索记忆（JSON输出，适合AI解析）
+memory --local search "关键词" --json
 
 # 列出所有记忆
-mcp-memory-local list --user cli_user
+memory --local list --user cli_user
 
 # 显示记忆详情
-mcp-memory-local show <memory_id>
+memory --local show <memory_id>
 
 # 删除记忆
-mcp-memory-local delete <memory_id>
+memory --local delete <memory_id> --force
 
-# 交互式 TUI 模式
-mcp-memory-local interactive
+# 查看系统统计
+memory --local stats
+
+# 触发反思
+memory --local reflect
 ```
 
-### 方式二：HTTP 服务器 + CLI
+### 方式二：批量操作
 
 ```bash
-# 启动服务器
-mcp-memory-cli server start
+# 批量写入（从JSONL文件）
+memory --local batch-write --file data.jsonl
 
-# 使用 CLI 操作（通过 HTTP API）
-mcp-memory-cli write "内容" --title "标题"
-mcp-memory-cli read "查询"
-mcp-memory-cli list
-mcp-memory-cli stats
+# 批量删除
+memory --local batch-delete --ids id1,id2,id3 --force
+
+# 导出记忆
+memory --local export --format jsonl --output backup.jsonl
+
+# 导入记忆
+memory --local import --file backup.jsonl
 ```
 
-## 本地 CLI 完整命令参考
+### 方式三：Python SDK（编程集成）
+
+```python
+from mcp_memory import MemoryClient
+
+# 本地模式
+with MemoryClient(mode="local") as client:
+    # 写入记忆
+    result = client.write_memory(
+        user_id="ai_agent",
+        content="测试内容",
+        title="测试标题"
+    )
+    
+    # 搜索记忆
+    memories = client.read_memory(
+        user_id="ai_agent",
+        query="关键词",
+        top_k=5
+    )
+```
+
+### 方式四：旧版CLI（保持向后兼容）
+
+#### 本地 CLI（无需服务器）
+
+```bash
+mcp-memory-local stats
+mcp-memory-local write "重要信息" --title "记忆标题"
+mcp-memory-local read "关键词"
+```
+
+#### HTTP 服务器 + CLI
+
+```bash
+mcp-memory-cli server start
+mcp-memory-cli write "内容" --title "标题"
+mcp-memory-cli read "查询"
+```
+
+## 统一CLI完整命令参考
+
+### `memory` - AI优先统一命令行工具
+
+#### 核心命令
+
+| 命令 | 功能 | 示例 |
+|------|------|------|
+| `write` | 写入新记忆 | `memory --local write "内容" --title "标题" --keywords "a,b"` |
+| `read` / `search` | 搜索记忆 | `memory --local search "查询内容" --top-k 5 --json` |
+| `list` | 列出记忆 | `memory --local list --type storage --limit 20 --user ai_agent` |
+| `show` | 显示详情 | `memory --local show <memory_id>` |
+| `delete` | 删除记忆 | `memory --local delete <id> --force` |
+| `stats` | 系统统计 | `memory --local stats` |
+| `reflect` | 触发反思 | `memory --local reflect` |
+
+#### 批量操作命令
+
+| 命令 | 功能 | 示例 |
+|------|------|------|
+| `batch-write` | 批量写入 | `memory --local batch-write --file data.jsonl` |
+| `batch-delete` | 批量删除 | `memory --local batch-delete --ids id1,id2 --force` |
+| `batch-export` | 批量导出 | `memory --local batch-export --format jsonl --output backup.jsonl` |
+| `import` | 导入记忆 | `memory --local import --file backup.jsonl` |
+| `export` | 导出记忆（batch-export别名） | `memory --local export --format json --output backup.json` |
+
+#### 用户管理命令
+
+| 命令 | 功能 | 示例 |
+|------|------|------|
+| `list-users` | 列出所有用户 | `memory --local list-users` |
+| `delete-user` | 删除用户 | `memory --local delete-user <user_id> --force` |
+| `usage` | 查看使用统计 | `memory --local usage --period 7d` |
+
+#### 全局选项
+
+| 选项 | 功能 | 说明 |
+|------|------|------|
+| `--local` | 本地模式 | 直接操作数据库，无需服务器 |
+| `--json` | JSON输出 | 输出标准JSON格式，适合AI解析 |
+| `--user` | 指定用户 | 指定操作的用户ID，默认cli_user |
+
+## 旧版CLI完整命令参考（向后兼容）
 
 ### `mcp-memory-local` - 本地直接操作（无需服务器）
 
