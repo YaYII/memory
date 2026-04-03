@@ -1,15 +1,24 @@
-# AI Memory System (MCP) - 生物本能增强版
+# AI Memory System - 生物本能增强版
 
 本项目实现了一个 **基于个体、构建集体** 且具备 **生物学本能** 的 AI 记忆系统。
 
+通过 CLI 命令提供记忆能力，AI 可通过 Skill 模式直接调用。
+
 ## 快速开始 (Quick Start)
 
-### 方式一：本地 CLI（推荐，无需启动服务器）
+### 安装
 
 ```bash
 # 激活环境
 source .venv/bin/activate
 
+# 或安装依赖
+pip install -e .
+```
+
+### 本地 CLI（推荐，无需启动服务器）
+
+```bash
 # 查看系统统计
 mcp-memory-local stats
 
@@ -28,11 +37,53 @@ mcp-memory-local show <memory_id>
 # 删除记忆
 mcp-memory-local delete <memory_id>
 
+# 触发深度反思
+mcp-memory-local reflect
+
 # 交互式 TUI 模式
 mcp-memory-local interactive
 ```
 
-### 方式二：HTTP 服务器 + CLI
+### AI Skill 调用模式（JSON 输出）
+
+CLI 支持 `--json` 和 `--quiet` 标志，输出机器可读的 JSON 格式，供 AI Skill 解析：
+
+```bash
+# 写入记忆，返回 JSON
+mcp-memory-local write "内容" --title "标题" --json
+
+# 搜索记忆，静默输出 JSON
+mcp-memory-local read "查询" --json --quiet
+
+# 获取统计信息
+mcp-memory-local stats --json --quiet
+
+# 列出记忆
+mcp-memory-local list --json --quiet
+
+# 删除记忆（无需确认）
+mcp-memory-local delete <id> --force --json --quiet
+```
+
+**JSON 输出示例：**
+```json
+{
+  "status": "success",
+  "query": "Python",
+  "count": 2,
+  "memories": [
+    {
+      "content": "...",
+      "title": "...",
+      "score": 0.95,
+      "memory_type": "storage",
+      "timestamp": "2024-01-01T12:00:00"
+    }
+  ]
+}
+```
+
+### HTTP 服务器 + CLI（可选）
 
 ```bash
 # 启动服务器
@@ -45,7 +96,7 @@ mcp-memory-cli list
 mcp-memory-cli stats
 ```
 
-## 本地 CLI 完整命令参考
+## CLI 完整命令参考
 
 ### `mcp-memory-local` - 本地直接操作（无需服务器）
 
@@ -59,6 +110,11 @@ mcp-memory-cli stats
 | `stats` | 系统统计 | `mcp-memory-local stats` |
 | `reflect` | 触发反思 | `mcp-memory-local reflect` |
 | `interactive` | 交互式模式 | `mcp-memory-local interactive` |
+
+**通用选项：**
+- `--json`: 输出 JSON 格式（供 AI skill 解析）
+- `--quiet, -q`: 静默模式，仅输出 JSON 到 stdout
+- `--user, -u`: 指定用户 ID
 
 ### `mcp-memory-cli` - HTTP API 客户端（需要服务器）
 
@@ -86,65 +142,30 @@ mcp-memory-cli stats
 
 本系统采用 **路径即项目 (Path-as-Project)** 策略：
 *   **Project 记忆**：默认模式。当你打开一个项目目录，AI 会自动将记忆归档到该项目下。
-*   **Global 记忆**：AI 会智能判断，如果是一条通用的编程知识或用户偏好（如“我喜欢 Python”），它会将其标记为全局记忆，跨项目共享。
+*   **Global 记忆**：AI 会智能判断，如果是一条通用的编程知识或用户偏好（如"我喜欢 Python"），它会将其标记为全局记忆，跨项目共享。
 
-## 快速配置 (Configuration)
+## 配置 (Configuration)
 
-### Claude Desktop / Trae 配置
+通过环境变量或 `.env` 文件配置：
 
-由于 MCP 客户端无法读取你终端的 PATH 环境变量，**请务必使用绝对路径**。
-
-请将下方的 `<path_to_project>` 替换为你实际的项目绝对路径。
-
-```json
-{
-  "mcpServers": {
-    "memory-system": {
-      "command": "<path_to_project>/.venv/bin/python",
-      "args": ["-m", "mcp_memory.main", "stdio"],
-      "env": {
-        "MCP_MEMORY_SHARED": "true",
-        "MCP_MEMORY_LANGUAGE": "简体中文", // 可选，默认为简体中文
-        "DEEPSEEK_API_KEY": "sk-...", // 选填，开启后支持自动记忆总结与技能提取
-        "PYTHONPATH": "<path_to_project>/src"
-      }
-    }
-  }
-}
-```
-
-> **注意**：
-> 1. `command`: 必须指向项目 `.venv/bin/python` 的绝对路径。
-> 2. `args`: 使用 `["-m", "mcp_memory.main", "stdio"]` 确保模块被正确加载。
-> 3. `PYTHONPATH`: 必须包含 `src` 目录的绝对路径，否则会报错 `ModuleNotFoundError`。
-> 4. `MCP_MEMORY_LANGUAGE`: 用于强制规定 AI 写入记忆的语言（如 "English", "日本語"），默认为 "简体中文"。
-> 5. `DEEPSEEK_API_KEY`: 配置后，系统会在后台自动分析写入的记忆，提取"技能"和"知识总结"，实现自我进化。
-> 6. `MCP_MEMORY_PORT`: 服务端口，默认为 22888。
-> 7. `MCP_EVOLUTION_ENABLED`: 是否启用自动进化，默认为 true。
-> 8. `MCP_EVOLUTION_SCAN_INTERVAL_SECONDS`: 扫描间隔（秒），默认为 300（5分钟）。
-> 9. `MCP_EVOLUTION_REFLECTION_INTERVAL_SECONDS`: 反思间隔（秒），默认为 1800（30分钟）。
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `MCP_MEMORY_PORT` | HTTP 服务端口 | `22888` |
+| `MCP_MEMORY_HOST` | 服务绑定地址 | `127.0.0.1` |
+| `MCP_MEMORY_LANGUAGE` | 写入记忆的强制语言 | `简体中文` |
+| `MCP_MEMORY_SHARED` | 记忆共享模式 | `false` |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key（用于自动总结） | 空 |
+| `OPENAI_API_KEY` | OpenAI API Key | 空 |
+| `ANTHROPIC_API_KEY` | Anthropic API Key | 空 |
+| `MCP_EVOLUTION_ENABLED` | 启用自动进化 | `true` |
+| `MCP_EVOLUTION_PROFILE` | 进化策略: light/standard/aggressive | `standard` |
 
 ## 认知增强 (Cognitive Enhancement)
 
 如果你配置了 `DEEPSEEK_API_KEY`，记忆系统将获得**自我思考**的能力：
 1.  **自动分类**：自动识别记忆类型（如 Coding, Config, Personal）。
-2.  **技能提取**：当检测到代码或配置相关的记忆时，会自动总结出可复用的“技能”或“知识点”，并存回记忆库。
-    *   *输入*: "Create a new file using `touch filename`"
-    *   *AI 后台总结*: "【认知总结】Linux 文件创建技能：使用 `touch` 命令..."
+2.  **技能提取**：当检测到代码或配置相关的记忆时，会自动总结出可复用的"技能"或"知识点"，并存回记忆库。
 3.  **自我进化**: 这些总结后的高价值记忆将在未来的检索中被优先召回。
-
-## 交互接口 (Tools)
-
-AI 将获得以下工具，并根据上下文智能调用：
-
-1.  **`write_memory(content, scope)`**
-    *   *AI 的思考*：“这是一个关于当前项目的数据库配置。”
-    *   *AI 的行动*：`write_memory("DB_HOST=localhost", scope="project")` -> **自动关联当前路径**
-    *   *AI 的思考*：“用户说他以后都用 pytest 做测试。”
-    *   *AI 的行动*：`write_memory("User prefers pytest", scope="global")` -> **跨项目通用**
-
-2.  **`read_memory(query)`**
-    *   *系统行为*：自动检索 **当前项目记忆** + **所有全局记忆**。
 
 ## 认知操作系统 (Cognitive OS)
 
@@ -153,46 +174,15 @@ AI 将获得以下工具，并根据上下文智能调用：
 ### 1. Critic & Self-Correction (自我修正)
 当您启用 `DEEPSEEK_API_KEY` 后，`read_memory` 不再只是简单的检索。
 *   **Synthesis (综合)**: DeepSeek 会阅读所有检索到的记忆片段，并为您撰写一个简洁、准确的答案。
-*   **Critic (批评家)**: 第二轮深度思考 (DeepSeek R1) 会检查生成的答案是否存在幻觉或逻辑漏洞，并自动修正。
+*   **Critic (批评家)**: 第二轮深度思考会检查生成的答案是否存在幻觉或逻辑漏洞，并自动修正。
 
 ### 2. Knowledge Graph (知识图谱)
-*   **实体提取**: 写入记忆时，系统会自动提取关键实体（如 `config.py`, `API_KEY`）并存入图谱。
+*   **实体提取**: 写入记忆时，系统会自动提取关键实体并存入图谱。
 *   **关联检索**: 检索时，系统会进行 **2-hop Graph Traversal**，找到逻辑相关但语义不直接相似的内容。
 
 ### 3. Active Reflection (主动反思)
-*   **工具**: `reflect_memory(user_id)`
-*   **作用**: 主动触发后台的 **Memory GC (垃圾回收)**。DeepSeek R1 会深度分析您的记忆库，合并重复项、解决冲突、提炼精华，让记忆库越用越好用。
-
-## 每日深度思考 (Daily Reflection) v2.5
-
-自 v2.5 起，系统新增了 **每日深度思考** 功能，每天 12:00 自动执行全局记忆整理：
-
-### 1. 跨记忆重复检测
-*   **全局视角**: 分析所有记忆，识别跨时间段的重复内容
-*   **智能合并**: 相似度 > 0.8 的记忆自动合并为增强版
-*   **保留源记忆**: 合并后保留所有原始记忆，仅添加标记
-
-### 2. 记忆合并策略
-```
-重复记忆检测 → 相似度分析 → 创建增强版记忆 → 标记源记忆 → 更新知识图谱
-```
-
-### 3. 语言一致性强制
-*   **强制规则**: 合并后的记忆统一使用配置语言（默认简体中文）
-*   **例外保护**: 代码片段、命令行、技术术语保持原样
-*   **禁止混杂**: 禁止中英文混杂，确保记忆通用性
-
-### 4. 手动触发
-```bash
-# 立即执行每日深度思考
-curl -X POST http://localhost:22888/tiered/daily-reflection/trigger
-
-# 查询合并记忆列表
-curl http://localhost:22888/tiered/merged
-
-# 查询记忆的合并链
-curl http://localhost:22888/tiered/memory/{memory_id}/merge-chain
-```
+*   **命令**: `mcp-memory-local reflect`
+*   **作用**: 触发 **Memory GC (垃圾回收)**。系统会深度分析您的记忆库，合并重复项、解决冲突、提炼精华，让记忆库越用越好用。
 
 ## 三层记忆系统 (Tiered Memory)
 

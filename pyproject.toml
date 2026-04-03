@@ -12,9 +12,6 @@ license = { text = "MIT" }
 authors = [{ name = "MCP Memory Team" }]
 
 dependencies = [
-    # MCP 协议核心
-    "mcp[cli]>=1.0.0",
-
     # HTTP 服务
     "fastapi>=0.111.0,<1.0",
     "uvicorn[standard]>=0.29.0",
@@ -66,7 +63,6 @@ dev = [
 ]
 
 [project.scripts]
-mcp-memory       = "mcp_memory.main:main"
 mcp-memory-cli   = "mcp_memory.cli:app"
 mcp-memory-local = "mcp_memory.cli_local:app"
 memory           = "mcp_memory.tui_cli:app"

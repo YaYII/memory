@@ -239,16 +239,19 @@ class MemoryStore:
 
         # 查重：在同项目/同用户范围内检索
         try:
+            where_clauses = [
+                {"user_id": {"$eq": memory.user_id}},
+                {"scope": {"$eq": memory.scope}},
+            ]
+            if memory.project_id:
+                where_clauses.append({"project_id": {"$eq": memory.project_id}})
+            
             duplicates = self.collection.query(
                 query_texts=[memory.content],
                 n_results=1,
-                where={"$and": [
-                    {"user_id": {"$eq": memory.user_id}},
-                    {"scope": {"$eq": memory.scope}},
-                    {"project_id": {"$eq": memory.project_id or ""}}
-                ]}
+                where={"$and": where_clauses}
             )
-            if duplicates["ids"] and duplicates["distances"][0][0] < 0.05:
+            if duplicates.get("ids") and duplicates.get("distances") and duplicates["distances"][0] and duplicates["distances"][0][0] < 0.05:
                 existing_id = duplicates["ids"][0][0]
                 existing_meta = duplicates["metadatas"][0][0]
                 logger.debug(f"[MemoryStore] 重复记忆检测 (dist={duplicates['distances'][0][0]:.4f})，强化 {existing_id[:8]}")
