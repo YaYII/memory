@@ -45,8 +45,11 @@ class AIBrain:
 
     async def initialize(self):
         if self._memory_store:
-            stats = self._memory_store.get_tiered_stats()
-            self.self_model.update_from_stats(stats)
+            try:
+                stats = self._memory_store.get_tiered_stats()
+                self.self_model.update_from_stats(stats)
+            except Exception as e:
+                logger.warning("[AIBrain] initialize failed: %s", e)
 
     async def process_input(self, content: str, context: Dict[str, Any]) -> Dict[str, Any]:
         self.total_cycles += 1

@@ -1,5 +1,6 @@
 """价值评估系统 — 多维度真实计算"""
 
+import hashlib
 from typing import Dict, Any
 
 
@@ -12,7 +13,7 @@ class ValueSystem:
         if not content:
             return {"total_score": 0.0, "components": self.values.copy()}
 
-        content_hash = hash(content[:200])
+        content_hash = hashlib.md5(content.encode()).hexdigest()
         is_duplicate = content_hash in self._seen_content_hashes
 
         importance = self._calc_importance(content, context)

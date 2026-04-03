@@ -189,9 +189,10 @@ def list_memories(
         try:
             params = {
                 "query": "",
-                "user_id": user_id,
                 "top_k": limit,
             }
+            if user_id != DEFAULT_USER:
+                params["user_id"] = user_id
             if memory_type != "all":
                 params["memory_type"] = memory_type
             

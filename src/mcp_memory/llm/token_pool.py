@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
@@ -7,6 +8,8 @@ import json
 import os
 import chromadb
 from chromadb.config import Settings as ChromaSettings
+
+logger = logging.getLogger("mcp-memory.token_pool")
 
 
 class ModelProvider(str, Enum):
@@ -108,7 +111,7 @@ class TokenPoolManager:
                     for u in usage_list
                 ]
         except Exception as e:
-            print(f"[TokenPool] Failed to load from ChromaDB: {e}")
+            logger.warning("[TokenPool] Failed to load from ChromaDB: %s", e)
 
     def _save(self):
         """保存 Token 池数据到 ChromaDB"""
@@ -152,7 +155,7 @@ class TokenPoolManager:
                         documents=[f"Token pool for {provider}"]
                     )
         except Exception as e:
-            print(f"[TokenPool] Failed to save to ChromaDB: {e}")
+            logger.warning("[TokenPool] Failed to save to ChromaDB: %s", e)
 
     def _migrate_from_json(self):
         """自动迁移旧的 JSON 数据到 ChromaDB"""
@@ -169,7 +172,7 @@ class TokenPoolManager:
             if not pools_data:
                 return
             
-            print(f"[TokenPool] Migrating {len(pools_data)} pools from JSON to ChromaDB...")
+            logger.info("[TokenPool] Migrating %d pools from JSON to ChromaDB...", len(pools_data))
             
             for provider, pool_data in pools_data.items():
                 if provider not in self.pools:
@@ -191,10 +194,10 @@ class TokenPoolManager:
             
             backup_path = self.data_path + ".migrated"
             os.rename(self.data_path, backup_path)
-            print(f"[TokenPool] Migration complete. Old file backed up to: {backup_path}")
+            logger.info("[TokenPool] Migration complete. Old file backed up to: %s", backup_path)
             
         except Exception as e:
-            print(f"[TokenPool] Migration failed (may already be migrated): {e}")
+            logger.debug("[TokenPool] Migration failed (may already be migrated): %s", e)
 
     def register_pool(self, config: TokenPoolConfig):
         """注册一个新的 Token 池"""
@@ -202,7 +205,7 @@ class TokenPoolManager:
         if config.provider not in self.usage_history:
             self.usage_history[config.provider] = []
         self._save()
-        print(f"[TokenPool] Registered: {config.provider} (priority: {config.priority})")
+        logger.info("[TokenPool] Registered: %s (priority: %d)", config.provider, config.priority)
 
     def get_available_pools(self) -> List[str]:
         """获取所有可用的池（启用状态）"""
@@ -270,14 +273,14 @@ class TokenPoolManager:
         if provider in self.pools:
             self.pools[provider].enabled = False
             self._save()
-            print(f"[TokenPool] Disabled: {provider}")
-
+            logger.info("[TokenPool] Disabled: %s", provider)
+            self._save()
     def enable_pool(self, provider: str):
         """启用池"""
         if provider in self.pools:
             self.pools[provider].enabled = True
             self._save()
-            print(f"[TokenPool] Enabled: {provider}")
+            logger.info("[TokenPool] Enabled: %s", provider)
 
     def get_pool_status(self) -> Dict[str, Any]:
         """获取所有池的状态"""

@@ -23,6 +23,7 @@ from typing import Dict, Optional
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 # ── 最先加载 .env（config 模块依赖环境变量）──────────────────────────────────
@@ -60,6 +61,15 @@ app = FastAPI(
 )
 
 # ─── 中间件（注册顺序 = 执行顺序的逆序，RequestID 最先执行）───────────────────
+
+# CORS中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许所有来源，生产环境中应该设置具体的域名
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有HTTP方法
+    allow_headers=["*"],  # 允许所有HTTP头
+)
 
 app.add_middleware(RequestIDMiddleware)
 

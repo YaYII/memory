@@ -1,10 +1,13 @@
 """自我进化引擎模块"""
 
+import logging
 import numpy as np
 from typing import List, Dict, Any
 from mcp_memory.neuro_evolution.cells.single_cell import SingleCellMemory, EvolutionStage
 from mcp_memory.neuro_evolution.genesis.neurogenesis import Neurogenesis
 from mcp_memory.neuro_evolution.plasticity.neural_plasticity import NeuralPlasticity, PlasticityType
+
+logger = logging.getLogger("mcp-memory.evolution")
 
 
 class SelfEvolvingMemorySystem:
@@ -108,7 +111,7 @@ class SelfEvolvingMemorySystem:
             next_stage = EvolutionStage.COMPLEX_BRAIN
         
         if next_stage:
-            print(f"进化到 {next_stage.value} 阶段！")
+            logger.info("进化到 %s 阶段！", next_stage.value)
             self.current_stage = next_stage
             self.evolution_history.append({
                 "stage": next_stage.value,

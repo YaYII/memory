@@ -2,6 +2,30 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Memory, GraphData, SystemStats, EvolutionStatus, LogEntry, MemoryType, ViewMode, EvolutionProfile } from '@/types/memory'
 import { memoryApi, evolutionApi, tieredApi } from '@/api/memory'
+import { withLoading } from '@/utils/async'
+
+const notify = (() => {
+  let toast: ReturnType<typeof import('@/composables/useToast')['useToast']> | null = null
+  return {
+    error(msg: string) {
+      if (!toast) {
+        try { toast = require('@/composables/useToast').useToast() } catch { return }
+      }
+      (toast as any).error?.(msg)
+    },
+    success(msg: string) {
+      if (!toast) {
+        try { toast = require('@/composables/useToast').useToast() } catch { return }
+      }
+      (toast as any).success?.(msg)
+    }
+  }
+})()
+
+function handleApiError(e: unknown, action: string) {
+  const msg = e instanceof Error ? e.message : String(e)
+  notify.error(`${action}失败: ${msg}`)
+}
 
 export const useMemoryStore = defineStore('memory', () => {
   const memories = ref<Memory[]>([])
@@ -19,277 +43,157 @@ export const useMemoryStore = defineStore('memory', () => {
   const error = ref<string | null>(null)
 
   const filteredMemories = computed(() => {
-    if (currentMemoryType.value === 'all') {
-      return memories.value
-    }
+    if (currentMemoryType.value === 'all') return memories.value
     return memories.value.filter(m => m.memory_type === currentMemoryType.value)
   })
 
   const memoryCountByType = computed(() => {
-    return {
-      storage: memories.value.filter(m => m.memory_type === 'storage').length,
-      thinking: memories.value.filter(m => m.memory_type === 'thinking').length,
-      skill: memories.value.filter(m => m.memory_type === 'skill').length,
-      total: memories.value.length
+    let storage = 0, thinking = 0, skill = 0
+    for (const m of memories.value) {
+      if (m.memory_type === 'storage') storage++
+      else if (m.memory_type === 'thinking') thinking++
+      else if (m.memory_type === 'skill') skill++
     }
+    return { storage, thinking, skill, total: memories.value.length }
   })
 
   async function fetchStats() {
     try {
       stats.value = await memoryApi.getStats()
     } catch (e) {
-      error.value = 'Failed to fetch stats'
-      console.error(e)
+      handleApiError(e, '获取统计')
     }
   }
 
-  async function fetchGraph(days: number = 7, maxNodes: number = 1000) {
-    try {
-      isLoading.value = true
+  async function fetchGraph(days = 7, maxNodes = 1000) {
+    await withLoading(isLoading, async () => {
       graphData.value = await memoryApi.getGraph(days, maxNodes)
-    } catch (e) {
-      error.value = 'Failed to fetch graph'
-      console.error(e)
-    } finally {
-      isLoading.value = false
-    }
+    }, e => handleApiError(e, '加载图谱'))
   }
 
   async function fetchEvolutionStatus() {
     try {
       evolutionStatus.value = await evolutionApi.getStatus()
     } catch (e) {
-      error.value = 'Failed to fetch evolution status'
-      console.error(e)
+      handleApiError(e, '获取进化状态')
     }
   }
 
   async function searchMemories(query: string) {
-    try {
-      isLoading.value = true
+    await withLoading(isLoading, async () => {
       searchQuery.value = query
       const result = await memoryApi.searchMemories(query)
       searchResults.value = result.items.map(item => ({
         ...item,
         content_type: 'note' as const,
-        keywords: [],
+        keywords: (item as any).keywords ?? [],
         tags: [],
-        char_count: item.content?.length || 0,
+        char_count: item.content?.length ?? 0,
         importance: 0.5
       })) as Memory[]
-    } catch (e) {
-      error.value = 'Failed to search memories'
-      console.error(e)
-    } finally {
-      isLoading.value = false
-    }
+    }, e => handleApiError(e, '搜索记忆'))
   }
 
   async function setEvolutionProfile(profile: EvolutionProfile) {
-    try {
+    await withLoading(isLoading, async () => {
       await evolutionApi.setProfile(profile)
       currentProfile.value = profile
       await fetchEvolutionStatus()
-    } catch (e) {
-      error.value = 'Failed to set evolution profile'
-      console.error(e)
-    }
+      notify.success(`进化配置已切换为 ${profile}`)
+    }, e => handleApiError(e, '切换进化配置'))
   }
 
-  function setMemoryType(type: MemoryType) {
-    currentMemoryType.value = type
-  }
-
-  function setViewMode(mode: ViewMode) {
-    currentViewMode.value = mode
-  }
+  function setMemoryType(type: MemoryType) { currentMemoryType.value = type }
+  function setViewMode(mode: ViewMode) { currentViewMode.value = mode }
 
   function addLog(message: string, type: LogEntry['type'] = 'info') {
-    const log: LogEntry = {
-      time: new Date().toLocaleTimeString(),
-      message,
-      type
-    }
-    logs.value.push(log)
-    if (logs.value.length > 50) {
-      logs.value.shift()
-    }
+    logs.value.push({ time: new Date().toLocaleTimeString(), message, type })
+    if (logs.value.length > 50) logs.value.shift()
   }
 
-  function clearLogs() {
-    logs.value = []
-  }
+  function clearLogs() { logs.value = [] }
 
-  async function updateMemory(memoryId: string, content: string, userId: string = 'default', title?: string, keywords?: string[]) {
-    try {
-      isLoading.value = true
+  async function updateMemory(memoryId: string, content: string, userId = 'default', title?: string, keywords?: string[]) {
+    return await withLoading(isLoading, async () => {
       const result = await memoryApi.updateMemory(memoryId, { content, user_id: userId, title, keywords })
-      addLog(`Memory updated: ${memoryId}`, 'success')
+      addLog(`记忆已更新: ${memoryId}`, 'success')
       return result
-    } catch (e) {
-      error.value = 'Failed to update memory'
-      addLog(`Failed to update memory: ${memoryId}`, 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => { addLog(`更新记忆失败: ${memoryId}`, 'error'); handleApiError(e, '更新记忆') })
   }
 
-  async function deleteMemory(memoryId: string, userId: string = 'default') {
-    try {
-      isLoading.value = true
+  async function deleteMemory(memoryId: string, userId = 'default') {
+    return await withLoading(isLoading, async () => {
       const result = await memoryApi.deleteMemory(memoryId, userId)
-      addLog(`Memory deleted: ${memoryId}`, 'success')
+      addLog(`记忆已删除: ${memoryId}`, 'success')
       return result
-    } catch (e) {
-      error.value = 'Failed to delete memory'
-      addLog(`Failed to delete memory: ${memoryId}`, 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => { addLog(`删除记忆失败: ${memoryId}`, 'error'); handleApiError(e, '删除记忆') })
   }
 
-  async function writeMemory(data: {
-    content: string
-    user_id: string
-    title?: string
-    scope?: string
-    keywords?: string[]
-    content_type?: string
-  }) {
-    try {
-      isLoading.value = true
+  async function writeMemory(data: { content: string; user_id: string; title?: string; scope?: string; keywords?: string[]; content_type?: string }) {
+    return await withLoading(isLoading, async () => {
       const result = await memoryApi.writeMemory(data)
-      addLog(`Memory written: ${result.id}`, 'success')
+      addLog(`记忆已写入: ${result.id}`, 'success')
+      notify.success('记忆写入成功')
       return result
-    } catch (e) {
-      error.value = 'Failed to write memory'
-      addLog('Failed to write memory', 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => { addLog('写入记忆失败', 'error'); handleApiError(e, '写入记忆') })
   }
 
-  async function reflectMemory(userId: string = 'default') {
-    try {
-      isLoading.value = true
+  async function reflectMemory(userId = 'default') {
+    return await withLoading(isLoading, async () => {
       const result = await memoryApi.reflectMemory(userId)
-      addLog('Memory reflection completed', 'success')
+      addLog('反思完成', 'success')
+      notify.success('反思完成')
       return result
-    } catch (e) {
-      error.value = 'Failed to reflect memory'
-      addLog('Failed to reflect memory', 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => { addLog('反思失败', 'error'); handleApiError(e, '反思') })
   }
 
   async function rebuildGraph() {
-    try {
-      isLoading.value = true
+    return await withLoading(isLoading, async () => {
       const result = await memoryApi.rebuildGraph()
-      addLog('Graph rebuilt successfully', 'success')
+      addLog('图谱重建成功', 'success')
+      notify.success('图谱已重建')
       return result
-    } catch (e) {
-      error.value = 'Failed to rebuild graph'
-      addLog('Failed to rebuild graph', 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => { addLog('图谱重建失败', 'error'); handleApiError(e, '重建图谱') })
   }
 
-  async function submitFeedback(memoryId: string, feedback: {
-    rating?: number
-    useful?: boolean
-    comment?: string
-  }) {
-    try {
-      isLoading.value = true
+  async function submitFeedback(memoryId: string, feedback: { rating?: number; useful?: boolean; comment?: string }) {
+    return await withLoading(isLoading, async () => {
       const result = await tieredApi.submitFeedback(memoryId, feedback)
-      addLog(`Feedback submitted for: ${memoryId}`, 'success')
+      addLog(`反馈已提交: ${memoryId}`, 'success')
       return result
-    } catch (e) {
-      error.value = 'Failed to submit feedback'
-      addLog(`Failed to submit feedback for: ${memoryId}`, 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => { addLog(`提交反馈失败: ${memoryId}`, 'error'); handleApiError(e, '提交反馈') })
   }
 
   async function summarizeMemories(memoryIds: string[]) {
-    try {
-      isLoading.value = true
+    return await withLoading(isLoading, async () => {
       const result = await tieredApi.summarizeMemories(memoryIds)
-      addLog(`Summarized ${memoryIds.length} memories`, 'success')
+      addLog(`已总结 ${memoryIds.length} 条记忆`, 'success')
       return result
-    } catch (e) {
-      error.value = 'Failed to summarize memories'
-      addLog('Failed to summarize memories', 'error')
-      console.error(e)
-      throw e
-    } finally {
-      isLoading.value = false
-    }
+    }, e => handleApiError(e, '总结记忆'))
   }
 
   async function fetchLogs() {
     try {
       const result = await memoryApi.getLogs()
-      if (result && result.length > 0) {
+      if (result?.length) {
         logs.value = result.slice(0, 50).map(log => ({
           time: log.time,
           message: log.message,
-          type: (['info', 'success', 'error', 'warn'].includes(log.type) ? log.type : 'info') as 'info' | 'success' | 'error' | 'warn'
+          type: (['info', 'success', 'error', 'warn'].includes(log.type) ? log.type : 'info') as LogEntry['type']
         }))
       }
-    } catch (e) {
-      console.error('Failed to fetch logs:', e)
-    }
+    } catch (_) {}
   }
 
   return {
-    memories,
-    currentMemory,
-    graphData,
-    stats,
-    evolutionStatus,
-    logs,
-    currentMemoryType,
-    currentViewMode,
-    currentProfile,
-    searchQuery,
-    searchResults,
-    isLoading,
-    error,
-    filteredMemories,
-    memoryCountByType,
-    fetchStats,
-    fetchGraph,
-    fetchEvolutionStatus,
-    searchMemories,
-    setEvolutionProfile,
-    setMemoryType,
-    setViewMode,
-    addLog,
-    clearLogs,
-    updateMemory,
-    deleteMemory,
-    writeMemory,
-    reflectMemory,
-    rebuildGraph,
-    submitFeedback,
-    summarizeMemories,
-    fetchLogs
+    memories, currentMemory, graphData, stats, evolutionStatus, logs,
+    currentMemoryType, currentViewMode, currentProfile,
+    searchQuery, searchResults, isLoading, error,
+    filteredMemories, memoryCountByType,
+    fetchStats, fetchGraph, fetchEvolutionStatus, searchMemories,
+    setEvolutionProfile, setMemoryType, setViewMode,
+    addLog, clearLogs,
+    updateMemory, deleteMemory, writeMemory, reflectMemory,
+    rebuildGraph, submitFeedback, summarizeMemories, fetchLogs
   }
 })

@@ -175,6 +175,23 @@
       </div>
     </transition>
   </div>
+
+  <!-- 全局 Toast 通知 -->
+  <Teleport to="body">
+    <div class="toast-container">
+      <TransitionGroup name="toast" tag="div">
+        <div
+          v-for="t in toasts"
+          :key="t.id"
+          :class="['toast-item', `toast-${t.type}`]"
+          @click="dismiss(t.id)"
+        >
+          <span class="toast-icon">{{ { success: '✓', error: '✗', warn: '⚠', info: 'ℹ' }[t.type] }}</span>
+          <span class="toast-message">{{ t.message }}</span>
+        </div>
+      </TransitionGroup>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -182,6 +199,7 @@ import { onMounted, ref, computed, shallowRef } from 'vue'
 import { useMemoryStore } from '@/stores/memory'
 import { storeToRefs } from 'pinia'
 import { memoryApi } from '@/api/memory'
+import { useToast } from '@/composables/useToast'
 import MemoryGraph from '@/components/MemoryGraph.vue'
 import MemoryList from '@/components/MemoryList.vue'
 import LogPanel from '@/components/LogPanel.vue'
@@ -199,6 +217,7 @@ import type { Memory, GraphNode } from '@/types/memory'
 
 const memoryStore = useMemoryStore()
 const { graphData, isLoading, evolutionStatus, stats } = storeToRefs(memoryStore)
+const { toasts, dismiss } = useToast()
 
 const navigationTabs = [
   { id: 'overview', label: '概览', icon: '📊' },
@@ -666,4 +685,44 @@ function getMemoryTypeLabel(type?: string): string {
   background: linear-gradient(rgba(0, 255, 106, 0.02) 50%, transparent 50%);
   background-size: 100% 4px; z-index: 1000; pointer-events: none; opacity: 0.3;
 }
+
+/* Toast Notification System */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+  pointer-events: none;
+}
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  pointer-events: auto;
+  animation: toastSlideIn 0.3s ease;
+  border-left: 4px solid;
+  font-size: 13px;
+  font-family: var(--font-main);
+}
+.toast-item.toast-success { background: rgba(0, 80, 40, 0.9); color: #00ff6a; border-color: #00ff6a; }
+.toast-item.toast-error { background: rgba(80, 0, 0, 0.9); color: #ff6a6a; border-color: #ff4444; }
+.toast-item.toast-warn { background: rgba(80, 60, 0, 0.9); color: #ffcc00; border-color: #ffaa00; }
+.toast-item.toast-info { background: rgba(0, 30, 50, 0.9); color: #00e5ff; border-color: #00b8d4; }
+.toast-icon { font-size: 16px; flex-shrink: 0; font-weight: bold; }
+.toast-message { line-height: 1.4; }
+
+@keyframes toastSlideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+.toast-enter-active { transition: all 0.3s ease-out; }
+.toast-leave-active { transition: all 0.2s ease-in; }
+.toast-enter-from { transform: translateX(120%); opacity: 0; }
+.toast-leave-to { transform: translateX(120%); opacity: 0; }
 </style>

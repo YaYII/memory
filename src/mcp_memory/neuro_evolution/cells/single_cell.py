@@ -1,9 +1,12 @@
 """单细胞记忆系统"""
 
+import logging
 import numpy as np
 from enum import Enum
 from typing import List, Dict, Any
 from mcp_memory.neuro_evolution.cells.neuron import Neuron, Synapse, NeuronType
+
+logger = logging.getLogger("mcp-memory.single-cell")
 
 
 class EvolutionStage(Enum):
@@ -139,7 +142,7 @@ class SingleCellMemory:
         """检查是否需要进化"""
         # 这里只是一个简单的实现，实际应用中可以根据更复杂的条件判断
         if self.evolution_stage == EvolutionStage.SINGLE_CELL:
-            print(f"进化到多细胞阶段！处理次数: {self.total_processed}")
+            logger.info("进化到多细胞阶段！处理次数: %d", self.total_processed)
             # 实际应用中这里应该实现进化逻辑
     
     def get_status(self) -> Dict[str, Any]:
