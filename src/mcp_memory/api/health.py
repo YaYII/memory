@@ -5,7 +5,6 @@ GET /health        — 浅检查（Kubernetes liveness probe）
 GET /health/ready  — 深检查（Kubernetes readiness probe，含依赖状态）
 """
 
-import asyncio
 import logging
 import os
 import time
