@@ -9,6 +9,7 @@ import logging
 import os
 import time
 from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
@@ -22,7 +23,7 @@ _START_TIME = time.time()
 
 
 @router.get("/health", summary="Liveness probe")
-async def health_liveness():
+async def health_liveness() -> dict[str, Any]:
     """
     浅层健康检查（轻量级）。
     Kubernetes liveness probe 使用此接口，仅确认进程存活。
