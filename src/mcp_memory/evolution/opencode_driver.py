@@ -13,7 +13,6 @@ OpenCode CLI 驱动引擎
 使用 opencode/qwen3.6-plus-free 免费模型。
 """
 
-import json
 import logging
 import os
 import random
@@ -21,7 +20,6 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
 
 from mcp_memory.evolution.evolution_config import EvolutionConfig
 from mcp_memory.evolution.evolution_tasks import EvolutionTask
@@ -45,7 +43,7 @@ class TaskResult:
     """任务执行结果"""
     task: EvolutionTask
     success: bool
-    files_modified: List[str]
+    files_modified: list[str]
     output: str
     validation_passed: bool
 
@@ -68,12 +66,12 @@ class OpenCodeDriver:
 
     def __init__(self, config: EvolutionConfig):
         self.config = config
-        self._results: List[TaskResult] = []
-        self._serve_proc: Optional[subprocess.Popen] = None
+        self._results: list[TaskResult] = []
+        self._serve_proc: subprocess.Popen | None = None
         self._serve_port: int = 0
         self._serve_url: str = ""
 
-    def _find_opencode_binary(self) -> Optional[str]:
+    def _find_opencode_binary(self) -> str | None:
         """查找 opencode 可执行文件"""
         # 1. OpenCode.app 内置的 CLI
         macos_paths = [
@@ -146,8 +144,8 @@ class OpenCodeDriver:
                     print(f"  {Colors.RED}❌ opencode 服务启动失败{Colors.RESET}")
                     return False
                 try:
-                    import urllib.request
                     import urllib.error
+                    import urllib.request
                     req = urllib.request.Request(f"{self._serve_url}/config")
                     urllib.request.urlopen(req, timeout=2)
                     print(f"  {Colors.GREEN}✅ opencode 服务已就绪{Colors.RESET}")
@@ -180,7 +178,7 @@ class OpenCodeDriver:
             self._serve_proc = None
             logger.info("opencode serve 已停止")
 
-    def _send_task(self, prompt: str) -> Tuple[bool, str]:
+    def _send_task(self, prompt: str) -> tuple[bool, str]:
         """通过 opencode run --attach 发送任务"""
         opencode_binary = self._find_opencode_binary()
         if not opencode_binary:
@@ -271,8 +269,9 @@ class OpenCodeDriver:
             validation_passed = self._validate(task)
 
             if validation_passed and self.config.auto_commit:
-                commit_msg = f"{self.config.commit_prefix}({task.category.value}): {task.title}"
-                self._git_commit(files_modified, commit_msg)
+                if files_modified:
+                    commit_msg = f"{self.config.commit_prefix}({task.category.value}): {task.title}"
+                    self._git_commit(files_modified, commit_msg)
 
             task.status = "success" if validation_passed else "failed"
             task.result = output
@@ -291,7 +290,7 @@ class OpenCodeDriver:
             # 每个任务完成后停止 serve（避免端口占用）
             self._stop_serve()
 
-    def execute_batch(self, tasks: List[EvolutionTask], max_count: Optional[int] = None) -> List[TaskResult]:
+    def execute_batch(self, tasks: list[EvolutionTask], max_count: int | None = None) -> list[TaskResult]:
         """批量执行进化任务"""
         limit = max_count or self.config.max_tasks_per_cycle
         results = []
@@ -306,7 +305,7 @@ class OpenCodeDriver:
 
         return results
 
-    def _get_modified_files(self) -> List[str]:
+    def _get_modified_files(self) -> list[str]:
         """获取 git 追踪到的已修改文件"""
         try:
             result = subprocess.run(
@@ -362,7 +361,7 @@ class OpenCodeDriver:
         logger.info("验证通过: %d 个文件被修改", len(files_modified))
         return True
 
-    def _run_lint(self, files: List[str]) -> bool:
+    def _run_lint(self, files: list[str]) -> bool:
         """运行 Ruff lint 检查指定文件"""
         try:
             cmd = [sys.executable, "-m", "ruff", "check"] + files
@@ -377,7 +376,7 @@ class OpenCodeDriver:
             logger.warning("Lint 执行异常: %s", e)
             return False
 
-    def _run_lint_fix(self, files: List[str]) -> bool:
+    def _run_lint_fix(self, files: list[str]) -> bool:
         """运行 Ruff lint --fix 自动修复"""
         try:
             fix_cmd = [sys.executable, "-m", "ruff", "check", "--fix"] + files
@@ -411,7 +410,7 @@ class OpenCodeDriver:
             logger.warning("测试执行异常: %s", e)
             return False
 
-    def _git_commit(self, files: List[str], message: str) -> bool:
+    def _git_commit(self, files: list[str], message: str) -> bool:
         """git add + commit"""
         try:
             if files:
@@ -439,7 +438,7 @@ class OpenCodeDriver:
             logger.warning("git commit 异常: %s", e)
             return False
 
-    def _git_reset(self, files: Optional[List[str]] = None) -> None:
+    def _git_reset(self, files: list[str] | None = None) -> None:
         """回滚未提交的修改
 
         Args:

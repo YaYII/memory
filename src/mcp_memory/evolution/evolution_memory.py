@@ -11,10 +11,10 @@
 import json
 import logging
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger("mcp-memory.evolution.memory")
 
@@ -54,16 +54,16 @@ class EvolutionMemory:
     outcome: EvolutionOutcome
     title: str
     description: str
-    files_involved: List[str]
+    files_involved: list[str]
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
-    context: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
     decision_reasoning: str = ""       # 为什么做出这个决策
     what_worked: str = ""              # 什么做对了
     what_failed: str = ""              # 什么做错了
     lesson_learned: str = ""           # 学到了什么
     next_action_suggestion: str = ""   # 下一步建议
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "memory_id": self.memory_id,
             "action_type": self.action_type.value,
@@ -116,7 +116,7 @@ class EvolutionMemoryStore:
 
     def __init__(self, project_root: str):
         self.project_root = project_root
-        self._local_memories: List[EvolutionMemory] = []
+        self._local_memories: list[EvolutionMemory] = []
         self._memory_file = os.path.join(project_root, ".evolution_memories.json")
         self._load_local()
 
@@ -126,8 +126,8 @@ class EvolutionMemoryStore:
         outcome: EvolutionOutcome,
         title: str,
         description: str,
-        files_involved: Optional[List[str]] = None,
-        context: Optional[Dict[str, Any]] = None,
+        files_involved: list[str] | None = None,
+        context: dict[str, Any] | None = None,
         decision_reasoning: str = "",
         what_worked: str = "",
         what_failed: str = "",
@@ -184,10 +184,10 @@ class EvolutionMemoryStore:
 
     def get_memories(
         self,
-        action_type: Optional[EvolutionActionType] = None,
-        outcome: Optional[EvolutionOutcome] = None,
+        action_type: EvolutionActionType | None = None,
+        outcome: EvolutionOutcome | None = None,
         limit: int = 50,
-    ) -> List[EvolutionMemory]:
+    ) -> list[EvolutionMemory]:
         """查询进化记忆
 
         Args:
@@ -205,7 +205,7 @@ class EvolutionMemoryStore:
             results = [m for m in results if m.outcome == outcome]
         return list(reversed(results))[:limit]
 
-    def get_lessons_learned(self, limit: int = 20) -> List[str]:
+    def get_lessons_learned(self, limit: int = 20) -> list[str]:
         """获取所有经验教训"""
         lessons = [
             m.lesson_learned
@@ -214,21 +214,21 @@ class EvolutionMemoryStore:
         ]
         return lessons[:limit]
 
-    def get_failed_tasks(self) -> List[EvolutionMemory]:
+    def get_failed_tasks(self) -> list[EvolutionMemory]:
         """获取所有失败的任务"""
         return [
             m for m in reversed(self._local_memories)
             if m.outcome in (EvolutionOutcome.FAILED, EvolutionOutcome.ROLLED_BACK)
         ]
 
-    def get_successful_tasks(self) -> List[EvolutionMemory]:
+    def get_successful_tasks(self) -> list[EvolutionMemory]:
         """获取所有成功的任务"""
         return [
             m for m in reversed(self._local_memories)
             if m.outcome == EvolutionOutcome.SUCCESS
         ]
 
-    def is_duplicate_task(self, title_keywords: List[str]) -> bool:
+    def is_duplicate_task(self, title_keywords: list[str]) -> bool:
         """检查是否是重复任务（基于关键词匹配）
 
         避免重复执行已经尝试过的相同任务。
@@ -259,13 +259,13 @@ class EvolutionMemoryStore:
         rollbacks = sum(1 for m in self._local_memories if m.outcome == EvolutionOutcome.ROLLED_BACK)
 
         # 按类型统计
-        by_type: Dict[str, int] = {}
+        by_type: dict[str, int] = {}
         for m in self._local_memories:
             t = m.action_type.value
             by_type[t] = by_type.get(t, 0) + 1
 
         # 按文件统计
-        by_file: Dict[str, int] = {}
+        by_file: dict[str, int] = {}
         for m in self._local_memories:
             for f in m.files_involved:
                 by_file[f] = by_file.get(f, 0) + 1
@@ -276,7 +276,7 @@ class EvolutionMemoryStore:
 
         # 收集失败模式
         failed = self.get_failed_tasks()
-        failure_patterns: Dict[str, int] = {}
+        failure_patterns: dict[str, int] = {}
         for f in failed:
             reason = f.what_failed or "未知原因"
             key = reason[:50]
@@ -340,7 +340,6 @@ class EvolutionMemoryStore:
         可以通过读取记忆来了解自己的历史行为。
         """
         try:
-            from mcp_memory.memory.long_term import MemoryStore
             from mcp_memory.models.data_models import MemoryItem
 
             # 尝试获取现有的 MemoryStore 实例
@@ -373,7 +372,6 @@ class EvolutionMemoryStore:
         """获取或创建 MemoryStore 实例"""
         try:
             from mcp_memory.memory.long_term import MemoryStore
-            from mcp_memory.core.config import settings
 
             chroma_path = os.environ.get(
                 "CHROMA_DATA_PATH",
@@ -388,11 +386,16 @@ class EvolutionMemoryStore:
         """从本地文件加载进化记忆"""
         if os.path.exists(self._memory_file):
             try:
-                with open(self._memory_file, "r", encoding="utf-8") as f:
+                with open(self._memory_file, encoding="utf-8") as f:
                     data = json.load(f)
-                self._local_memories = [
-                    EvolutionMemory(**item) for item in data
-                ]
+                self._local_memories = []
+                for item in data:
+                    # 将字符串转换回枚举
+                    if isinstance(item.get("action_type"), str):
+                        item["action_type"] = EvolutionActionType(item["action_type"])
+                    if isinstance(item.get("outcome"), str):
+                        item["outcome"] = EvolutionOutcome(item["outcome"])
+                    self._local_memories.append(EvolutionMemory(**item))
                 logger.info("已加载 %d 条进化记忆", len(self._local_memories))
             except Exception as e:
                 logger.warning("加载进化记忆失败: %s", e)
