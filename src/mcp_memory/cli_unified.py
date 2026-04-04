@@ -2003,3 +2003,123 @@ def _usage_server(user_id, period):
 
 if __name__ == "__main__":
     app()
+
+
+# ─── 自动进化命令 ─────────────────────────────────────────────────────────────
+
+@app.command("evolve")
+def evolve(
+    analyze: bool = typer.Option(False, "--analyze", "-a", help="仅分析代码"),
+    daemon: bool = typer.Option(False, "--daemon", "-d", help="守护进程模式"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="仅预览"),
+    max_tasks: int = typer.Option(5, "--max-tasks", "-m", help="最多任务数"),
+    scan_interval: int = typer.Option(3600, "--interval", "-i", help="扫描间隔"),
+    history: bool = typer.Option(False, "--history", "-H", help="查看历史"),
+    reflect: bool = typer.Option(False, "--reflect", "-r", help="自我反思"),
+    monitor: bool = typer.Option(False, "--monitor", help="实时监控 TUI"),
+):
+    """🧬 自动进化 — 让项目自我优化"""
+    from mcp_memory.evolution.evolution_config import EvolutionConfig
+    from mcp_memory.evolution.evolution_scheduler import EvolutionScheduler
+    from mcp_memory.evolution.evolution_logger import setup_evolution_logging
+
+    setup_evolution_logging(verbose=True)
+    config = EvolutionConfig()
+    config.dry_run = dry_run
+    config.scan_interval_seconds = scan_interval
+    config.max_tasks_per_cycle = max_tasks
+    scheduler = EvolutionScheduler(config)
+    scheduler.load_history()
+
+    if history:
+        _show_evolution_history(scheduler)
+        return
+    if reflect:
+        _run_self_reflection(scheduler)
+        return
+    if analyze:
+        _analyze_code(scheduler)
+        return
+    if monitor:
+        from mcp_memory.evolution.monitor_tui import run_monitor
+        run_monitor()
+        return
+    if daemon:
+        console.print("[bold blue]🧬 启动进化守护进程...[/bold blue]")
+        console.print(f"  扫描间隔: {config.scan_interval_seconds}s")
+        console.print("  按 Ctrl+C 退出\n")
+        try:
+            scheduler.run_daemon()
+        except KeyboardInterrupt:
+            console.print("\n[bold yellow]进化守护进程已停止[/bold yellow]")
+        return
+
+    console.print("[bold blue]🧬 开始自动进化...[/bold blue]")
+    result = scheduler.run_cycle(max_tasks=max_tasks)
+    scheduler.save_history()
+    if result.get("summary"):
+        console.print(result["summary"])
+    if result["status"] == "no_issues":
+        console.print("\n[bold green]✅ 代码质量良好，无需进化[/bold green]")
+    elif result["status"] == "no_tasks":
+        console.print("\n[bold yellow]⚠️  发现了代码问题，但无可自动修复的任务[/bold yellow]")
+    elif result["status"] == "completed":
+        record = result.get("record", {})
+        s = record.get("tasks_succeeded", 0)
+        f = record.get("tasks_failed", 0)
+        sk = record.get("tasks_skipped", 0)
+        if f > 0:
+            console.print(f"\n[bold yellow]⚠️  进化完成，{s} 成功，{f} 失败，{sk} 跳过[/bold yellow]")
+        else:
+            console.print(f"\n[bold green]✅ 进化完成，{s} 成功，{sk} 跳过[/bold green]")
+
+
+def _show_evolution_history(scheduler) -> None:
+    history = scheduler.get_history()
+    if not history:
+        console.print("[yellow]暂无进化历史[/yellow]")
+        return
+    table = Table(title="🧬 进化历史记录")
+    table.add_column("周期", style="cyan", justify="right")
+    table.add_column("时间", style="dim")
+    table.add_column("耗时", style="dim")
+    table.add_column("问题", justify="right")
+    table.add_column("任务", justify="right")
+    table.add_column("成功", justify="right", style="green")
+    table.add_column("失败", justify="right", style="red")
+    table.add_column("跳过", justify="right", style="yellow")
+    for record in history:
+        d = record.get("duration_seconds", 0)
+        table.add_row(str(record["cycle_number"]), record["start_time"][:19],
+            f"{int(d//60):02d}:{int(d%60):02d}", str(record.get("issues_found", 0)),
+            str(record.get("tasks_executed", 0)), str(record.get("tasks_succeeded", 0)),
+            str(record.get("tasks_failed", 0)), str(record.get("tasks_skipped", 0)))
+    console.print(table)
+
+
+def _run_self_reflection(scheduler) -> None:
+    console.print("[bold blue]🧠 执行自我反思...[/bold blue]")
+    reflection = scheduler.reflection_engine.reflect()
+    for key, value in reflection.items():
+        if value:
+            console.print(f"\n[bold cyan]{key}:[/bold cyan]")
+            console.print(value)
+
+
+def _analyze_code(scheduler) -> None:
+    console.print("[bold blue]🔍 分析代码质量...[/bold blue]")
+    report = scheduler.analyze_only()
+    console.print(report.summary())
+    if report.issues:
+        table = Table(title="代码问题列表")
+        table.add_column("严重度", style="cyan")
+        table.add_column("分类", style="dim")
+        table.add_column("文件", style="yellow")
+        table.add_column("行", justify="right")
+        table.add_column("问题")
+        sc = {"critical": "bold red", "high": "red", "medium": "yellow", "low": "dim", "info": "blue"}
+        for issue in report.issues:
+            c = sc.get(issue.severity.value, "white")
+            table.add_row(f"[{c}]{issue.severity.value.upper()}[/{c}]",
+                issue.category.value, issue.file_path, str(issue.line_number), issue.title)
+        console.print(table)
