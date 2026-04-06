@@ -18,7 +18,7 @@ GET  /dashboard/llm/status        — LLM 状态
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 import networkx as nx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -60,7 +60,7 @@ async def _sse_generator():
 
 
 @router.get("/events")
-async def events_endpoint():
+async def events_endpoint() -> EventSourceResponse:
     """SSE 实时日志流（前端 Dashboard 使用）。"""
     return EventSourceResponse(_sse_generator())
 
@@ -74,7 +74,7 @@ async def get_stats(request: Request):
         tiered_stats = state.memory_manager.store.get_tiered_stats()
         providers = settings.providers
 
-        resp: Dict[str, Any] = {
+        resp: dict[str, Any] = {
             "memory_count": tiered_stats["total_count"],
             "tiered_breakdown": {
                 "storage": tiered_stats["storage_count"],
@@ -104,7 +104,7 @@ async def get_stats(request: Request):
                 resp["brain"] = {"error": "timeout"}
 
         return resp
-    except Exception as e:
+    except Exception:
         logger.exception("Failed to get stats")
         raise HTTPException(status_code=500, detail="Failed to retrieve stats")
 
@@ -176,7 +176,7 @@ async def search_memories(request: Request, query: str = "", limit: int = 20):
     try:
         items = []
         store = state.memory_manager.store
-        
+
         def _parse_json_list(raw):
             if isinstance(raw, list):
                 return raw
@@ -188,7 +188,7 @@ async def search_memories(request: Request, query: str = "", limit: int = 20):
                 except (json.JSONDecodeError, TypeError):
                     pass
             return []
-        
+
         if not query.strip():
             all_docs = store.collection.get(limit=limit)
             for i, mid in enumerate(all_docs.get("ids", [])):
@@ -226,7 +226,7 @@ async def search_memories(request: Request, query: str = "", limit: int = 20):
                     "importance": meta.get("importance", 0.5),
                 })
         return {"items": items}
-    except Exception as e:
+    except Exception:
         logger.exception("Memory search failed")
         raise HTTPException(status_code=500, detail="Search failed")
 
@@ -285,8 +285,8 @@ async def get_graph(request: Request, days: int = 7, max_nodes: int = 1000, memo
         memory_ids = [str(n.get("id")) for n in data.get("nodes", [])
                       if n.get("type") in ("memory", "storage", "thinking", "skill")]
 
-        memory_payload: Dict[str, dict] = {}
-        filtered_ids: Set[str] = set()
+        memory_payload: dict[str, dict] = {}
+        filtered_ids: set[str] = set()
 
         if memory_ids:
             try:
@@ -320,7 +320,7 @@ async def get_graph(request: Request, days: int = 7, max_nodes: int = 1000, memo
         }
 
         enriched_nodes = []
-        filtered_node_ids: Set[str] = set()
+        filtered_node_ids: set[str] = set()
         for node in data.get("nodes", []):
             nid = str(node.get("id", ""))
             ntype = node.get("type", "")
