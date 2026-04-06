@@ -36,7 +36,7 @@ async def health_liveness() -> dict[str, Any]:
 
 
 @router.get("/health/ready", summary="Readiness probe")
-async def health_readiness(request: Request):
+async def health_readiness(request: Request) -> JSONResponse:
     """
     深层就绪检查。
     Kubernetes readiness probe 使用此接口。
