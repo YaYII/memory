@@ -19,19 +19,19 @@ Usage:
     memory --local read "查询"    # 本地模式
 """
 
-import os
-import sys
 import asyncio
 import json
-from typing import Optional, Any
+import os
+import sys
 from pathlib import Path
+from typing import Any
 
 import httpx
 import typer
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
@@ -142,9 +142,9 @@ def main(
 @app.command()
 def write(
     content: str = typer.Argument(..., help="记忆内容"),
-    title: Optional[str] = typer.Option(None, "--title", "-t", help="记忆标题"),
+    title: str | None = typer.Option(None, "--title", "-t", help="记忆标题"),
     scope: str = typer.Option("project", "--scope", "-s", help="作用域: project/global"),
-    keywords: Optional[str] = typer.Option(None, "--keywords", "-k", help="关键词(逗号分隔)"),
+    keywords: str | None = typer.Option(None, "--keywords", "-k", help="关键词(逗号分隔)"),
     user_id: str = typer.Option(DEFAULT_USER, "--user", "-u", help="用户ID"),
     content_type: str = typer.Option("note", "--type", help="内容类型"),
 ):
@@ -159,7 +159,7 @@ def _write_local(content, title, scope, keywords, user_id, content_type):
     try:
         manager = get_memory_manager()
         keyword_list = [k.strip() for k in keywords.split(",")] if keywords else []
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -177,7 +177,7 @@ def _write_local(content, title, scope, keywords, user_id, content_type):
                 content_type=content_type,
                 auto_enhance=True
             )
-        
+
         if is_json_mode():
             print_json_success({
                 "id": memory_id,
@@ -194,7 +194,7 @@ def _write_local(content, title, scope, keywords, user_id, content_type):
                 title="写入成功",
                 border_style="green"
             ))
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -210,7 +210,7 @@ def _write_server(content, title, scope, keywords, user_id, content_type):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         data = {
             "content": content,
             "user_id": user_id,
@@ -222,7 +222,7 @@ def _write_server(content, title, scope, keywords, user_id, content_type):
             data["keywords"] = [k.strip() for k in keywords.split(",")]
         if content_type:
             data["tags"] = [content_type]
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -232,7 +232,7 @@ def _write_server(content, title, scope, keywords, user_id, content_type):
             ) as progress:
                 progress.add_task("正在写入记忆...", total=None)
                 result = await api_call("POST", "/memory/write", json=data)
-            
+
             if is_json_mode():
                 print_json_success({
                     "id": result.get('id', 'N/A'),
@@ -251,7 +251,7 @@ def _write_server(content, title, scope, keywords, user_id, content_type):
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 写入失败: {e}[/red]")
-    
+
     asyncio.run(_write())
 
 
@@ -259,7 +259,7 @@ def _write_server(content, title, scope, keywords, user_id, content_type):
 def read(
     query: str = typer.Argument(..., help="查询内容"),
     top_k: int = typer.Option(5, "--top-k", "-k", help="返回结果数量"),
-    scope: Optional[str] = typer.Option(None, "--scope", "-s", help="作用域过滤"),
+    scope: str | None = typer.Option(None, "--scope", "-s", help="作用域过滤"),
     user_id: str = typer.Option(DEFAULT_USER, "--user", "-u", help="用户ID"),
 ):
     """🔍 读取/搜索记忆"""
@@ -272,7 +272,7 @@ def read(
 def _read_local(query, top_k, scope, user_id):
     try:
         manager = get_memory_manager()
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -285,23 +285,22 @@ def _read_local(query, top_k, scope, user_id):
                 query=query,
                 project_id=settings.MCP_PROJECT_ID,
                 limit=top_k,
-                scope=scope
             )
-        
+
         if is_json_mode():
             print_json_success({"memories": results})
         else:
             if not results:
                 console.print("[yellow]📭 没有找到相关记忆[/yellow]")
                 return
-            
+
             table = Table(title=f"🔍 搜索结果 ({len(results)}条)", show_header=True, header_style="bold cyan")
             table.add_column("#", style="dim", width=3)
             table.add_column("标题", style="green")
             table.add_column("内容预览", style="white")
             table.add_column("相似度", style="magenta")
             table.add_column("时间", style="dim")
-            
+
             for i, mem in enumerate(results, 1):
                 content = mem.get("content", "")
                 preview = content[:40] + "..." if len(content) > 40 else content
@@ -313,9 +312,9 @@ def _read_local(query, top_k, scope, user_id):
                     f"{score:.2f}",
                     mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
                 )
-            
+
             console.print(table)
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -331,7 +330,7 @@ def _read_server(query, top_k, scope, user_id):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         data = {
             "query": query,
             "user_id": user_id,
@@ -339,7 +338,7 @@ def _read_server(query, top_k, scope, user_id):
         }
         if scope:
             data["scope"] = scope
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -349,23 +348,23 @@ def _read_server(query, top_k, scope, user_id):
             ) as progress:
                 progress.add_task("正在搜索记忆...", total=None)
                 result = await api_call("POST", "/memory/read", json=data)
-            
+
             memories = result if isinstance(result, list) else result.get("memories", [])
-            
+
             if is_json_mode():
                 print_json_success({"memories": memories})
             else:
                 if not memories:
                     console.print("[yellow]📭 没有找到相关记忆[/yellow]")
                     return
-                
+
                 table = Table(title=f"🔍 搜索结果 ({len(memories)}条)", show_header=True, header_style="bold cyan")
                 table.add_column("#", style="dim", width=3)
                 table.add_column("标题", style="green")
                 table.add_column("内容预览", style="white")
                 table.add_column("类型", style="magenta")
                 table.add_column("时间", style="dim")
-                
+
                 for i, mem in enumerate(memories, 1):
                     content = mem.get("content", "")
                     preview = content[:50] + "..." if len(content) > 50 else content
@@ -376,15 +375,15 @@ def _read_server(query, top_k, scope, user_id):
                         mem.get("memory_type", "unknown"),
                         mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
                     )
-                
+
                 console.print(table)
-            
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 查询失败: {e}[/red]")
-    
+
     asyncio.run(_read())
 
 
@@ -404,7 +403,7 @@ def list_memories(
 def _list_local(memory_type, limit, user_id):
     try:
         manager = get_memory_manager()
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -418,21 +417,21 @@ def _list_local(memory_type, limit, user_id):
                 user_id=user_id,
                 limit=limit
             )
-        
+
         if is_json_mode():
             print_json_success({"memories": memories})
         else:
             if not memories:
                 console.print("[yellow]📭 记忆库为空[/yellow]")
                 return
-            
+
             table = Table(title=f"📋 记忆列表 ({len(memories)}条)", show_header=True, header_style="bold cyan")
             table.add_column("ID", style="dim", width=12)
             table.add_column("标题", style="green")
             table.add_column("类型", style="magenta")
             table.add_column("关键词", style="yellow")
             table.add_column("时间", style="dim")
-            
+
             for mem in memories:
                 mem_id = mem.get("memory_id", "")[:12]
                 title = mem.get("title", "") or mem.get("content", "")[:30]
@@ -440,9 +439,9 @@ def _list_local(memory_type, limit, user_id):
                 keywords = ", ".join(mem.get("keywords", []))[:20]
                 timestamp = mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
                 table.add_row(mem_id, title[:25], mem_type, keywords, timestamp)
-            
+
             console.print(table)
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -458,7 +457,7 @@ def _list_server(memory_type, limit, user_id):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             params = {
                 "query": "",
@@ -468,7 +467,7 @@ def _list_server(memory_type, limit, user_id):
                 params["user_id"] = user_id
             if memory_type != "all":
                 params["memory_type"] = memory_type
-            
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -477,23 +476,23 @@ def _list_server(memory_type, limit, user_id):
             ) as progress:
                 progress.add_task("正在加载记忆列表...", total=None)
                 result = await api_call("GET", "/tiered/query", params=params)
-            
+
             memories = result if isinstance(result, list) else result.get("memories", [])
-            
+
             if is_json_mode():
                 print_json_success({"memories": memories})
             else:
                 if not memories:
                     console.print("[yellow]📭 记忆库为空[/yellow]")
                     return
-                
+
                 table = Table(title=f"📋 记忆列表 ({len(memories)}条)", show_header=True, header_style="bold cyan")
                 table.add_column("ID", style="dim", width=12)
                 table.add_column("标题", style="green")
                 table.add_column("类型", style="magenta")
                 table.add_column("作用域", style="yellow")
                 table.add_column("时间", style="dim")
-                
+
                 for mem in memories:
                     mem_id = mem.get("memory_id", mem.get("id", ""))
                     content = mem.get("content", "")
@@ -505,15 +504,15 @@ def _list_server(memory_type, limit, user_id):
                         mem.get("scope", ""),
                         mem.get("timestamp", "")[:19] if mem.get("timestamp") else ""
                     )
-                
+
                 console.print(table)
-            
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 加载失败: {e}[/red]")
-    
+
     asyncio.run(_list())
 
 
@@ -540,10 +539,10 @@ def _delete_local(memory_id, user_id, force):
             if not confirm:
                 console.print("[yellow]已取消[/yellow]")
                 return
-        
+
         manager = get_memory_manager()
         manager.store.delete(memory_id)
-        
+
         if is_json_mode():
             print_json_success({
                 "memory_id": memory_id,
@@ -551,7 +550,7 @@ def _delete_local(memory_id, user_id, force):
             })
         else:
             console.print(f"[green]✅ 记忆 {memory_id} 已删除[/green]")
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -567,7 +566,7 @@ def _delete_server(memory_id, user_id, force):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         if not force:
             if is_json_mode():
                 print_json_error("需要--force参数来强制删除")
@@ -576,13 +575,13 @@ def _delete_server(memory_id, user_id, force):
             if not confirm:
                 console.print("[yellow]已取消[/yellow]")
                 return
-        
+
         try:
             await api_call("POST", "/memory/delete", json={
                 "memory_id": memory_id,
                 "user_id": user_id
             })
-            
+
             if is_json_mode():
                 print_json_success({
                     "memory_id": memory_id,
@@ -595,7 +594,7 @@ def _delete_server(memory_id, user_id, force):
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 删除失败: {e}[/red]")
-    
+
     asyncio.run(_delete())
 
 
@@ -620,14 +619,14 @@ def _show_local(memory_id):
             if mem.get("memory_id") == memory_id or mem.get("memory_id", "").startswith(memory_id):
                 target_mem = mem
                 break
-        
+
         if not target_mem:
             if is_json_mode():
                 print_json_error(f"未找到记忆: {memory_id}")
             else:
                 console.print(f"[red]❌ 未找到记忆: {memory_id}[/red]")
             return
-        
+
         if is_json_mode():
             print_json_success(target_mem)
         else:
@@ -644,7 +643,7 @@ def _show_local(memory_id):
                 title="记忆详情",
                 border_style="cyan"
             ))
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -660,10 +659,10 @@ def _show_server(memory_id):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             result = await api_call("GET", f"/dashboard/memory/{memory_id}")
-            
+
             if is_json_mode():
                 print_json_success(result)
             else:
@@ -679,13 +678,13 @@ def _show_server(memory_id):
                     title="记忆详情",
                     border_style="cyan"
                 ))
-            
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 查询失败: {e}[/red]")
-    
+
     asyncio.run(_show())
 
 
@@ -703,7 +702,7 @@ def stats(
 def _stats_local():
     try:
         manager = get_memory_manager()
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -716,9 +715,9 @@ def _stats_local():
             thinking_count = len([m for m in all_memories if m.get("memory_type") == "thinking"])
             skill_count = len([m for m in all_memories if m.get("memory_type") == "skill"])
             total_memories = len(all_memories)
-            
+
             graph_stats = manager.store.get_tiered_stats()
-        
+
         stats_data = {
             "total_memories": total_memories,
             "storage_count": storage_count,
@@ -727,23 +726,23 @@ def _stats_local():
             "data_path": str(settings.CHROMA_DATA_PATH),
             "graph_nodes": graph_stats.get("total_count", 0)
         }
-        
+
         if is_json_mode():
             print_json_success(stats_data)
         else:
             table = Table(title="📊 系统统计", show_header=False)
             table.add_column("指标", style="cyan")
             table.add_column("值", style="green")
-            
+
             table.add_row("总记忆数", str(total_memories))
             table.add_row("存储层", str(storage_count))
             table.add_row("思维层", str(thinking_count))
             table.add_row("技能层", str(skill_count))
             table.add_row("数据目录", str(settings.CHROMA_DATA_PATH))
             table.add_row("图谱节点", str(graph_stats.get("total_count", 0)))
-            
+
             console.print(table)
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -759,7 +758,7 @@ def _stats_server():
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -770,10 +769,10 @@ def _stats_server():
                 progress.add_task("正在获取统计数据...", total=None)
                 stats_data = await api_call("GET", "/dashboard/stats")
                 evolution = await api_call("GET", "/dashboard/evolution/status")
-            
+
             tiered = stats_data.get("tiered_breakdown", {})
             total_count = stats_data.get("memory_count", 0)
-            
+
             combined_stats = {
                 "total_memories": total_count,
                 "storage_count": tiered.get("storage", 0),
@@ -783,41 +782,41 @@ def _stats_server():
                 "providers_count": stats_data.get("providers_count", 0),
                 "evolution": evolution
             }
-            
+
             if is_json_mode():
                 print_json_success(combined_stats)
             else:
                 table = Table(title="📊 系统统计", show_header=False)
                 table.add_column("指标", style="cyan")
                 table.add_column("值", style="green")
-                
+
                 table.add_row("总记忆数", str(total_count))
                 table.add_row("存储层", str(tiered.get("storage", 0)))
                 table.add_row("思维层", str(tiered.get("thinking", 0)))
                 table.add_row("技能层", str(tiered.get("skill", 0)))
                 table.add_row("LLM启用", "✅" if stats_data.get("llm_enabled") else "❌")
                 table.add_row("提供商数", str(stats_data.get("providers_count", 0)))
-                
+
                 console.print(table)
-                
+
                 if evolution:
                     evo_table = Table(title="🧬 进化状态", show_header=False)
                     evo_table.add_column("指标", style="cyan")
                     evo_table.add_column("值", style="green")
-                    
+
                     evo_table.add_row("进化阶段", evolution.get("evolution_stage", "unknown"))
                     evo_table.add_row("神经元数", str(evolution.get("neuron_count", 0)))
                     evo_table.add_row("突触数", str(evolution.get("synapse_count", 0)))
                     evo_table.add_row("运行状态", "✅ 运行中" if evolution.get("is_running") else "⏸️ 已停止")
-                    
+
                     console.print(evo_table)
-            
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 获取统计失败: {e}[/red]")
-    
+
     asyncio.run(_stats())
 
 
@@ -835,19 +834,19 @@ def reflect(
 def _reflect_local():
     try:
         manager = get_memory_manager()
-        
+
         from mcp_memory.memory.daily_reflection import DailyReflection
         dr = DailyReflection(memory_store=manager.store)
-        
+
         if not is_json_mode():
             console.print("[dim]🔄 正在执行每日反思...[/dim]")
-        
+
         async def run_reflection():
             await dr.initialize()
             return await dr.run_daily_reflection()
-        
+
         stats = asyncio.run(run_reflection())
-        
+
         if is_json_mode():
             print_json_success(stats)
         else:
@@ -859,7 +858,7 @@ def _reflect_local():
                 title="反思结果",
                 border_style="green"
             ))
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -875,7 +874,7 @@ def _reflect_server(user_id):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -885,7 +884,7 @@ def _reflect_server(user_id):
             ) as progress:
                 progress.add_task("正在触发深度反思...", total=None)
                 result = await api_call("POST", "/memory/reflect", params={"user_id": user_id})
-            
+
             if is_json_mode():
                 print_json_success({
                     "status": result.get('status', 'success'),
@@ -903,7 +902,7 @@ def _reflect_server(user_id):
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 触发失败: {e}[/red]")
-    
+
     asyncio.run(_reflect())
 
 
@@ -927,7 +926,7 @@ def _batch_write_local(file_path, scope, user_id, content_type):
         success_count = 0
         fail_count = 0
         failures = []
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -935,12 +934,12 @@ def _batch_write_local(file_path, scope, user_id, content_type):
             disable=is_json_mode()
         ) as progress:
             task = progress.add_task("正在读取文件...", total=None)
-            
+
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"文件不存在: {file_path}")
-            
+
             memories = []
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 for line_num, line in enumerate(f, 1):
                     line = line.strip()
                     if not line:
@@ -951,9 +950,9 @@ def _batch_write_local(file_path, scope, user_id, content_type):
                     except Exception as e:
                         fail_count += 1
                         failures.append(f"第{line_num}行: JSON解析错误 - {str(e)}")
-            
+
             progress.update(task, description=f"正在批量写入 {len(memories)} 条记忆...")
-            
+
             for line_num, mem_data in memories:
                 try:
                     content = mem_data.get("content", "")
@@ -961,13 +960,13 @@ def _batch_write_local(file_path, scope, user_id, content_type):
                         fail_count += 1
                         failures.append(f"第{line_num}行: content字段缺失")
                         continue
-                    
+
                     title = mem_data.get("title")
                     keywords = mem_data.get("keywords", [])
                     mem_scope = mem_data.get("scope", scope)
                     mem_user = mem_data.get("user_id", user_id)
                     mem_content_type = mem_data.get("content_type", content_type)
-                    
+
                     manager.write_memory(
                         user_id=mem_user,
                         content=content,
@@ -981,14 +980,14 @@ def _batch_write_local(file_path, scope, user_id, content_type):
                 except Exception as e:
                     fail_count += 1
                     failures.append(f"第{line_num}行: {str(e)}")
-        
+
         stats = {
             "total": success_count + fail_count,
             "success": success_count,
             "failed": fail_count,
             "failures": failures
         }
-        
+
         if is_json_mode():
             print_json_success(stats)
         else:
@@ -999,14 +998,14 @@ def _batch_write_local(file_path, scope, user_id, content_type):
             table.add_row("成功数", str(success_count))
             table.add_row("失败数", str(fail_count))
             console.print(table)
-            
+
             if failures:
                 console.print("\n[red]失败详情:[/red]")
                 for f in failures[:10]:
                     console.print(f"  - {f}")
                 if len(failures) > 10:
                     console.print(f"  ... 还有 {len(failures) - 10} 条失败")
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1022,12 +1021,12 @@ def _batch_write_server(file_path, scope, user_id, content_type):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             success_count = 0
             fail_count = 0
             failures = []
-            
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1035,12 +1034,12 @@ def _batch_write_server(file_path, scope, user_id, content_type):
                 disable=is_json_mode()
             ) as progress:
                 task = progress.add_task("正在读取文件...", total=None)
-                
+
                 if not os.path.exists(file_path):
                     raise FileNotFoundError(f"文件不存在: {file_path}")
-                
+
                 memories = []
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, encoding='utf-8') as f:
                     for line_num, line in enumerate(f, 1):
                         line = line.strip()
                         if not line:
@@ -1051,9 +1050,9 @@ def _batch_write_server(file_path, scope, user_id, content_type):
                         except Exception as e:
                             fail_count += 1
                             failures.append(f"第{line_num}行: JSON解析错误 - {str(e)}")
-                
+
                 progress.update(task, description=f"正在批量写入 {len(memories)} 条记忆...")
-                
+
                 for line_num, mem_data in memories:
                     try:
                         content = mem_data.get("content", "")
@@ -1061,7 +1060,7 @@ def _batch_write_server(file_path, scope, user_id, content_type):
                             fail_count += 1
                             failures.append(f"第{line_num}行: content字段缺失")
                             continue
-                        
+
                         data = {
                             "content": content,
                             "user_id": mem_data.get("user_id", user_id),
@@ -1073,20 +1072,20 @@ def _batch_write_server(file_path, scope, user_id, content_type):
                             data["keywords"] = mem_data["keywords"]
                         if mem_data.get("content_type", content_type):
                             data["tags"] = [mem_data.get("content_type", content_type)]
-                        
+
                         await api_call("POST", "/memory/write", json=data)
                         success_count += 1
                     except Exception as e:
                         fail_count += 1
                         failures.append(f"第{line_num}行: {str(e)}")
-            
+
             stats = {
                 "total": success_count + fail_count,
                 "success": success_count,
                 "failed": fail_count,
                 "failures": failures
             }
-            
+
             if is_json_mode():
                 print_json_success(stats)
             else:
@@ -1097,27 +1096,27 @@ def _batch_write_server(file_path, scope, user_id, content_type):
                 table.add_row("成功数", str(success_count))
                 table.add_row("失败数", str(fail_count))
                 console.print(table)
-                
+
                 if failures:
                     console.print("\n[red]失败详情:[/red]")
                     for f in failures[:10]:
                         console.print(f"  - {f}")
                     if len(failures) > 10:
                         console.print(f"  ... 还有 {len(failures) - 10} 条失败")
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 批量写入失败: {e}[/red]")
-    
+
     asyncio.run(_write())
 
 
 @app.command("batch-delete")
 def batch_delete(
-    memory_ids: Optional[list[str]] = typer.Argument(None, help="记忆ID列表（可选，不指定则从文件读取）"),
-    file_path: Optional[str] = typer.Option(None, "--file", "-f", help="从文件读取ID列表，每行一个ID"),
+    memory_ids: list[str] | None = typer.Argument(None, help="记忆ID列表（可选，不指定则从文件读取）"),
+    file_path: str | None = typer.Option(None, "--file", "-f", help="从文件读取ID列表，每行一个ID"),
     user_id: str = typer.Option(DEFAULT_USER, "--user", "-u", help="用户ID"),
     force: bool = typer.Option(False, "--force", "-f", help="强制删除，不确认"),
 ):
@@ -1125,7 +1124,7 @@ def batch_delete(
     if not memory_ids and not file_path:
         console.print("[red]❌ 必须提供记忆ID列表或文件路径[/red]")
         raise typer.Exit(1)
-    
+
     if is_local_mode():
         _batch_delete_local(memory_ids, file_path, user_id, force)
     else:
@@ -1136,25 +1135,25 @@ def _batch_delete_local(memory_ids, file_path, user_id, force):
     try:
         manager = get_memory_manager()
         ids_to_delete = []
-        
+
         if memory_ids:
             ids_to_delete = memory_ids
         elif file_path:
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"文件不存在: {file_path}")
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
                     if line:
                         ids_to_delete.append(line)
-        
+
         if not ids_to_delete:
             if is_json_mode():
                 print_json_error("没有找到要删除的记忆ID")
             else:
                 console.print("[yellow]📭 没有要删除的记忆[/yellow]")
             return
-        
+
         if not force:
             if is_json_mode():
                 print_json_error("需要--force参数来强制删除")
@@ -1163,11 +1162,11 @@ def _batch_delete_local(memory_ids, file_path, user_id, force):
             if not confirm:
                 console.print("[yellow]已取消[/yellow]")
                 return
-        
+
         success_count = 0
         fail_count = 0
         failures = []
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -1175,7 +1174,7 @@ def _batch_delete_local(memory_ids, file_path, user_id, force):
             disable=is_json_mode()
         ) as progress:
             task = progress.add_task(f"正在删除 {len(ids_to_delete)} 条记忆...", total=None)
-            
+
             for mem_id in ids_to_delete:
                 try:
                     success = manager.delete_memory(user_id, mem_id)
@@ -1187,14 +1186,14 @@ def _batch_delete_local(memory_ids, file_path, user_id, force):
                 except Exception as e:
                     fail_count += 1
                     failures.append(f"{mem_id}: {str(e)}")
-        
+
         stats = {
             "total": success_count + fail_count,
             "success": success_count,
             "failed": fail_count,
             "failures": failures
         }
-        
+
         if is_json_mode():
             print_json_success(stats)
         else:
@@ -1205,14 +1204,14 @@ def _batch_delete_local(memory_ids, file_path, user_id, force):
             table.add_row("成功数", str(success_count))
             table.add_row("失败数", str(fail_count))
             console.print(table)
-            
+
             if failures:
                 console.print("\n[red]失败详情:[/red]")
                 for f in failures[:10]:
                     console.print(f"  - {f}")
                 if len(failures) > 10:
                     console.print(f"  ... 还有 {len(failures) - 10} 条失败")
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1228,28 +1227,28 @@ def _batch_delete_server(memory_ids, file_path, user_id, force):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             ids_to_delete = []
-            
+
             if memory_ids:
                 ids_to_delete = memory_ids
             elif file_path:
                 if not os.path.exists(file_path):
                     raise FileNotFoundError(f"文件不存在: {file_path}")
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, encoding='utf-8') as f:
                     for line in f:
                         line = line.strip()
                         if line:
                             ids_to_delete.append(line)
-            
+
             if not ids_to_delete:
                 if is_json_mode():
                     print_json_error("没有找到要删除的记忆ID")
                 else:
                     console.print("[yellow]📭 没有要删除的记忆[/yellow]")
                 return
-            
+
             if not force:
                 if is_json_mode():
                     print_json_error("需要--force参数来强制删除")
@@ -1258,11 +1257,11 @@ def _batch_delete_server(memory_ids, file_path, user_id, force):
                 if not confirm:
                     console.print("[yellow]已取消[/yellow]")
                     return
-            
+
             success_count = 0
             fail_count = 0
             failures = []
-            
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1270,7 +1269,7 @@ def _batch_delete_server(memory_ids, file_path, user_id, force):
                 disable=is_json_mode()
             ) as progress:
                 task = progress.add_task(f"正在删除 {len(ids_to_delete)} 条记忆...", total=None)
-                
+
                 for mem_id in ids_to_delete:
                     try:
                         await api_call("POST", "/memory/delete", json={
@@ -1281,14 +1280,14 @@ def _batch_delete_server(memory_ids, file_path, user_id, force):
                     except Exception as e:
                         fail_count += 1
                         failures.append(f"{mem_id}: {str(e)}")
-            
+
             stats = {
                 "total": success_count + fail_count,
                 "success": success_count,
                 "failed": fail_count,
                 "failures": failures
             }
-            
+
             if is_json_mode():
                 print_json_success(stats)
             else:
@@ -1299,20 +1298,20 @@ def _batch_delete_server(memory_ids, file_path, user_id, force):
                 table.add_row("成功数", str(success_count))
                 table.add_row("失败数", str(fail_count))
                 console.print(table)
-                
+
                 if failures:
                     console.print("\n[red]失败详情:[/red]")
                     for f in failures[:10]:
                         console.print(f"  - {f}")
                     if len(failures) > 10:
                         console.print(f"  ... 还有 {len(failures) - 10} 条失败")
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 批量删除失败: {e}[/red]")
-    
+
     asyncio.run(_delete())
 
 
@@ -1323,8 +1322,8 @@ def batch_export(
     memory_type: str = typer.Option("all", "--type", "-t", help="记忆类型: all/storage/thinking/skill"),
     limit: int = typer.Option(1000, "--limit", "-l", help="导出数量限制"),
     user_id: str = typer.Option(DEFAULT_USER, "--user", "-u", help="用户ID"),
-    start_time: Optional[str] = typer.Option(None, "--start-time", help="开始时间 (ISO格式)"),
-    end_time: Optional[str] = typer.Option(None, "--end-time", help="结束时间 (ISO格式)"),
+    start_time: str | None = typer.Option(None, "--start-time", help="开始时间 (ISO格式)"),
+    end_time: str | None = typer.Option(None, "--end-time", help="结束时间 (ISO格式)"),
 ):
     """📤 批量导出记忆"""
     if is_local_mode():
@@ -1336,7 +1335,7 @@ def batch_export(
 def _batch_export_local(output_path, format, memory_type, limit, user_id, start_time, end_time):
     try:
         manager = get_memory_manager()
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -1344,14 +1343,14 @@ def _batch_export_local(output_path, format, memory_type, limit, user_id, start_
             disable=is_json_mode()
         ) as progress:
             progress.add_task("正在查询记忆...", total=None)
-            
+
             all_memories = manager.store.query_by_type(
                 query="",
                 memory_type=memory_type,
                 user_id=user_id,
                 limit=limit
             )
-            
+
             filtered_memories = []
             for mem in all_memories:
                 ts = mem.get("timestamp", "")
@@ -1360,9 +1359,9 @@ def _batch_export_local(output_path, format, memory_type, limit, user_id, start_
                 if end_time and ts > end_time:
                     continue
                 filtered_memories.append(mem)
-            
+
             progress.add_task(f"正在导出 {len(filtered_memories)} 条记忆...", total=None)
-            
+
             if format == "jsonl":
                 with open(output_path, 'w', encoding='utf-8') as f:
                     for mem in filtered_memories:
@@ -1370,18 +1369,18 @@ def _batch_export_local(output_path, format, memory_type, limit, user_id, start_
             else:
                 with open(output_path, 'w', encoding='utf-8') as f:
                     json.dump(filtered_memories, f, ensure_ascii=False, indent=2)
-        
+
         stats = {
             "count": len(filtered_memories),
             "format": format,
             "path": output_path
         }
-        
+
         if is_json_mode():
             print_json_success(stats)
         else:
             console.print(f"[green]✅ 成功导出 {len(filtered_memories)} 条记忆到: {output_path}[/green]")
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1397,7 +1396,7 @@ def _batch_export_server(output_path, format, memory_type, limit, user_id, start
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -1406,7 +1405,7 @@ def _batch_export_server(output_path, format, memory_type, limit, user_id, start
                 disable=is_json_mode()
             ) as progress:
                 progress.add_task("正在查询记忆...", total=None)
-                
+
                 params = {
                     "query": "",
                     "limit": limit,
@@ -1415,10 +1414,10 @@ def _batch_export_server(output_path, format, memory_type, limit, user_id, start
                     params["user_id"] = user_id
                 if memory_type != "all":
                     params["memory_type"] = memory_type
-                
+
                 result = await api_call("GET", "/tiered/query", params=params)
                 memories = result if isinstance(result, list) else result.get("memories", [])
-                
+
                 filtered_memories = []
                 for mem in memories:
                     ts = mem.get("timestamp", "")
@@ -1427,9 +1426,9 @@ def _batch_export_server(output_path, format, memory_type, limit, user_id, start
                     if end_time and ts > end_time:
                         continue
                     filtered_memories.append(mem)
-                
+
                 progress.add_task(f"正在导出 {len(filtered_memories)} 条记忆...", total=None)
-                
+
                 if format == "jsonl":
                     with open(output_path, 'w', encoding='utf-8') as f:
                         for mem in filtered_memories:
@@ -1437,24 +1436,24 @@ def _batch_export_server(output_path, format, memory_type, limit, user_id, start
                 else:
                     with open(output_path, 'w', encoding='utf-8') as f:
                         json.dump(filtered_memories, f, ensure_ascii=False, indent=2)
-            
+
             stats = {
                 "count": len(filtered_memories),
                 "format": format,
                 "path": output_path
             }
-            
+
             if is_json_mode():
                 print_json_success(stats)
             else:
                 console.print(f"[green]✅ 成功导出 {len(filtered_memories)} 条记忆到: {output_path}[/green]")
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 批量导出失败: {e}[/red]")
-    
+
     asyncio.run(_export())
 
 
@@ -1478,7 +1477,7 @@ def _import_local(file_path, scope, user_id, content_type):
         success_count = 0
         fail_count = 0
         failures = []
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -1486,13 +1485,13 @@ def _import_local(file_path, scope, user_id, content_type):
             disable=is_json_mode()
         ) as progress:
             task = progress.add_task("正在读取文件...", total=None)
-            
+
             if not os.path.exists(file_path):
                 raise FileNotFoundError(f"文件不存在: {file_path}")
-            
+
             memories = []
             if file_path.endswith('.jsonl'):
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, encoding='utf-8') as f:
                     for line_num, line in enumerate(f, 1):
                         line = line.strip()
                         if not line:
@@ -1504,16 +1503,16 @@ def _import_local(file_path, scope, user_id, content_type):
                             fail_count += 1
                             failures.append(f"第{line_num}行: JSON解析错误 - {str(e)}")
             else:
-                with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, encoding='utf-8') as f:
                     data = json.load(f)
                     if isinstance(data, list):
                         for idx, mem_data in enumerate(data):
                             memories.append((idx + 1, mem_data))
                     else:
                         memories.append((1, data))
-            
+
             progress.update(task, description=f"正在导入 {len(memories)} 条记忆...")
-            
+
             for line_num, mem_data in memories:
                 try:
                     content = mem_data.get("content", "")
@@ -1521,13 +1520,13 @@ def _import_local(file_path, scope, user_id, content_type):
                         fail_count += 1
                         failures.append(f"第{line_num}行: content字段缺失")
                         continue
-                    
+
                     title = mem_data.get("title")
                     keywords = mem_data.get("keywords", [])
                     mem_scope = mem_data.get("scope", scope)
                     mem_user = mem_data.get("user_id", user_id)
                     mem_content_type = mem_data.get("content_type", content_type)
-                    
+
                     manager.write_memory(
                         user_id=mem_user,
                         content=content,
@@ -1541,14 +1540,14 @@ def _import_local(file_path, scope, user_id, content_type):
                 except Exception as e:
                     fail_count += 1
                     failures.append(f"第{line_num}行: {str(e)}")
-        
+
         stats = {
             "total": success_count + fail_count,
             "success": success_count,
             "failed": fail_count,
             "failures": failures
         }
-        
+
         if is_json_mode():
             print_json_success(stats)
         else:
@@ -1559,14 +1558,14 @@ def _import_local(file_path, scope, user_id, content_type):
             table.add_row("成功数", str(success_count))
             table.add_row("失败数", str(fail_count))
             console.print(table)
-            
+
             if failures:
                 console.print("\n[red]失败详情:[/red]")
                 for f in failures[:10]:
                     console.print(f"  - {f}")
                 if len(failures) > 10:
                     console.print(f"  ... 还有 {len(failures) - 10} 条失败")
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1582,12 +1581,12 @@ def _import_server(file_path, scope, user_id, content_type):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             success_count = 0
             fail_count = 0
             failures = []
-            
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
@@ -1595,13 +1594,13 @@ def _import_server(file_path, scope, user_id, content_type):
                 disable=is_json_mode()
             ) as progress:
                 task = progress.add_task("正在读取文件...", total=None)
-                
+
                 if not os.path.exists(file_path):
                     raise FileNotFoundError(f"文件不存在: {file_path}")
-                
+
                 memories = []
                 if file_path.endswith('.jsonl'):
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, encoding='utf-8') as f:
                         for line_num, line in enumerate(f, 1):
                             line = line.strip()
                             if not line:
@@ -1613,16 +1612,16 @@ def _import_server(file_path, scope, user_id, content_type):
                                 fail_count += 1
                                 failures.append(f"第{line_num}行: JSON解析错误 - {str(e)}")
                 else:
-                    with open(file_path, 'r', encoding='utf-8') as f:
+                    with open(file_path, encoding='utf-8') as f:
                         data = json.load(f)
                         if isinstance(data, list):
                             for idx, mem_data in enumerate(data):
                                 memories.append((idx + 1, mem_data))
                         else:
                             memories.append((1, data))
-                
+
                 progress.update(task, description=f"正在导入 {len(memories)} 条记忆...")
-                
+
                 for line_num, mem_data in memories:
                     try:
                         content = mem_data.get("content", "")
@@ -1630,7 +1629,7 @@ def _import_server(file_path, scope, user_id, content_type):
                             fail_count += 1
                             failures.append(f"第{line_num}行: content字段缺失")
                             continue
-                        
+
                         data = {
                             "content": content,
                             "user_id": mem_data.get("user_id", user_id),
@@ -1642,20 +1641,20 @@ def _import_server(file_path, scope, user_id, content_type):
                             data["keywords"] = mem_data["keywords"]
                         if mem_data.get("content_type", content_type):
                             data["tags"] = [mem_data.get("content_type", content_type)]
-                        
+
                         await api_call("POST", "/memory/write", json=data)
                         success_count += 1
                     except Exception as e:
                         fail_count += 1
                         failures.append(f"第{line_num}行: {str(e)}")
-            
+
             stats = {
                 "total": success_count + fail_count,
                 "success": success_count,
                 "failed": fail_count,
                 "failures": failures
             }
-            
+
             if is_json_mode():
                 print_json_success(stats)
             else:
@@ -1666,20 +1665,20 @@ def _import_server(file_path, scope, user_id, content_type):
                 table.add_row("成功数", str(success_count))
                 table.add_row("失败数", str(fail_count))
                 console.print(table)
-                
+
                 if failures:
                     console.print("\n[red]失败详情:[/red]")
                     for f in failures[:10]:
                         console.print(f"  - {f}")
                     if len(failures) > 10:
                         console.print(f"  ... 还有 {len(failures) - 10} 条失败")
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 导入失败: {e}[/red]")
-    
+
     asyncio.run(_import())
 
 
@@ -1690,8 +1689,8 @@ def export_alias(
     memory_type: str = typer.Option("all", "--type", "-t", help="记忆类型: all/storage/thinking/skill"),
     limit: int = typer.Option(1000, "--limit", "-l", help="导出数量限制"),
     user_id: str = typer.Option(DEFAULT_USER, "--user", "-u", help="用户ID"),
-    start_time: Optional[str] = typer.Option(None, "--start-time", help="开始时间 (ISO格式)"),
-    end_time: Optional[str] = typer.Option(None, "--end-time", help="结束时间 (ISO格式)"),
+    start_time: str | None = typer.Option(None, "--start-time", help="开始时间 (ISO格式)"),
+    end_time: str | None = typer.Option(None, "--end-time", help="结束时间 (ISO格式)"),
 ):
     """📤 导出记忆（batch-export的别名）"""
     batch_export(output_path, format, memory_type, limit, user_id, start_time, end_time)
@@ -1710,14 +1709,14 @@ def _list_users_local():
     try:
         manager = get_memory_manager()
         users = manager.store.get_all_users()
-        
+
         if is_json_mode():
             print_json_success({"users": users})
         else:
             if not users:
                 console.print("[yellow]📭 没有用户数据[/yellow]")
                 return
-            
+
             table = Table(title="👥 用户列表", show_header=True, header_style="bold cyan")
             table.add_column("用户ID", style="green")
             table.add_column("记忆总数", style="magenta")
@@ -1727,7 +1726,7 @@ def _list_users_local():
             table.add_column("总字符", style="dim")
             table.add_column("首次使用", style="dim")
             table.add_column("最后使用", style="dim")
-            
+
             for user in users:
                 table.add_row(
                     user.get("user_id", "N/A"),
@@ -1739,9 +1738,9 @@ def _list_users_local():
                     user.get("first_seen", "")[:19] if user.get("first_seen") else "",
                     user.get("last_seen", "")[:19] if user.get("last_seen") else ""
                 )
-            
+
             console.print(table)
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1757,7 +1756,7 @@ def _list_users_server():
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -1767,16 +1766,16 @@ def _list_users_server():
             ) as progress:
                 progress.add_task("正在加载用户列表...", total=None)
                 result = await api_call("GET", "/users/list")
-            
+
             users = result.get("users", [])
-            
+
             if is_json_mode():
                 print_json_success({"users": users})
             else:
                 if not users:
                     console.print("[yellow]📭 没有用户数据[/yellow]")
                     return
-                
+
                 table = Table(title="👥 用户列表", show_header=True, header_style="bold cyan")
                 table.add_column("用户ID", style="green")
                 table.add_column("记忆总数", style="magenta")
@@ -1786,7 +1785,7 @@ def _list_users_server():
                 table.add_column("总字符", style="dim")
                 table.add_column("首次使用", style="dim")
                 table.add_column("最后使用", style="dim")
-                
+
                 for user in users:
                     table.add_row(
                         user.get("user_id", "N/A"),
@@ -1798,15 +1797,15 @@ def _list_users_server():
                         user.get("first_seen", "")[:19] if user.get("first_seen") else "",
                         user.get("last_seen", "")[:19] if user.get("last_seen") else ""
                     )
-                
+
                 console.print(table)
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 获取用户列表失败: {e}[/red]")
-    
+
     asyncio.run(_list())
 
 
@@ -1832,10 +1831,10 @@ def _delete_user_local(user_id, force):
             if not confirm:
                 console.print("[yellow]已取消[/yellow]")
                 return
-        
+
         manager = get_memory_manager()
         success = manager.store.delete_user(user_id, force=force)
-        
+
         if is_json_mode():
             if success:
                 print_json_success({"status": "deleted", "user_id": user_id})
@@ -1846,7 +1845,7 @@ def _delete_user_local(user_id, force):
                 console.print(f"[green]✅ 用户 {user_id} 及其所有记忆已删除[/green]")
             else:
                 console.print(f"[red]❌ 未找到用户: {user_id}[/red]")
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1862,7 +1861,7 @@ def _delete_user_server(user_id, force):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         if not force:
             if is_json_mode():
                 print_json_error("需要--force参数来强制删除")
@@ -1871,21 +1870,21 @@ def _delete_user_server(user_id, force):
             if not confirm:
                 console.print("[yellow]已取消[/yellow]")
                 return
-        
+
         try:
             await api_call("DELETE", "/users/delete", params={"user_id": user_id, "force": force})
-            
+
             if is_json_mode():
                 print_json_success({"status": "deleted", "user_id": user_id})
             else:
                 console.print(f"[green]✅ 用户 {user_id} 及其所有记忆已删除[/green]")
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 删除用户失败: {e}[/red]")
-    
+
     asyncio.run(_delete())
 
 
@@ -1904,7 +1903,7 @@ def usage(
 def _usage_local(user_id, period):
     try:
         manager = get_memory_manager()
-        
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -1913,33 +1912,33 @@ def _usage_local(user_id, period):
         ) as progress:
             progress.add_task("正在获取使用统计...", total=None)
             usage_data = manager.store.get_user_usage(user_id, period)
-        
+
         if is_json_mode():
             print_json_success(usage_data)
         else:
             if usage_data.get("error"):
                 console.print(f"[red]❌ 获取使用统计失败: {usage_data['error']}[/red]")
                 return
-            
+
             table = Table(title=f"📊 使用统计 - {user_id} ({period})", show_header=False)
             table.add_column("指标", style="cyan")
             table.add_column("值", style="green")
-            
+
             table.add_row("总记忆数", str(usage_data.get("total_memories", 0)))
             table.add_row(f"近期记忆({period})", str(usage_data.get("recent_memories", 0)))
             table.add_row("总字符数", str(usage_data.get("total_chars", 0)))
-            
+
             by_type = usage_data.get("by_type", {})
             table.add_row("存储层记忆", str(by_type.get("storage", 0)))
             table.add_row("思维层记忆", str(by_type.get("thinking", 0)))
             table.add_row("技能层记忆", str(by_type.get("skill", 0)))
-            
+
             by_scope = usage_data.get("by_scope", {})
             table.add_row("项目作用域", str(by_scope.get("project", 0)))
             table.add_row("全局作用域", str(by_scope.get("global", 0)))
-            
+
             console.print(table)
-        
+
     except Exception as e:
         if is_json_mode():
             print_json_error(str(e))
@@ -1955,7 +1954,7 @@ def _usage_server(user_id, period):
             else:
                 console.print("[red]❌ 服务器未运行，请先启动: mcp-memory-cli server start[/red]")
             return
-        
+
         try:
             with Progress(
                 SpinnerColumn(),
@@ -1965,39 +1964,39 @@ def _usage_server(user_id, period):
             ) as progress:
                 progress.add_task("正在获取使用统计...", total=None)
                 usage_data = await api_call("GET", "/users/usage", params={"user_id": user_id, "period": period})
-            
+
             if is_json_mode():
                 print_json_success(usage_data)
             else:
                 if usage_data.get("error"):
                     console.print(f"[red]❌ 获取使用统计失败: {usage_data['error']}[/red]")
                     return
-                
+
                 table = Table(title=f"📊 使用统计 - {user_id} ({period})", show_header=False)
                 table.add_column("指标", style="cyan")
                 table.add_column("值", style="green")
-                
+
                 table.add_row("总记忆数", str(usage_data.get("total_memories", 0)))
                 table.add_row(f"近期记忆({period})", str(usage_data.get("recent_memories", 0)))
                 table.add_row("总字符数", str(usage_data.get("total_chars", 0)))
-                
+
                 by_type = usage_data.get("by_type", {})
                 table.add_row("存储层记忆", str(by_type.get("storage", 0)))
                 table.add_row("思维层记忆", str(by_type.get("thinking", 0)))
                 table.add_row("技能层记忆", str(by_type.get("skill", 0)))
-                
+
                 by_scope = usage_data.get("by_scope", {})
                 table.add_row("项目作用域", str(by_scope.get("project", 0)))
                 table.add_row("全局作用域", str(by_scope.get("global", 0)))
-                
+
                 console.print(table)
-        
+
         except Exception as e:
             if is_json_mode():
                 print_json_error(str(e))
             else:
                 console.print(f"[red]❌ 获取使用统计失败: {e}[/red]")
-    
+
     asyncio.run(_usage())
 
 
@@ -2020,8 +2019,8 @@ def evolve(
 ):
     """🧬 自动进化 — 让项目自我优化"""
     from mcp_memory.evolution.evolution_config import EvolutionConfig
-    from mcp_memory.evolution.evolution_scheduler import EvolutionScheduler
     from mcp_memory.evolution.evolution_logger import setup_evolution_logging
+    from mcp_memory.evolution.evolution_scheduler import EvolutionScheduler
 
     setup_evolution_logging(verbose=True)
     config = EvolutionConfig()
