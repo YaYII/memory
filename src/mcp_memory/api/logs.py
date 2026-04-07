@@ -1,15 +1,17 @@
-from fastapi import APIRouter
+from collections.abc import Callable
 from datetime import datetime
-from typing import List, Dict, Any, Callable
+from typing import Any
+
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/logs", tags=["Logs"])
 
-_system_logs: List[Dict[str, Any]] = []
+_system_logs: list[dict[str, Any]] = []
 
-_log_listeners: List[Callable] = []
+_log_listeners: list[Callable] = []
 
 
-def add_log(message: str, log_type: str = "info"):
+def add_log(message: str, log_type: str = "info") -> None:
     """添加系统日志"""
     timestamp = datetime.now().strftime("%H:%M:%S")
     log_entry = {
@@ -20,7 +22,7 @@ def add_log(message: str, log_type: str = "info"):
     _system_logs.append(log_entry)
     if len(_system_logs) > 100:
         _system_logs.pop(0)
-    
+
     for listener in _log_listeners:
         try:
             listener(log_entry)
@@ -28,7 +30,7 @@ def add_log(message: str, log_type: str = "info"):
             pass
 
 
-def get_logs() -> List[Dict[str, Any]]:
+def get_logs() -> list[dict[str, Any]]:
     """获取所有日志"""
     return _system_logs[-50:]
 
